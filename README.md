@@ -48,7 +48,7 @@ Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode
 Precisa do [Node.js 24+](https://nodejs.org/).
 
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/Gabs-X/taverna-bot.git
 cd taverna-bot
 npm install
 cp .env.example .env      # no Windows: copy .env.example .env
