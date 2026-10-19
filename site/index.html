@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taverneiro · Bot</title>
+<meta name="description" content="O bot da Taverna dos Malucos: música, calls automáticas, RPG de D&D 5e e tudo que o servidor precisa num bot só.">
+<meta property="og:title" content="Taverneiro · o bot da Taverna dos Malucos">
+<meta property="og:description" content="Música, calls automáticas, RPG de D&D 5e e tudo que o servidor precisa num bot só.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14110f;
+    --bg-2: #1c1815;
+    --card: #221d19;
+    --card-2: #2a241f;
+    --line: #3a322b;
+    --text: #f3ece4;
+    --muted: #b3a697;
+    --faint: #7d7064;
+    --amber: #f5a524;
+    --amber-2: #ffcf70;
+    --green: #3ecf8e;
+    --purple: #a78bfa;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --discord: #313338;
+    --discord-2: #2b2d31;
+    --radius: 14px;
+    --display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --body: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  code, .mono { font-family: var(--mono); font-size: .9em; }
+
+  /* Navegação */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+  .logo { font: 800 1.15rem var(--display); text-decoration: none; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  nav ul { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; }
+  nav ul a { color: var(--muted); text-decoration: none; font-size: .93rem; }
+  nav ul a:hover { color: var(--text); }
+
+  /* Hero */
+  .hero { padding: 72px 0 56px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ''; position: absolute; inset: -40% -10% auto; height: 520px;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--amber) 22%, transparent), transparent);
+    pointer-events: none;
+  }
+  .hero .wrap { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; position: relative; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--amber-2); font-size: .82rem; background: var(--bg-2);
+  }
+  h1 { font: 800 clamp(2.4rem, 6vw, 4.2rem)/1.02 var(--display); letter-spacing: -.03em; margin: 18px 0 16px; }
+  h1 span { color: var(--amber); }
+  .lead { color: var(--muted); font-size: 1.12rem; max-width: 520px; margin: 0 0 28px; }
+  .botoes { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px;
+    border-radius: 10px; font-weight: 600; text-decoration: none; font-size: .96rem;
+    border: 1px solid var(--line); background: var(--card); transition: transform .15s, background .15s;
+  }
+  .btn:hover { transform: translateY(-2px); background: var(--card-2); }
+  .btn.primario { background: var(--amber); color: #1a1208; border-color: var(--amber); }
+  .btn.primario:hover { background: var(--amber-2); }
+  .numeros { display: flex; gap: 28px; margin-top: 36px; color: var(--muted); font-size: .9rem; flex-wrap: wrap; }
+  .numeros b { display: block; font: 800 1.7rem var(--display); color: var(--text); }
+
+  /* Mock do Discord */
+  .discord {
+    background: var(--discord); border-radius: var(--radius); border: 1px solid #1e1f22;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7); overflow: hidden;
+  }
+  .discord .barra { background: var(--discord-2); padding: 10px 14px; font-size: .85rem; color: #b5bac1; display: flex; gap: 6px; align-items: center; border-bottom: 1px solid #1e1f22; }
+  .discord .barra b { color: #f2f3f5; }
+  .msgs { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 12px; }
+  .av { width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 1.2rem; }
+  .msg .nome { font-weight: 600; font-size: .95rem; }
+  .msg .nome small { color: #949ba4; font-weight: 400; font-size: .75rem; margin-left: 6px; }
+  .bot-tag { background: #5865f2; color: #fff; font-size: .62rem; padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; font-weight: 600; }
+  .slash { color: #c9cdfb; background: rgba(88,101,242,.3); padding: 1px 4px; border-radius: 4px; font-family: var(--mono); font-size: .82rem; }
+  .msg p { margin: 2px 0 0; color: #dbdee1; font-size: .92rem; }
+  .embed { margin-top: 6px; background: var(--discord-2); border-left: 4px solid var(--purple); border-radius: 4px; padding: 10px 14px; max-width: 360px; }
+  .embed.ouro { border-color: #f1c40f; }
+  .embed.verde { border-color: var(--green); }
+  .embed h4 { margin: 0 0 4px; font-size: .95rem; color: #f2f3f5; }
+  .embed p { font-size: .85rem; }
+  .embed s { color: #80848e; }
+  .btn-discord { display: inline-block; margin-top: 8px; background: #248046; color: #fff; font-size: .8rem; padding: 4px 12px; border-radius: 4px; font-weight: 500; }
+
+  /* Seções */
+  section { padding: 72px 0; }
+  .titulo-sec { margin-bottom: 36px; max-width: 640px; }
+  .titulo-sec .kicker { color: var(--amber); font: 600 .8rem var(--body); letter-spacing: .14em; text-transform: uppercase; }
+  h2 { font: 800 clamp(1.9rem, 4vw, 2.6rem)/1.1 var(--display); letter-spacing: -.02em; margin: 8px 0 10px; }
+  .titulo-sec p { color: var(--muted); margin: 0; }
+
+  .recursos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .recurso { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  .recurso .ico { font-size: 1.6rem; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 12px; background: var(--card-2); margin-bottom: 14px; }
+  .recurso h3 { margin: 0 0 6px; font: 700 1.15rem var(--display); }
+  .recurso p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+  /* Comandos */
+  #comandos { background: var(--bg-2); border-block: 1px solid var(--line); }
+  .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+  .busca {
+    flex: 1 1 260px; min-width: 0; background: var(--card); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 11px 14px; font: inherit;
+  }
+  .busca:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .chip {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted); border-radius: 999px;
+    padding: 8px 14px; font: 500 .88rem var(--body); cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--amber); color: #1a1208; border-color: var(--amber); }
+  .lista { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .cmd { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+  .cmd-topo { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .cmd-nome { font: 500 1.02rem var(--mono); color: var(--amber-2); }
+  .cmd-cat { font-size: .75rem; color: var(--faint); white-space: nowrap; }
+  .cmd p { margin: 6px 0 0; color: var(--muted); font-size: .93rem; }
+  .subs { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+  .subs li { font-size: .88rem; color: var(--muted); display: flex; gap: 10px; }
+  .subs code { color: var(--text); background: var(--card-2); padding: 1px 7px; border-radius: 6px; white-space: nowrap; height: fit-content; }
+  .ex { margin-top: 12px; font-size: .84rem; color: var(--faint); }
+  .ex code { color: var(--green); }
+  .vazio { color: var(--muted); padding: 30px 0; text-align: center; grid-column: 1 / -1; }
+
+  /* Estrutura */
+  .estrutura { display: grid; grid-template-columns: 340px 1fr; gap: 32px; align-items: start; }
+  .sidebar { background: var(--discord-2); border-radius: var(--radius); padding: 14px 10px; font-size: .9rem; border: 1px solid #1e1f22; }
+  .sidebar .srv { font-weight: 700; color: #f2f3f5; padding: 4px 8px 12px; border-bottom: 1px solid #1e1f22; margin-bottom: 8px; }
+  .cat { color: #949ba4; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 12px 8px 4px; }
+  .ch { color: #949ba4; padding: 3px 8px; border-radius: 4px; display: flex; gap: 6px; align-items: center; }
+  .ch:hover { background: #35373c; color: #dbdee1; }
+  .ch .lock { margin-left: auto; font-size: .7rem; opacity: .7; }
+  .ch.temp { color: var(--green); padding-left: 22px; }
+  .cargos { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 26px; }
+  .cargo { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: .88rem; display: inline-flex; gap: 8px; align-items: center; }
+  .cargo i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .explica h3 { font: 700 1.2rem var(--display); margin: 0 0 6px; }
+  .explica p { color: var(--muted); margin: 0 0 18px; }
+
+  /* Passos */
+  .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: passo; }
+  .passo { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; position: relative; }
+  .passo::before {
+    counter-increment: passo; content: counter(passo);
+    font: 800 1rem var(--display); width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--amber); color: #1a1208; margin-bottom: 14px;
+  }
+  .passo h3 { margin: 0 0 6px; font: 700 1.1rem var(--display); }
+  .passo p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0; color: var(--faint); font-size: .88rem; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  @media (max-width: 900px) {
+    .hero .wrap, .estrutura { grid-template-columns: 1fr; }
+    .recursos, .passos { grid-template-columns: 1fr 1fr; }
+    .lista { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 620px) {
+    nav ul { display: none; }
+    .hero { padding-top: 48px; }
+    .recursos, .passos { grid-template-columns: 1fr; }
+    section { padding: 56px 0; }
+    .wrap { padding: 0 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#">🍺 Taverneiro</a>
+    <ul>
+      <li><a href="#recursos">Recursos</a></li>
+      <li><a href="#comandos">Comandos</a></li>
+      <li><a href="#servidor">Servidor</a></li>
+      <li><a href="#como-usar">Como usar</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="tag">🤪 Bot oficial da Taverna dos Malucos</span>
+      <h1>Um bot.<br><span>O servidor inteiro.</span></h1>
+      <p class="lead">Música, calls que se criam sozinhas, RPG de D&amp;D 5e, chamada para jogar e moderação.
+        Tudo no Taverneiro, sem precisar de dez bots diferentes.</p>
+      <div class="botoes">
+        <a class="btn primario" href="#comandos">Ver comandos</a>
+        <a class="btn" href="#como-usar">Como funciona</a>
+      </div>
+      <div class="numeros">
+        <div><b id="qtd-comandos">14</b>comandos</div>
+        <div><b>6</b>jogos com canal</div>
+        <div><b>1</b>bot só</div>
+      </div>
+    </div>
+
+    <div class="discord" aria-label="Exemplo de conversa com o bot no Discord">
+      <div class="barra"># <b>🎲・rolagens</b></div>
+      <div class="msgs">
+        <div class="msg">
+          <div class="av" style="background:#c0392b">🧝</div>
+          <div>
+            <div class="nome">Lyra <small>hoje às 21:42</small></div>
+            <p>usou <span class="slash">/teste pericia furtividade modo:vantagem</span></p>
+            <div class="embed ouro">
+              <h4>Lyra · Furtividade ⭐: 27</h4>
+              <p><code>2d20kh1+7</code> (vantagem)<br>[<s>4</s>, <b>20</b>] + 7 = <b>27</b><br>✨ <b>CRÍTICO!</b></p>
+            </div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="av" style="background:#e67e22">🍺</div>
+          <div>
+            <div class="nome">Taverneiro<span class="bot-tag">APP</span> <small>hoje às 21:43</small></div>
+            <div class="embed verde">
+              <h4>💣 Bora de CS2?</h4>
+              <p>@Gabriel está chamando!<br><b>Confirmados (4/4) · FECHOU! 🔥</b></p>
+              <span class="btn-discord">✋ Lotado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="recursos">
+  <div class="wrap">
+    <div class="titulo-sec">
+      <span class="kicker">Recursos</span>
+      <h2>Tudo que o servidor usa, num lugar só</h2>
+      <p>Começou como servidor de música e virou o QG da galera. O bot acompanhou.</p>
+    </div>
+    <div class="recursos">
+      <article class="recurso"><div class="ico">🔊</div><h3>Calls automáticas</h3>
+        <p>Entrou em <b>➕ Criar call</b>, ganhou uma call sua, já com o nome do jogo que você está jogando. Esvaziou, ela some.</p></article>
+      <article class="recurso"><div class="ico">🎵</div><h3>Música</h3>
+        <p>YouTube, Spotify e SoundCloud por link, playlist ou nome. Fila, loop, autoplay e volume.</p></article>
+      <article class="recurso"><div class="ico">🐉</div><h3>RPG D&amp;D 5e</h3>
+        <p>Rolagens com vantagem, fichas com modificadores e proficiência calculados, testes e ordem de iniciativa.</p></article>
+      <article class="recurso"><div class="ico">🎮</div><h3>Cargos de jogo</h3>
+        <p>Botões para escolher seus jogos. Cada jogo libera um canal e recebe os chamados do <code>/lfg</code>.</p></article>
+      <article class="recurso"><div class="ico">🎲</div><h3>Indie Aleatório</h3>
+        <p>Call fixa para o indie da vez. Não sabem qual jogar? <code>/sortear</code> decide.</p></article>
+      <article class="recurso"><div class="ico">🏗️</div><h3>Monta o servidor</h3>
+        <p><code>/setup</code> cria cargos, canais, regras e permissões. Rode de novo quando quiser: só completa o que falta.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="comandos">
+  <div class="wrap">
+    <div class="titulo-sec">
+      <span class="kicker">Comandos</span>
+      <h2>Todos os comandos</h2>
+      <p>Digite <code>/</code> no Discord para ver as opções de cada um. Busque ou filtre por área.</p>
+    </div>
+    <div class="filtros" role="group" aria-label="Filtrar comandos">
+      <input class="busca" id="busca" type="search" placeholder="Buscar comando… ex.: ficha, loop, call" aria-label="Buscar comando">
+    </div>
+    <div class="lista" id="lista" aria-live="polite"></div>
+  </div>
+</section>
+
+<section id="servidor">
+  <div class="wrap estrutura">
+    <div class="sidebar" aria-label="Estrutura de canais do servidor">
+      <div class="srv">🤪 Taverna dos Malucos</div>
+      <div class="cat">📜 Entrada</div>
+      <div class="ch"># 📜・regras</div><div class="ch"># 👋・boas-vindas</div><div class="ch"># 🎮・escolha-seus-jogos</div>
+      <div class="cat">💬 Resenha</div>
+      <div class="ch"># 💬・geral</div><div class="ch"># 😂・memes</div><div class="ch"># 🎬・clipes-e-prints</div><div class="ch"># 🤖・comandos-do-bot</div>
+      <div class="ch">🔊 🍻 Resenha</div><div class="ch">🔊 💤 AFK</div>
+      <div class="cat">🎵 Música</div>
+      <div class="ch"># 🎵・pedidos-de-musica</div><div class="ch">🔊 🎵 Rádio da Taverna</div>
+      <div class="cat">🎮 Jogatina</div>
+      <div class="ch">🔊 ➕ Criar call</div>
+      <div class="ch temp">🔊 🎮 Valorant · Gabriel</div>
+      <div class="ch">🔊 🎲 Indie Aleatório</div>
+      <div class="ch"># 🎯・valorant <span class="lock">🔒</span></div><div class="ch"># 💣・cs2 <span class="lock">🔒</span></div>
+      <div class="ch"># 🧙・league-of-legends <span class="lock">🔒</span></div><div class="ch"># ⛏️・minecraft <span class="lock">🔒</span></div>
+      <div class="ch"># 🪂・fortnite <span class="lock">🔒</span></div><div class="ch"># 🎲・indie-aleatorio <span class="lock">🔒</span></div>
+      <div class="ch"># 🔍・procurando-grupo</div>
+      <div class="cat">🐉 RPG · D&amp;D 5e <span class="lock">🔒</span></div>
+      <div class="ch"># 📢・avisos-da-mesa</div><div class="ch"># 🗺️・mesa-de-jogo</div><div class="ch"># 🎲・rolagens</div>
+      <div class="ch"># 📖・fichas</div><div class="ch"># 🍺・off-rpg</div><div class="ch">🔊 🐉 Mesa de RPG</div>
+    </div>
+    <div class="explica">
+      <div class="titulo-sec">
+        <span class="kicker">O servidor</span>
+        <h2>Organizado sem ficar burocrático</h2>
+        <p>É isso que o <code>/setup</code> monta. Canais com 🔒 só aparecem para quem escolheu aquele jogo ou entrou na mesa de RPG.</p>
+      </div>
+      <h3>Cargos</h3>
+      <div class="cargos">
+        <span class="cargo"><i style="background:#e67e22"></i>🍺 Taverneiro</span>
+        <span class="cargo"><i style="background:#8e44ad"></i>🐉 Mestre</span>
+        <span class="cargo"><i style="background:#c0392b"></i>⚔️ Aventureiro</span>
+        <span class="cargo"><i style="background:#2ecc71"></i>🤪 Maluco</span>
+        <span class="cargo"><i style="background:#ff4655"></i>🎯 Valorant</span>
+        <span class="cargo"><i style="background:#f0a020"></i>💣 CS2</span>
+        <span class="cargo"><i style="background:#0ac8b9"></i>🧙 League of Legends</span>
+        <span class="cargo"><i style="background:#62b47a"></i>⛏️ Minecraft</span>
+        <span class="cargo"><i style="background:#9d4dbb"></i>🪂 Fortnite</span>
+        <span class="cargo"><i style="background:#f5c542"></i>🎲 Indie Aleatório</span>
+      </div>
+      <h3>Calls sob demanda</h3>
+      <p>Em vez de dez calls vazias, uma porta: <b>➕ Criar call</b>. Cada um ganha a sua (em verde, no exemplo), controla com <code>/call</code> e ela some quando esvazia.</p>
+      <h3>Mesa de RPG separada</h3>
+      <p>Quem clica em <b>Mesa de RPG</b> no painel vira ⚔️ Aventureiro e vê a categoria do D&amp;D. Só o 🐉 Mestre escreve nos avisos da mesa.</p>
+    </div>
+  </div>
+</section>
+
+<section id="como-usar">
+  <div class="wrap">
+    <div class="titulo-sec">
+      <span class="kicker">Como usar</span>
+      <h2>Chegou agora? Três passos</h2>
+    </div>
+    <div class="passos">
+      <div class="passo"><h3>Escolha seus jogos</h3><p>Em <b>#escolha-seus-jogos</b>, clique nos botões dos jogos que você joga (e em Mesa de RPG, se for jogar D&amp;D).</p></div>
+      <div class="passo"><h3>Chame a galera</h3><p>Use <code>/lfg</code> para avisar quem joga. Quando fechar o grupo, entre em <b>➕ Criar call</b>.</p></div>
+      <div class="passo"><h3>Bota um som</h3><p>Já na call, <code>/tocar</code> e o nome da música. <code>/ajuda</code> mostra todo o resto.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>🍺 Taverneiro · feito para a Taverna dos Malucos</span>
+    <span>discord.js · discord-player · Node.js</span>
+  </div>
+</footer>
+
+<script>
+  const CATEGORIAS = {
+    musica: '🎵 Música', calls: '🔊 Calls', rpg: '🐉 RPG', jogos: '🎮 Jogos', admin: '🛡️ Admin',
+  };
+
+  const COMANDOS = [
+    { cat: 'musica', nome: '/tocar', desc: 'Toca uma música ou playlist. Aceita links do YouTube, Spotify e SoundCloud, ou o nome da música.', ex: '/tocar busca:lofi para jogar' },
+    { cat: 'musica', nome: '/musica', desc: 'Controla o que está tocando (precisa estar na mesma call do bot).', subs: [
+      ['pular', 'próxima música'], ['pausar', 'pausa ou continua'], ['parar', 'limpa a fila e sai da call'],
+      ['fila', 'mostra as próximas'], ['tocando', 'música atual com barra de progresso'], ['embaralhar', 'mistura a fila'],
+      ['volume', '0 a 100'], ['loop', 'desligado, música, fila ou autoplay'],
+    ] },
+    { cat: 'calls', nome: '➕ Criar call', desc: 'Não é comando: entre nessa call de voz e o bot cria uma só sua, com o nome do jogo que você está jogando. Quando todos saem, ela é apagada.' },
+    { cat: 'calls', nome: '/call', desc: 'Controla a sua call temporária (só o dono ou admin).', subs: [
+      ['nome', 'renomeia'], ['limite', 'máximo de pessoas (0 = livre)'], ['trancar', 'ninguém mais entra'],
+      ['destrancar', 'libera de novo'], ['dono', 'passa o controle para outra pessoa da call'],
+    ], ex: '/call limite vagas:5' },
+    { cat: 'rpg', nome: '/rolar', desc: 'Rola qualquer combinação de dados. kh mantém os maiores, kl os menores. Crítico e falha crítica no d20 são destacados.', ex: '/rolar dados:1d20+5 modo:vantagem · /rolar dados:4d6kh3 · /rolar dados:8d6 motivo:bola de fogo' },
+    { cat: 'rpg', nome: '/ficha', desc: 'Ficha de D&D 5e. Modificadores, proficiência e iniciativa são calculados sozinhos.', subs: [
+      ['criar', 'nome, classe, nível, os 6 atributos, PV, CA e raça'], ['ver', 'a sua ou de outro jogador'],
+      ['pv', 'dano ou cura: -7 ou 5'], ['editar', 'muda nível, atributo, CA…'],
+      ['pericias', 'lista de perícias proficientes'], ['apagar', 'remove a sua ficha'],
+    ], ex: '/ficha pericias lista:furtividade, percepção, acrobacia' },
+    { cat: 'rpg', nome: '/teste', desc: 'Rola d20 com os bônus da sua ficha, aplicando proficiência quando você a tem.', subs: [
+      ['pericia', 'as 18 perícias do 5e'], ['atributo', 'teste puro de atributo'],
+      ['salvaguarda', 'teste de resistência (marque se é proficiente)'], ['morte', 'teste contra a morte, CD 10'],
+    ], ex: '/teste pericia pericia:Percepção modo:desvantagem' },
+    { cat: 'rpg', nome: '/iniciativa', desc: 'Ordem de combate do canal, com rodadas.', subs: [
+      ['entrar', 'rola a sua (usa a Destreza da ficha)'], ['npc', 'monstros e NPCs, vários de uma vez'],
+      ['proximo', 'passa a vez e marca quem joga'], ['ver', 'mostra a ordem'], ['limpar', 'encerra o combate'],
+    ], ex: '/iniciativa npc nome:Goblin bonus:2 quantidade:4' },
+    { cat: 'jogos', nome: '/lfg', desc: 'Chama a galera para jogar: marca quem tem o cargo do jogo e abre uma lista com botão "Tô dentro". Avisa quando o grupo fecha.', ex: '/lfg jogo:Valorant vagas:4 recado:ranked às 21h' },
+    { cat: 'jogos', nome: '/times', desc: 'Divide quem está na sua call em times aleatórios.', ex: '/times quantidade:2' },
+    { cat: 'jogos', nome: '/sortear', desc: 'Sorteia uma opção. Perfeito para decidir o indie aleatório da noite.', ex: '/sortear opcoes:Peak, R.E.P.O., Lethal Company' },
+    { cat: 'jogos', nome: 'Painel de jogos', desc: 'Não é comando: em #escolha-seus-jogos, os botões dão ou tiram o cargo de cada jogo e da Mesa de RPG.' },
+    { cat: 'admin', nome: '/setup', desc: 'Monta ou completa o servidor: cargos, categorias, canais, permissões, regras e painel. Nunca apaga nada; lista os canais antigos para você decidir.', ex: '/setup renomear:true' },
+    { cat: 'admin', nome: '/limpar', desc: 'Apaga as últimas mensagens do canal (até 100, com menos de 14 dias).' },
+    { cat: 'admin', nome: '/castigo', desc: 'Silencia alguém por alguns minutos (0 tira o castigo).', ex: '/castigo membro:@fulano minutos:10 motivo:spam' },
+    { cat: 'admin', nome: '/ajuda', desc: 'Mostra o resumo de todos os comandos no próprio Discord.' },
+  ];
+
+  document.getElementById('qtd-comandos').textContent = COMANDOS.filter((c) => c.nome.startsWith('/')).length;
+
+  const filtros = document.querySelector('.filtros');
+  const lista = document.getElementById('lista');
+  const busca = document.getElementById('busca');
+  let categoria = 'todos';
+
+  for (const [id, rotulo] of [['todos', 'Todos'], ...Object.entries(CATEGORIAS)]) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.textContent = rotulo;
+    b.dataset.cat = id;
+    b.setAttribute('aria-pressed', String(id === 'todos'));
+    b.addEventListener('click', () => {
+      categoria = id;
+      filtros.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.cat === id)));
+      desenhar();
+    });
+    filtros.appendChild(b);
+  }
+
+  const semAcento = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  function desenhar() {
+    const termo = semAcento(busca.value.trim());
+    const visiveis = COMANDOS.filter((c) => {
+      if (categoria !== 'todos' && c.cat !== categoria) return false;
+      if (!termo) return true;
+      const texto = semAcento([c.nome, c.desc, c.ex ?? '', ...(c.subs ?? []).flat()].join(' '));
+      return texto.includes(termo);
+    });
+
+    lista.innerHTML = visiveis.length
+      ? visiveis.map((c) => `
+        <article class="cmd">
+          <div class="cmd-topo"><span class="cmd-nome">${esc(c.nome)}</span><span class="cmd-cat">${CATEGORIAS[c.cat]}</span></div>
+          <p>${esc(c.desc)}</p>
+          ${c.subs ? `<ul class="subs">${c.subs.map(([s, d]) => `<li><code>${esc(s)}</code><span>${esc(d)}</span></li>`).join('')}</ul>` : ''}
+          ${c.ex ? `<div class="ex">Ex.: <code>${esc(c.ex)}</code></div>` : ''}
+        </article>`).join('')
+      : '<p class="vazio">Nenhum comando encontrado. Tente "música", "ficha" ou "call".</p>';
+  }
+
+  busca.addEventListener('input', desenhar);
+  desenhar();
+</script>
+</body>
+</html>
