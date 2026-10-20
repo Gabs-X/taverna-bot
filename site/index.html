@@ -269,7 +269,7 @@
       <article class="recurso"><div class="ico">🔊</div><h3>Calls automáticas</h3>
         <p>Entrou em <b>➕ Criar call</b>, ganhou uma call sua, já com o nome do jogo que você está jogando. Esvaziou, ela some.</p></article>
       <article class="recurso"><div class="ico">🎵</div><h3>Música</h3>
-        <p>YouTube, Spotify e SoundCloud por link, playlist ou nome. Fila, loop, autoplay e volume.</p></article>
+        <p>YouTube, Spotify e SoundCloud por link, playlist ou nome. Fila, loop, autoplay, volume e divulgação de Jam do Spotify.</p></article>
       <article class="recurso"><div class="ico">🐉</div><h3>RPG D&amp;D 5e</h3>
         <p>Rolagens com vantagem, fichas com modificadores e proficiência calculados, testes e ordem de iniciativa.</p></article>
       <article class="recurso"><div class="ico">🎮</div><h3>Cargos de jogo</h3>
@@ -379,6 +379,9 @@
       ['fila', 'mostra as próximas'], ['tocando', 'música atual com barra de progresso'], ['embaralhar', 'mistura a fila'],
       ['volume', '0 a 100'], ['loop', 'desligado, música, fila ou autoplay'],
     ] },
+    { cat: 'musica', nome: '/jam', desc: 'Divulga a sua Jam do Spotify em #pedidos-de-musica, com botão para entrar, a música que você está ouvindo e a capa. Sem link, mostra como criar a Jam no app (o Spotify não deixa bots criarem Jams).', subs: [
+      ['link', 'convite da Jam (spotify.link/…)'], ['recado', 'ex.: aceito pedidos'], ['avisar', 'marca @here'],
+    ], ex: '/jam link:https://spotify.link/… recado:só pagode hoje' },
     { cat: 'calls', nome: '➕ Criar call', desc: 'Não é comando: entre nessa call de voz e o bot cria uma só sua, com o nome do jogo que você está jogando. Quando todos saem, ela é apagada.' },
     { cat: 'calls', nome: '/call', desc: 'Controla a sua call temporária (só o dono ou admin).', subs: [
       ['nome', 'renomeia'], ['limite', 'máximo de pessoas (0 = livre)'], ['trancar', 'ninguém mais entra'],

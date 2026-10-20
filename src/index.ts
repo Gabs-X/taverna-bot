@@ -3,6 +3,7 @@ import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { botaoCargo } from './recursos/cargos.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
+import { botaoJam, jam } from './recursos/jam.ts';
 import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
@@ -15,8 +16,8 @@ if (!token) {
   process.exit(1);
 }
 
-const COMANDOS: Comando[] = [setup, tocar, musica, call, ficha, rolarComando, teste, iniciativa, lfg, times, sortear, limpar, castigo, ajuda];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza];
+const COMANDOS: Comando[] = [setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, lfg, times, sortear, limpar, castigo, ajuda];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const client = new Client({
