@@ -402,7 +402,9 @@
     { cat: 'jogos', nome: '/times', desc: 'Divide quem está na sua call em times aleatórios.', ex: '/times quantidade:2' },
     { cat: 'jogos', nome: '/sortear', desc: 'Sorteia uma opção. Perfeito para decidir o indie aleatório da noite.', ex: '/sortear opcoes:Peak, R.E.P.O., Lethal Company' },
     { cat: 'jogos', nome: 'Painel de jogos', desc: 'Não é comando: em #escolha-seus-jogos, os botões dão ou tiram o cargo de cada jogo e da Mesa de RPG.' },
-    { cat: 'admin', nome: '/setup', desc: 'Monta ou completa o servidor: cargos, categorias, canais, permissões, regras e painel. Nunca apaga nada; lista os canais antigos para você decidir.', ex: '/setup renomear:true' },
+    { cat: 'admin', nome: '/setup', desc: 'Monta ou completa o servidor: cargos, categorias, canais, permissões, regras e painel. Sozinho, nunca apaga nada.', subs: [
+      ['renomear', 'renomeia para Taverna dos Malucos (padrão: sim)'], ['limpar_tudo', 'apaga todos os canais e cargos antes de montar, com confirmação e backup da estrutura'],
+    ], ex: '/setup limpar_tudo:true' },
     { cat: 'admin', nome: '/limpar', desc: 'Apaga as últimas mensagens do canal (até 100, com menos de 14 dias).' },
     { cat: 'admin', nome: '/castigo', desc: 'Silencia alguém por alguns minutos (0 tira o castigo).', ex: '/castigo membro:@fulano minutos:10 motivo:spam' },
     { cat: 'admin', nome: '/ajuda', desc: 'Mostra o resumo de todos os comandos no próprio Discord.' },

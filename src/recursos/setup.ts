@@ -1,4 +1,7 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   EmbedBuilder,
   InteractionContextType,
@@ -121,62 +124,96 @@ async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
   }
 }
 
+// Monta ou completa o servidor e devolve o relatório em texto.
+export async function montarServidor(guild: Guild, autorId: string, renomear: boolean): Promise<string> {
+  const relatorio: string[] = [];
+
+  if (renomear && guild.name !== NOME_SERVIDOR) {
+    await guild.setName(NOME_SERVIDOR);
+    relatorio.push(`✏️ servidor renomeado para ${NOME_SERVIDOR}`);
+  }
+
+  await garantirCargos(guild, relatorio);
+  const doPlano = await garantirCanais(guild, relatorio);
+
+  const afk = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === '💤 AFK');
+  if (afk && guild.afkChannelId !== afk.id) await guild.setAFKChannel(afk.id);
+
+  // Quem já está no servidor vira Maluco; quem rodou o setup vira Taverneiro.
+  const membro = cargoPorNome(guild, CARGOS.membro.nome);
+  const admin = cargoPorNome(guild, CARGOS.admin.nome);
+  const membros = await guild.members.fetch();
+  let novos = 0;
+  for (const m of membros.values()) {
+    if (m.user.bot || !membro || m.roles.cache.has(membro.id)) continue;
+    await m.roles.add(membro).catch(() => {});
+    novos++;
+  }
+  if (novos) relatorio.push(`🤪 cargo ${CARGOS.membro.nome} dado a ${novos} membro(s)`);
+  if (admin) await membros.get(autorId)?.roles.add(admin).catch(() => {});
+
+  await postarMensagensFixas(guild, relatorio);
+
+  // Canais antigos não são apagados aqui: só listados para você decidir.
+  const temporarias = new Set(
+    (db.prepare('SELECT canal_id FROM calls_temporarias WHERE guild_id = ?').all(guild.id) as { canal_id: string }[]).map(
+      (r) => r.canal_id,
+    ),
+  );
+  const fora = guild.channels.cache.filter(
+    (c: GuildBasedChannel) => !doPlano.has(c.id) && !temporarias.has(c.id) && c.type !== ChannelType.GuildCategory,
+  );
+
+  return [
+    relatorio.length ? relatorio.join('\n') : '✅ Tudo já estava no lugar.',
+    fora.size
+      ? `\n**Canais fora do plano (não mexi):** ${fora.map((c) => `<#${c.id}>`).join(' ')}\nApague ou mova os que não usar mais.`
+      : '',
+    `\nDê o cargo **${CARGOS.mestre.nome}** a quem narra o RPG.`,
+  ]
+    .join('\n')
+    .slice(0, 1900);
+}
+
 export const setup: Comando = {
   data: new SlashCommandBuilder()
     .setName('setup')
     .setDescription('Monta (ou completa) a estrutura do servidor: cargos, categorias, canais e painéis.')
     .addBooleanOption((o) => o.setName('renomear').setDescription(`Renomear o servidor para "${NOME_SERVIDOR}" (padrão: sim)`))
+    .addBooleanOption((o) =>
+      o.setName('limpar_tudo').setDescription('⚠️ Apaga TODOS os canais e cargos antes de montar (pede confirmação)'),
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setContexts(InteractionContextType.Guild),
 
   async executar(i) {
-    const guild = i.guild!;
+    const renomear = i.options.getBoolean('renomear') ?? true;
+
+    if (i.options.getBoolean('limpar_tudo')) {
+      const guild = i.guild!;
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('⚠️ Apagar o servidor inteiro?')
+        .setDescription(
+          `Vou apagar **${guild.channels.cache.size} canais** (com todas as mensagens) e todos os cargos que eu conseguir, ` +
+            'e depois montar a Taverna do zero.\n\n' +
+            '**Fica:** membros, emojis, figurinhas e cargos de bots/boost.\n' +
+            '**Antes de apagar** eu salvo a estrutura antiga (canais, cargos e permissões) num backup. ' +
+            '**Mensagens não têm volta.**',
+        )
+        .setFooter({ text: 'O botão expira em 2 minutos e só funciona para você.' });
+      const botoes = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`reset:confirmar:${i.user.id}:${renomear ? 1 : 0}`)
+          .setLabel('Apagar tudo e montar')
+          .setEmoji('💣')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`reset:cancelar:${i.user.id}`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary),
+      );
+      return i.reply({ embeds: [embed], components: [botoes], flags: MessageFlags.Ephemeral });
+    }
+
     await i.deferReply({ flags: MessageFlags.Ephemeral });
-    const relatorio: string[] = [];
-
-    if ((i.options.getBoolean('renomear') ?? true) && guild.name !== NOME_SERVIDOR) {
-      await guild.setName(NOME_SERVIDOR);
-      relatorio.push(`✏️ servidor renomeado para ${NOME_SERVIDOR}`);
-    }
-
-    await garantirCargos(guild, relatorio);
-    const doPlano = await garantirCanais(guild, relatorio);
-
-    const afk = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === '💤 AFK');
-    if (afk && guild.afkChannelId !== afk.id) await guild.setAFKChannel(afk.id);
-
-    // Quem já está no servidor vira Maluco; quem rodou o setup vira Taverneiro.
-    const membro = cargoPorNome(guild, CARGOS.membro.nome);
-    const admin = cargoPorNome(guild, CARGOS.admin.nome);
-    const membros = await guild.members.fetch();
-    let novos = 0;
-    for (const m of membros.values()) {
-      if (m.user.bot || !membro || m.roles.cache.has(membro.id)) continue;
-      await m.roles.add(membro).catch(() => {});
-      novos++;
-    }
-    if (novos) relatorio.push(`🤪 cargo ${CARGOS.membro.nome} dado a ${novos} membro(s)`);
-    if (admin) await membros.get(i.user.id)?.roles.add(admin).catch(() => {});
-
-    await postarMensagensFixas(guild, relatorio);
-
-    // Canais antigos não são apagados: só listados para você decidir.
-    const temporarias = new Set(
-      (db.prepare('SELECT canal_id FROM calls_temporarias WHERE guild_id = ?').all(guild.id) as { canal_id: string }[]).map(
-        (r) => r.canal_id,
-      ),
-    );
-    const fora = guild.channels.cache.filter(
-      (c: GuildBasedChannel) => !doPlano.has(c.id) && !temporarias.has(c.id) && c.type !== ChannelType.GuildCategory,
-    );
-
-    const linhas = [
-      relatorio.length ? relatorio.join('\n') : '✅ Tudo já estava no lugar.',
-      fora.size
-        ? `\n**Canais fora do plano (não mexi):** ${fora.map((c) => `<#${c.id}>`).join(' ')}\nApague ou mova os que não usar mais.`
-        : '',
-      `\nDê o cargo **${CARGOS.mestre.nome}** a quem narra o RPG.`,
-    ];
-    return i.editReply(linhas.join('\n').slice(0, 1900));
+    return i.editReply(await montarServidor(i.guild!, i.user.id, renomear));
   },
 };

@@ -9,7 +9,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 
 | Área | Recursos |
 |---|---|
-| 🏗️ Servidor | `/setup` cria cargos, categorias, canais, regras e o painel de jogos. Pode rodar de novo: só completa o que falta e **não apaga nada** |
+| 🏗️ Servidor | `/setup` cria cargos, categorias, canais, regras e o painel de jogos. Pode rodar de novo: só completa o que falta e **não apaga nada**. Com `limpar_tudo:true` (e confirmação), apaga todos os canais e cargos antes, guardando um backup da estrutura |
 | 🔊 Calls | Entrou em **➕ Criar call**, ganhou uma call sua (com o nome do jogo que você está jogando). Esvaziou, ela some. `/call` renomeia, limita, tranca e passa o controle |
 | 🎵 Música | `/tocar` com YouTube, Spotify e SoundCloud (links, playlists ou busca por nome), fila, loop, autoplay, volume |
 | 🐉 RPG | `/rolar` (1d20+5, 4d6kh3, vantagem), fichas de D&D 5e, testes de perícia e salvaguarda com proficiência automática, controle de iniciativa |
@@ -57,6 +57,7 @@ npm start
 ```
 
 Aparecendo `🍺 Taverneiro#0000 online`, vá ao Discord e rode **`/setup`** (só admin vê o comando).
+Para começar do zero, use **`/setup limpar_tudo:true`**: aparece um botão de confirmação; ao confirmar, o bot salva a estrutura antiga em `dados/backup-*.json`, apaga todos os canais (com as mensagens) e cargos, mantém membros, emojis e cargos de bots, e monta a Taverna. O resultado sai em #logs.
 Depois dê o cargo **🐉 Mestre** a quem narra o RPG e remova os bots de música antigos.
 
 > O bot fica online enquanto o terminal estiver aberto. Para deixar 24h, rode numa VPS
