@@ -1,6 +1,6 @@
 # 🍺 Taverneiro · bot da Taverna dos Malucos
 
-Um bot só para o servidor todo, no lugar de dez: música, calls que se criam sozinhas, RPG de D&D 5e,
+Um bot só para o servidor todo, no lugar de dez: música, calls que se criam sozinhas, RPG de D&D 3.5 e Daggerheart,
 chamada para jogar, boas-vindas e moderação. O `/setup` monta o servidor inteiro.
 
 Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja abaixo).
@@ -12,7 +12,9 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🏗️ Servidor | `/setup` cria cargos, categorias, canais, regras e o painel de jogos. Pode rodar de novo: só completa o que falta e **não apaga nada**. Com `limpar_tudo:true` (e confirmação), apaga todos os canais e cargos antes, guardando um backup da estrutura |
 | 🔊 Calls | Entrou em **➕ Criar call**, ganhou uma call sua (com o nome do jogo que você está jogando). Esvaziou, ela some. `/call` renomeia, limita, tranca e passa o controle |
 | 🎵 Música | `/tocar` com YouTube, Spotify e SoundCloud (links, playlists ou busca por nome), fila, loop, autoplay, volume. `/jam` divulga a sua Jam do Spotify com botão para entrar e a música que está tocando |
-| 🐉 RPG | `/rolar` (1d20+5, 4d6kh3, vantagem), fichas de D&D 5e, testes de perícia e salvaguarda com proficiência automática, controle de iniciativa, `/sessao` marca a sessão como evento do Discord e avisa os Aventureiros |
+| 🐉 D&D 3.5 | `/rolar` (1d20+5, 4d6kh3), fichas com graduações de perícia, BBA e resistências, `/teste` de perícia, resistência e ataque (margem de ameaça e confirmação de crítico), estabilizar, iniciativa |
+| 🌗 Daggerheart | `/dh rolar` com dados de dualidade (Esperança e Medo atualizados sozinhos, experiências, vantagem), ficha, `/dh dano` pelos limiares, Estresse, armadura e o Medo do Mestre |
+| 📅 Sessões | `/sessao marcar mesa:…` cria o evento do Discord na call da mesa e avisa quem joga |
 | 🎮 Jogos | Botões de cargo por jogo (libera o canal), `/lfg` chama quem joga, `/times` divide a call, `/sortear` decide o indie da noite, `/enquete` abre uma votação |
 | 📅 Agenda | `/lembrete` (30m, 2h, 3d…), `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |
 | 🎉 Diversão | `/moeda`, `/8ball`, `/avatar`, `/servidor` |
@@ -26,11 +28,12 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 🎵 MÚSICA        #pedidos-de-musica · 🔊 Rádio da Taverna
 🎮 JOGATINA      🔊 ➕ Criar call · 🔊 🎲 Indie Aleatório · #procurando-grupo
                  #valorant · #cs2 · #league-of-legends · #minecraft · #fortnite · #indie-aleatorio  (cada um só para quem tem o cargo)
-🐉 RPG · D&D 5e  #avisos-da-mesa · #mesa-de-jogo · #rolagens · #fichas · #off-rpg · 🔊 Mesa de RPG  (só ⚔️ Aventureiro)
+🐉 RPG · D&D 3.5     #avisos-da-mesa · #mesa-de-jogo · #rolagens · #fichas · #off-rpg · 🔊 Mesa de RPG  (só ⚔️ Aventureiro)
+🌗 RPG · Daggerheart #avisos-dh · #mesa-dh · #rolagens-dh · #fichas-dh · 🔊 Mesa de Daggerheart  (só 🌗 Daggerheart)
 🛡️ STAFF         #logs
 ```
 
-Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre · ⚔️ Aventureiro · 🤪 Maluco (todo mundo) · um por jogo.
+Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ Aventureiro (D&D) · 🌗 Daggerheart · 🤪 Maluco (todo mundo) · um por jogo.
 Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode `/setup` de novo.
 
 ## Como colocar no ar

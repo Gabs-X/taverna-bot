@@ -50,6 +50,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.admin, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
     { ...CARGOS.mestre, hoist: true, permissions: [] },
     { ...CARGOS.aventureiro, hoist: false, permissions: [] },
+    { ...CARGOS.daggerheart, hoist: false, permissions: [] },
     { ...CARGOS.membro, hoist: true, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
   ];
@@ -67,6 +68,13 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
     let categoria = guild.channels.cache.find(
       (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === cat.nome,
     );
+    const antiga = guild.channels.cache.find(
+      (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && (cat.antigos ?? []).includes(c.name),
+    );
+    if (!categoria && antiga) {
+      categoria = await antiga.setName(cat.nome);
+      relatorio.push(`✏️ categoria ${antiga.name} → ${cat.nome}`);
+    }
     if (!categoria) {
       categoria = await guild.channels.create({
         name: cat.nome,
@@ -100,14 +108,14 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
   return doPlano;
 }
 
-async function jaPostou(canal: TextChannel, titulo: string) {
+async function mensagemDoBot(canal: TextChannel, titulo: string) {
   const msgs = await canal.messages.fetch({ limit: 20 });
-  return msgs.some((m) => m.author.id === canal.client.user.id && m.embeds[0]?.title === titulo);
+  return msgs.find((m) => m.author.id === canal.client.user.id && m.embeds[0]?.title === titulo);
 }
 
 async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
   const regras = canalTexto(guild, CANAIS.regras);
-  if (regras && !(await jaPostou(regras, `📜 Regras da ${NOME_SERVIDOR}`))) {
+  if (regras && !(await mensagemDoBot(regras, `📜 Regras da ${NOME_SERVIDOR}`))) {
     const embed = new EmbedBuilder()
       .setColor(0xe67e22)
       .setTitle(`📜 Regras da ${NOME_SERVIDOR}`)
@@ -118,9 +126,14 @@ async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
   }
 
   const escolha = canalTexto(guild, CANAIS.escolhaJogos);
-  if (escolha && !(await jaPostou(escolha, '🎮 Escolha seus jogos'))) {
-    await escolha.send(painelDeCargos());
-    relatorio.push('📌 painel de jogos postado');
+  if (escolha) {
+    // Se o painel já existe, atualiza os botões (ex.: entrou uma mesa nova).
+    const painel = await mensagemDoBot(escolha, '🎮 Escolha seus jogos');
+    if (painel) await painel.edit(painelDeCargos());
+    else {
+      await escolha.send(painelDeCargos());
+      relatorio.push('📌 painel de jogos postado');
+    }
   }
 }
 

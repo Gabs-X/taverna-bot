@@ -5,7 +5,8 @@ export const NOME_SERVIDOR = 'Taverna dos Malucos';
 export const CARGOS = {
   admin: { nome: '🍺 Taverneiro', cor: 0xe67e22 },
   mestre: { nome: '🐉 Mestre', cor: 0x8e44ad },
-  aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b },
+  aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b }, // mesa de D&D 3.5
+  daggerheart: { nome: '🌗 Daggerheart', cor: 0x2e86c1 }, // mesa de Daggerheart
   membro: { nome: '🤪 Maluco', cor: 0x2ecc71 },
 } as const;
 
@@ -34,6 +35,8 @@ export const CANAIS = {
   criarCall: '➕ Criar call',
   avisosRpg: '📢・avisos-da-mesa',
   mesaRpg: '🐉 Mesa de RPG',
+  avisosDh: '📢・avisos-dh',
+  mesaDh: '🌗 Mesa de Daggerheart',
 } as const;
 
 // Quem pode ver/escrever em cada canal.
@@ -46,9 +49,11 @@ export type Acesso =
   | { tipo: 'staff' };
 
 export type CanalPlano = { nome: string; voz?: boolean; topico?: string; acesso?: Acesso; limite?: number };
-export type CategoriaPlano = { nome: string; acesso?: Acesso; canais: CanalPlano[] };
+// `antigos`: nomes anteriores da categoria; o /setup renomeia em vez de criar outra.
+export type CategoriaPlano = { nome: string; antigos?: string[]; acesso?: Acesso; canais: CanalPlano[] };
 
 const rpg: Acesso = { tipo: 'cargo', cargo: CARGOS.aventureiro.nome };
+const dh: Acesso = { tipo: 'cargo', cargo: CARGOS.daggerheart.nome };
 
 export const PLANO: CategoriaPlano[] = [
   {
@@ -91,7 +96,8 @@ export const PLANO: CategoriaPlano[] = [
     ],
   },
   {
-    nome: '🐉 RPG · D&D 5e',
+    nome: '🐉 RPG · D&D 3.5',
+    antigos: ['🐉 RPG · D&D 5e'],
     acesso: rpg,
     canais: [
       { nome: CANAIS.avisosRpg, acesso: { tipo: 'cargo', cargo: CARGOS.aventureiro.nome, escrita: CARGOS.mestre.nome } },
@@ -100,6 +106,17 @@ export const PLANO: CategoriaPlano[] = [
       { nome: '📖・fichas', acesso: rpg, topico: '/ficha criar e /ficha ver.' },
       { nome: '🍺・off-rpg', acesso: rpg },
       { nome: CANAIS.mesaRpg, voz: true, acesso: rpg },
+    ],
+  },
+  {
+    nome: '🌗 RPG · Daggerheart',
+    acesso: dh,
+    canais: [
+      { nome: CANAIS.avisosDh, acesso: { tipo: 'cargo', cargo: CARGOS.daggerheart.nome, escrita: CARGOS.mestre.nome } },
+      { nome: '🗺️・mesa-dh', acesso: dh, topico: 'Narração e ações dos personagens.' },
+      { nome: '🎲・rolagens-dh', acesso: dh, topico: '/dh rolar, /dh dano e /dh medo.' },
+      { nome: '📖・fichas-dh', acesso: dh, topico: '/dh ficha criar e /dh ficha ver.' },
+      { nome: CANAIS.mesaDh, voz: true, acesso: dh },
     ],
   },
   {

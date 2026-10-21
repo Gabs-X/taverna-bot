@@ -2,6 +2,7 @@ import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
+import { dh } from './recursos/daggerheart.ts';
 import { botaoCargo } from './recursos/cargos.ts';
 import { avatar, bola8, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
@@ -19,7 +20,7 @@ if (!token) {
 }
 
 const COMANDOS: Comando[] = [
-  setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, sessao,
+  setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, avatar, servidor, limpar, castigo, ajuda,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam];

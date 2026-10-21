@@ -73,15 +73,6 @@ export function rolar(expressao: string, rng: Aleatorio = aleatorio): Resultado 
   return { expressao, total: termos.reduce((a, t) => a + t.subtotal, 0), termos, d20 };
 }
 
-// Vantagem e desvantagem do D&D: troca o primeiro "1d20" por "2d20kh1" ou "2d20kl1".
-export function aplicarModo(expressao: string, modo: 'normal' | 'vantagem' | 'desvantagem'): string {
-  if (modo === 'normal') return expressao;
-  const sufixo = modo === 'vantagem' ? 'kh1' : 'kl1';
-  const trocada = expressao.replace(/(^|[-+\s])1?d20(?![\dk])/i, (_, antes: string) => `${antes}2d20${sufixo}`);
-  if (trocada === expressao) throw new Error('Vantagem e desvantagem só valem para uma rolagem com 1d20.');
-  return trocada;
-}
-
 export function formatar(r: Resultado): string {
   const partes = r.termos.map((t, i) => {
     const sinal = i === 0 ? (t.termo.sinal < 0 ? '-' : '') : t.termo.sinal < 0 ? ' - ' : ' + ';
@@ -101,6 +92,4 @@ export function formatar(r: Resultado): string {
   return partes.join('');
 }
 
-export const modificador = (atributo: number) => Math.floor((atributo - 10) / 2);
-export const bonusProficiencia = (nivel: number) => 2 + Math.floor((Math.max(1, Math.min(20, nivel)) - 1) / 4);
 export const comSinal = (n: number) => (n >= 0 ? `+${n}` : `${n}`);

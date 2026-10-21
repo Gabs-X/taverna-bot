@@ -12,7 +12,7 @@ import {
 } from 'discord.js';
 import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
 import { db } from '../db.ts';
-import { canalTexto, cargoPorNome, ehAdmin } from '../lib/servidor.ts';
+import { canalTexto, cargoPorNome, ehMestre } from '../lib/servidor.ts';
 import {
   dataValida,
   ehBissexto,
@@ -27,6 +27,12 @@ import type { Comando } from '../tipos.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const HORA_PARABENS = 9; // horário de Brasília
 
+// Cada mesa de RPG tem sua call, seu canal de avisos e o cargo de quem joga.
+const MESAS = {
+  dnd: { nome: 'D&D 3.5', emoji: '🐉', titulo: 'Sessão de D&D', voz: CANAIS.mesaRpg, avisos: CANAIS.avisosRpg, cargo: CARGOS.aventureiro.nome },
+  dh: { nome: 'Daggerheart', emoji: '🌗', titulo: 'Sessão de Daggerheart', voz: CANAIS.mesaDh, avisos: CANAIS.avisosDh, cargo: CARGOS.daggerheart.nome },
+} as const;
+
 // ---------- /sessao: marca a próxima sessão de RPG como evento do Discord ----------
 
 export const sessao: Comando = {
@@ -37,7 +43,14 @@ export const sessao: Comando = {
     .addSubcommand((s) =>
       s
         .setName('marcar')
-        .setDescription('Marca uma sessão e avisa os Aventureiros (Mestre ou admin)')
+        .setDescription('Marca uma sessão e avisa os jogadores da mesa (Mestre ou admin)')
+        .addStringOption((o) =>
+          o
+            .setName('mesa')
+            .setDescription('Qual mesa')
+            .setRequired(true)
+            .addChoices(...Object.entries(MESAS).map(([value, m]) => ({ name: `${m.emoji} ${m.nome}`, value }))),
+        )
         .addStringOption((o) => o.setName('data').setDescription('Ex.: 25/10 ou 25/10/2026').setRequired(true).setMaxLength(10))
         .addStringOption((o) => o.setName('hora').setDescription('Ex.: 20h, 20:30').setRequired(true).setMaxLength(5))
         .addStringOption((o) => o.setName('titulo').setDescription('Ex.: Sessão 12 · A Cripta do Lich').setMaxLength(100))
@@ -71,7 +84,7 @@ export const sessao: Comando = {
     }
 
     const membro = i.member as GuildMember;
-    if (!membro.roles.cache.some((r) => r.name === CARGOS.mestre.nome) && !ehAdmin(guild, i.user.id)) {
+    if (!ehMestre(membro)) {
       return i.reply({ content: `Só quem tem o cargo **${CARGOS.mestre.nome}** marca sessões.`, flags: MessageFlags.Ephemeral });
     }
 
@@ -79,10 +92,11 @@ export const sessao: Comando = {
     if (!inicio) return i.reply({ content: 'Não entendi a data ou a hora. Use, por exemplo, `data:25/10 hora:20h`.', flags: MessageFlags.Ephemeral });
     if (inicio.getTime() < Date.now() + 60_000) return i.reply({ content: 'Essa data já passou.', flags: MessageFlags.Ephemeral });
 
-    const titulo = i.options.getString('titulo') ?? 'Sessão de D&D';
+    const mesaRpg = MESAS[i.options.getString('mesa', true) as keyof typeof MESAS];
+    const titulo = i.options.getString('titulo') ?? mesaRpg.titulo;
     const descricao = i.options.getString('descricao') ?? undefined;
     const fim = new Date(inicio.getTime() + (i.options.getInteger('duracao') ?? 4) * 3_600_000);
-    const mesa = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === CANAIS.mesaRpg);
+    const mesa = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === mesaRpg.voz);
 
     await i.deferReply({ flags: MessageFlags.Ephemeral });
     const evento = await guild.scheduledEvents.create({
@@ -96,13 +110,13 @@ export const sessao: Comando = {
         : { entityType: GuildScheduledEventEntityType.External, entityMetadata: { location: NOME_SERVIDOR } }),
     });
 
-    const aventureiro = cargoPorNome(guild, CARGOS.aventureiro.nome);
-    const avisos = canalTexto(guild, CANAIS.avisosRpg);
+    const jogadores = cargoPorNome(guild, mesaRpg.cargo);
+    const avisos = canalTexto(guild, mesaRpg.avisos);
     if (avisos) {
       const embed = new EmbedBuilder()
         .setColor(CARGOS.mestre.cor)
         .setAuthor({ name: `${membro.displayName} marcou a próxima sessão`, iconURL: membro.displayAvatarURL() })
-        .setTitle(`🐉 ${titulo}`)
+        .setTitle(`${mesaRpg.emoji} ${titulo}`)
         .setURL(evento.url)
         .setDescription(
           [
@@ -115,9 +129,9 @@ export const sessao: Comando = {
             .join('\n'),
         );
       await avisos.send({
-        content: aventureiro ? `${aventureiro}` : undefined,
+        content: jogadores ? `${jogadores}` : undefined,
         embeds: [embed],
-        allowedMentions: { roles: aventureiro ? [aventureiro.id] : [] },
+        allowedMentions: { roles: jogadores ? [jogadores.id] : [] },
       });
     }
 

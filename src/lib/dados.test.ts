@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { aplicarModo, bonusProficiencia, formatar, interpretar, modificador, rolar } from './dados.ts';
+import { formatar, interpretar, rolar } from './dados.ts';
 
 // Gerador previsível: devolve os valores na ordem dada.
 const sequencia = (...valores: number[]) => {
@@ -50,25 +50,5 @@ describe('rolar', () => {
 
   it('formata riscando os descartados', () => {
     assert.equal(formatar(rolar('2d20kh1+3', sequencia(7, 15))), '[~~7~~, 15] + 3');
-  });
-});
-
-describe('aplicarModo', () => {
-  it('troca 1d20 por 2d20 com kh/kl', () => {
-    assert.equal(aplicarModo('1d20+5', 'vantagem'), '2d20kh1+5');
-    assert.equal(aplicarModo('d20', 'desvantagem'), '2d20kl1');
-    assert.equal(aplicarModo('1d20+5', 'normal'), '1d20+5');
-    assert.throws(() => aplicarModo('2d6', 'vantagem'));
-  });
-});
-
-describe('regras do D&D 5e', () => {
-  it('calcula modificador e proficiência', () => {
-    assert.equal(modificador(10), 0);
-    assert.equal(modificador(15), 2);
-    assert.equal(modificador(8), -1);
-    assert.equal(bonusProficiencia(1), 2);
-    assert.equal(bonusProficiencia(5), 3);
-    assert.equal(bonusProficiencia(17), 6);
   });
 });

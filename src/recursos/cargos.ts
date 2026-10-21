@@ -3,10 +3,11 @@ import { CARGOS, JOGOS, nomeCargoJogo } from '../config.ts';
 import { cargoPorNome } from '../lib/servidor.ts';
 import type { HandlerBotao } from '../tipos.ts';
 
-// Botões que o próprio membro pode ligar/desligar: um por jogo + a mesa de RPG.
+// Botões que o próprio membro pode ligar/desligar: um por jogo + as mesas de RPG.
 const OPCOES = [
   ...JOGOS.map((j) => ({ id: j.id, cargo: nomeCargoJogo(j), rotulo: j.nome, emoji: j.emoji })),
-  { id: 'rpg', cargo: CARGOS.aventureiro.nome, rotulo: 'Mesa de RPG', emoji: '⚔️' },
+  { id: 'rpg', cargo: CARGOS.aventureiro.nome, rotulo: 'D&D 3.5', emoji: '⚔️' },
+  { id: 'daggerheart', cargo: CARGOS.daggerheart.nome, rotulo: 'Daggerheart', emoji: '🌗' },
 ];
 
 export function painelDeCargos() {
@@ -15,7 +16,7 @@ export function painelDeCargos() {
     .setTitle('🎮 Escolha seus jogos')
     .setDescription(
       'Clique nos jogos que você joga para liberar o canal de cada um e receber os chamados do `/lfg`.\n' +
-        'Clique de novo para tirar. **Mesa de RPG** libera a categoria do D&D.',
+        'Clique de novo para tirar. **D&D 3.5** e **Daggerheart** liberam a categoria de cada mesa de RPG.',
     );
 
   const botoes = OPCOES.map((o) =>

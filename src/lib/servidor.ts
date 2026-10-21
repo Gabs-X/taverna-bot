@@ -1,4 +1,4 @@
-import { ChannelType, type Guild, type Role, type TextChannel } from 'discord.js';
+import { ChannelType, type Guild, type GuildMember, type Role, type TextChannel } from 'discord.js';
 import { CARGOS } from '../config.ts';
 
 export const cargoPorNome = (guild: Guild, nome: string): Role | undefined =>
@@ -12,3 +12,7 @@ export const ehAdmin = (guild: Guild, userId: string): boolean => {
   if (!membro) return false;
   return membro.permissions.has('Administrator') || membro.roles.cache.some((r) => r.name === CARGOS.admin.nome);
 };
+
+// Mestre de qualquer mesa (D&D ou Daggerheart) ou admin.
+export const ehMestre = (membro: GuildMember): boolean =>
+  membro.roles.cache.some((r) => r.name === CARGOS.mestre.nome) || ehAdmin(membro.guild, membro.id);
