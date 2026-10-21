@@ -1,7 +1,9 @@
 import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials, type Interaction } from 'discord.js';
+import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { botaoCargo } from './recursos/cargos.ts';
+import { avatar, bola8, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
 import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
@@ -16,7 +18,10 @@ if (!token) {
   process.exit(1);
 }
 
-const COMANDOS: Comando[] = [setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, lfg, times, sortear, limpar, castigo, ajuda];
+const COMANDOS: Comando[] = [
+  setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, sessao,
+  lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, avatar, servidor, limpar, castigo, ajuda,
+];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
@@ -37,6 +42,7 @@ client.once(Events.ClientReady, async (c) => {
 
   await iniciarMusica(c);
   await limparCallsOrfas(c);
+  iniciarAgenda(c);
   c.user.setActivity('/ajuda · Taverna dos Malucos', { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });

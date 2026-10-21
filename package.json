@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/lib/dados.test.ts",
+    "test": "node --test src/lib/dados.test.ts src/lib/tempo.test.ts",
     "start": "node --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
     "dev": "node --watch --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
     "typecheck": "tsc"

@@ -31,4 +31,22 @@ db.exec(`
     pericias TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (guild_id, user_id)
   );
+
+  CREATE TABLE IF NOT EXISTS lembretes (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    canal_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    quando   INTEGER NOT NULL,
+    texto    TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS aniversarios (
+    guild_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    dia      INTEGER NOT NULL,
+    mes      INTEGER NOT NULL,
+    ultimo_ano_avisado INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id)
+  );
 `);

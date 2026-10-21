@@ -12,8 +12,10 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🏗️ Servidor | `/setup` cria cargos, categorias, canais, regras e o painel de jogos. Pode rodar de novo: só completa o que falta e **não apaga nada**. Com `limpar_tudo:true` (e confirmação), apaga todos os canais e cargos antes, guardando um backup da estrutura |
 | 🔊 Calls | Entrou em **➕ Criar call**, ganhou uma call sua (com o nome do jogo que você está jogando). Esvaziou, ela some. `/call` renomeia, limita, tranca e passa o controle |
 | 🎵 Música | `/tocar` com YouTube, Spotify e SoundCloud (links, playlists ou busca por nome), fila, loop, autoplay, volume. `/jam` divulga a sua Jam do Spotify com botão para entrar e a música que está tocando |
-| 🐉 RPG | `/rolar` (1d20+5, 4d6kh3, vantagem), fichas de D&D 5e, testes de perícia e salvaguarda com proficiência automática, controle de iniciativa |
-| 🎮 Jogos | Botões de cargo por jogo (libera o canal), `/lfg` chama quem joga, `/times` divide a call, `/sortear` decide o indie da noite |
+| 🐉 RPG | `/rolar` (1d20+5, 4d6kh3, vantagem), fichas de D&D 5e, testes de perícia e salvaguarda com proficiência automática, controle de iniciativa, `/sessao` marca a sessão como evento do Discord e avisa os Aventureiros |
+| 🎮 Jogos | Botões de cargo por jogo (libera o canal), `/lfg` chama quem joga, `/times` divide a call, `/sortear` decide o indie da noite, `/enquete` abre uma votação |
+| 📅 Agenda | `/lembrete` (30m, 2h, 3d…), `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |
+| 🎉 Diversão | `/moeda`, `/8ball`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar`, `/castigo` |
 
 ## Estrutura que o `/setup` cria

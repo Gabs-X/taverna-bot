@@ -189,8 +189,10 @@ export const castigo: Comando = {
 const AJUDA: [string, string][] = [
   ['🎵 Música', '`/tocar` nome ou link · `/musica pular | pausar | parar | fila | tocando | volume | loop | embaralhar` · `/jam` divulga sua Jam do Spotify'],
   ['🔊 Calls', 'Entre em **➕ Criar call** e ganhe uma call sua · `/call nome | limite | trancar | destrancar | dono`'],
-  ['🎮 Jogos', '`/lfg` chama a galera · `/times` divide a call · `/sortear` decide o indie da noite'],
-  ['🐉 RPG (D&D 5e)', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | salvaguarda | morte` · `/iniciativa entrar | npc | proximo | ver | limpar`'],
+  ['🎮 Jogos', '`/lfg` chama a galera · `/times` divide a call · `/sortear` decide o indie da noite · `/enquete` votação'],
+  ['🐉 RPG (D&D 5e)', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | salvaguarda | morte` · `/iniciativa entrar | npc | proximo | ver | limpar` · `/sessao marcar | proximas`'],
+  ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
+  ['🎉 Diversão', '`/moeda` · `/8ball` · `/avatar` · `/servidor`'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` · `/castigo`'],
 ];
 

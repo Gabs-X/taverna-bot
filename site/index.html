@@ -369,7 +369,7 @@
 
 <script>
   const CATEGORIAS = {
-    musica: '🎵 Música', calls: '🔊 Calls', rpg: '🐉 RPG', jogos: '🎮 Jogos', admin: '🛡️ Admin',
+    musica: '🎵 Música', calls: '🔊 Calls', rpg: '🐉 RPG', jogos: '🎮 Jogos', agenda: '📅 Agenda', diversao: '🎉 Diversão', admin: '🛡️ Admin',
   };
 
   const COMANDOS = [
@@ -401,9 +401,23 @@
       ['entrar', 'rola a sua (usa a Destreza da ficha)'], ['npc', 'monstros e NPCs, vários de uma vez'],
       ['proximo', 'passa a vez e marca quem joga'], ['ver', 'mostra a ordem'], ['limpar', 'encerra o combate'],
     ], ex: '/iniciativa npc nome:Goblin bonus:2 quantidade:4' },
+    { cat: 'rpg', nome: '/sessao', desc: 'Marca a sessão como evento do Discord na call da Mesa de RPG e avisa os Aventureiros em #avisos-da-mesa. Quem marca "Interessado" é lembrado pelo próprio Discord.', subs: [
+      ['marcar', 'data, hora, título, descrição e duração (só Mestre ou admin)'], ['proximas', 'lista as próximas sessões e eventos'],
+    ], ex: '/sessao marcar data:25/10 hora:20h titulo:Sessão 12 · A Cripta do Lich' },
     { cat: 'jogos', nome: '/lfg', desc: 'Chama a galera para jogar: marca quem tem o cargo do jogo e abre uma lista com botão "Tô dentro". Avisa quando o grupo fecha.', ex: '/lfg jogo:Valorant vagas:4 recado:ranked às 21h' },
     { cat: 'jogos', nome: '/times', desc: 'Divide quem está na sua call em times aleatórios.', ex: '/times quantidade:2' },
     { cat: 'jogos', nome: '/sortear', desc: 'Sorteia uma opção. Perfeito para decidir o indie aleatório da noite.', ex: '/sortear opcoes:Peak, R.E.P.O., Lethal Company' },
+    { cat: 'jogos', nome: '/enquete', desc: 'Votação nativa do Discord, com até 10 opções e resultado em tempo real.', ex: '/enquete pergunta:Jogo de hoje? opcoes:Valorant, CS2, Indie horas:3' },
+    { cat: 'agenda', nome: '/lembrete', desc: 'O bot te marca no canal depois do tempo escolhido (de 1 minuto a 30 dias). Sobrevive a reinícios do bot.', subs: [
+      ['criar', 'tempo (30m, 2h, 1h30m, 3d) e texto'], ['lista', 'seus lembretes ativos'], ['apagar', 'pelo número da lista'],
+    ], ex: '/lembrete criar tempo:2h texto:ranked com a galera' },
+    { cat: 'agenda', nome: '/aniversario', desc: 'Guarda o aniversário de cada um; no dia, às 9h, o bot chama a galera para dar parabéns em #geral.', subs: [
+      ['definir', 'dia e mês'], ['ver', 'de alguém (ou o seu)'], ['lista', 'próximos aniversários'], ['remover', 'apaga o seu'],
+    ], ex: '/aniversario definir dia:12 mes:março' },
+    { cat: 'diversao', nome: '/moeda', desc: 'Cara ou coroa.' },
+    { cat: 'diversao', nome: '/8ball', desc: 'A bola mágica da taverna responde sim ou não (com opinião).', ex: '/8ball pergunta:vamos ganhar a próxima?' },
+    { cat: 'diversao', nome: '/avatar', desc: 'Mostra a foto de perfil de alguém em tamanho grande.', ex: '/avatar membro:@fulano' },
+    { cat: 'diversao', nome: '/servidor', desc: 'Membros, quem está online e em call, canais, boosts e idade do servidor.' },
     { cat: 'jogos', nome: 'Painel de jogos', desc: 'Não é comando: em #escolha-seus-jogos, os botões dão ou tiram o cargo de cada jogo e da Mesa de RPG.' },
     { cat: 'admin', nome: '/setup', desc: 'Monta ou completa o servidor: cargos, categorias, canais, permissões, regras e painel. Sozinho, nunca apaga nada.', subs: [
       ['renomear', 'renomeia para Taverna dos Malucos (padrão: sim)'], ['limpar_tudo', 'apaga todos os canais e cargos antes de montar, com confirmação e backup da estrutura'],

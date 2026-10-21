@@ -32,6 +32,8 @@ export const CANAIS = {
   musica: '🎵・pedidos-de-musica',
   logs: '🛡️・logs',
   criarCall: '➕ Criar call',
+  avisosRpg: '📢・avisos-da-mesa',
+  mesaRpg: '🐉 Mesa de RPG',
 } as const;
 
 // Quem pode ver/escrever em cada canal.
@@ -92,12 +94,12 @@ export const PLANO: CategoriaPlano[] = [
     nome: '🐉 RPG · D&D 5e',
     acesso: rpg,
     canais: [
-      { nome: '📢・avisos-da-mesa', acesso: { tipo: 'cargo', cargo: CARGOS.aventureiro.nome, escrita: CARGOS.mestre.nome } },
+      { nome: CANAIS.avisosRpg, acesso: { tipo: 'cargo', cargo: CARGOS.aventureiro.nome, escrita: CARGOS.mestre.nome } },
       { nome: '🗺️・mesa-de-jogo', acesso: rpg, topico: 'Narração e ações dos personagens.' },
       { nome: '🎲・rolagens', acesso: rpg, topico: '/rolar, /teste e /iniciativa.' },
       { nome: '📖・fichas', acesso: rpg, topico: '/ficha criar e /ficha ver.' },
       { nome: '🍺・off-rpg', acesso: rpg },
-      { nome: '🐉 Mesa de RPG', voz: true, acesso: rpg },
+      { nome: CANAIS.mesaRpg, voz: true, acesso: rpg },
     ],
   },
   {
