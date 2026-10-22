@@ -20,10 +20,6 @@ import type { Comando, HandlerBotao } from '../tipos.ts';
 import { darMoedas, moedas } from './economia.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
 
-db.exec(`CREATE TABLE IF NOT EXISTS quiz_pontos (
-  guild_id TEXT NOT NULL, user_id TEXT NOT NULL, acertos INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (guild_id, user_id)
-)`);
 
 const TEMPO_RODADA = 20_000;
 const PAUSA = 4_000;

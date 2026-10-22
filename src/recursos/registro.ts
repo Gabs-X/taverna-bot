@@ -17,20 +17,6 @@ import type { Comando } from '../tipos.ts';
 // Log de tudo o que o bot faz para cada pessoa: vai para o banco (consulta com /logs),
 // para o terminal e para o #logs (agrupado a cada poucos segundos para não estourar o limite do Discord).
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guild_id TEXT NOT NULL,
-    user_id TEXT,
-    tipo TEXT NOT NULL,
-    acao TEXT NOT NULL,
-    canal_id TEXT,
-    ok INTEGER NOT NULL DEFAULT 1,
-    detalhe TEXT,
-    criado_em INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS logs_pessoa ON logs (guild_id, user_id, criado_em);
-`);
 
 const DIAS_GUARDADOS = 30;
 const INTERVALO_ENVIO = 4_000;

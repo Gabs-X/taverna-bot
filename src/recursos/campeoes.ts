@@ -17,10 +17,6 @@ import type { Comando } from '../tipos.ts';
 // Campeões do LoL que "falam" no chat (via webhook, com nome e foto deles) e descem a lenha em alguém.
 // Arte oficial do Data Dragon da Riot (uso de fã, sem fins comerciais).
 
-db.exec(`CREATE TABLE IF NOT EXISTS vitimas (
-  guild_id TEXT NOT NULL, user_id TEXT NOT NULL, campeao TEXT NOT NULL, vezes INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (guild_id, user_id, campeao)
-)`);
 
 type Campeao = {
   comando: string;

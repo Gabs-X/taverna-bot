@@ -7,10 +7,6 @@ import { carteira, gastarMoedas, moedas } from './economia.ts';
 
 // Loja da Taverna: cores de nome (cargos de cor) e XP em dobro. As cores compradas ficam suas para trocar à vontade.
 
-db.exec(`CREATE TABLE IF NOT EXISTS taverna_itens (
-  guild_id TEXT NOT NULL, user_id TEXT NOT NULL, item TEXT NOT NULL,
-  PRIMARY KEY (guild_id, user_id, item)
-)`);
 
 const efemera = (content: string) => ({ content, flags: MessageFlags.Ephemeral }) as const;
 const tem = (g: string, u: string, item: string) => !!db.prepare('SELECT 1 FROM taverna_itens WHERE guild_id = ? AND user_id = ? AND item = ?').get(g, u, item);

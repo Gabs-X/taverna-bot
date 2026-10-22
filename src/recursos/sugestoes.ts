@@ -14,16 +14,6 @@ import type { Comando, HandlerBotao } from '../tipos.ts';
 
 // Sugestões de melhorias para o bot: vão para #sugestoes, a galera vota com 👍/👎 e a Staff decide pelos botões.
 
-db.exec(`CREATE TABLE IF NOT EXISTS sugestoes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  texto TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'analise',
-  canal_id TEXT,
-  msg_id TEXT,
-  criada_em INTEGER NOT NULL
-)`);
 
 const POR_DIA = 3;
 const STATUS = {

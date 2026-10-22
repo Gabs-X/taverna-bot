@@ -38,39 +38,6 @@ import type { Comando, HandlerBotao, HandlerModal } from '../tipos.ts';
 // Subgrupos: qualquer um pede, o admin aprova; cada grupo ganha cargo, categoria, texto e voz.
 // O dono pode pedir canais extras (também com aprovação), convidar, remover, transferir e apagar.
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS grupos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guild_id TEXT NOT NULL,
-    nome TEXT NOT NULL,
-    emoji TEXT NOT NULL,
-    descricao TEXT NOT NULL DEFAULT '',
-    dono_id TEXT NOT NULL,
-    aberto INTEGER NOT NULL DEFAULT 1,
-    cargo_id TEXT NOT NULL,
-    categoria_id TEXT NOT NULL,
-    texto_id TEXT NOT NULL,
-    voz_id TEXT NOT NULL,
-    criado_em INTEGER NOT NULL
-  );
-  -- Pedidos que esperam o admin: criar grupo, renomear, canal extra.
-  CREATE TABLE IF NOT EXISTS grupo_pedidos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guild_id TEXT NOT NULL,
-    tipo TEXT NOT NULL,
-    grupo_id INTEGER,
-    autor_id TEXT NOT NULL,
-    dados TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pendente',
-    criado_em INTEGER NOT NULL
-  );
-  -- Pedidos de entrada em grupo fechado (esperam o dono).
-  CREATE TABLE IF NOT EXISTS grupo_entradas (
-    grupo_id INTEGER NOT NULL,
-    user_id TEXT NOT NULL,
-    PRIMARY KEY (grupo_id, user_id)
-  );
-`);
 
 const MAX_CANAIS_POR_GRUPO = 20;
 const { ViewChannel, Connect, Speak, SendMessages, ReadMessageHistory, ManageMessages, MoveMembers, MuteMembers, DeafenMembers, PrioritySpeaker } = PermissionFlagsBits;

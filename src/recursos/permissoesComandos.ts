@@ -19,12 +19,6 @@ import { CAMPEOES } from './campeoes.ts';
 // O Discord só deixa mudar isso com a autorização de um admin (OAuth2, escopo applications.commands.permissions.update):
 // /permissoes autorizar gera o link, o admin clica uma vez e o bot guarda o token (e o renova sozinho).
 
-db.exec(`CREATE TABLE IF NOT EXISTS oauth_comandos (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  access_token TEXT NOT NULL,
-  refresh_token TEXT NOT NULL,
-  expira_em INTEGER NOT NULL
-)`);
 
 const API = 'https://discord.com/api/v10';
 const PORTA = 53134;

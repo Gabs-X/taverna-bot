@@ -34,10 +34,6 @@ const PRAZO_TURNO = 90_000;
 const ESPERA_VISITA = 6 * 3_600_000;
 const sortear = <T>(lista: readonly T[]) => lista[Math.floor(Math.random() * lista.length)];
 
-db.exec(`CREATE TABLE IF NOT EXISTS gotica_visitas (
-  guild_id TEXT NOT NULL, visitante TEXT NOT NULL, anfitria TEXT NOT NULL, ultima INTEGER NOT NULL,
-  PRIMARY KEY (guild_id, visitante, anfitria)
-)`);
 
 async function imagemDupla(a: Linha, b: Linha, simbolo: 'duelo' | 'visita', humores?: ['feliz' | 'triste', 'feliz' | 'triste']) {
   const svg = juntarRetratos(retratoSvg(a, humores?.[0]), retratoSvg(b, humores?.[1]), simbolo);
