@@ -7,6 +7,7 @@ import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { botaoCargo } from './recursos/cargos.ts';
 import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { asheap, avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
+import { botaoDuelo } from './recursos/goticaSocial.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
@@ -27,7 +28,7 @@ const COMANDOS: Comando[] = [
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, asheap, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const client = new Client({

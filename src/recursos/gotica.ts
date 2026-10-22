@@ -30,10 +30,12 @@ import {
   type Acao,
   type Parte,
   type Estado,
+  type Humor,
 } from '../lib/gotica.ts';
 import { desenharGotica } from '../lib/goticaArte.ts';
 import { lerEquipados } from '../lib/loja.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
+import { executarDuelo, executarVisita } from './goticaSocial.ts';
 
 export type Linha = {
   guild_id: string;
@@ -82,6 +84,38 @@ function salvar(l: Linha, e: Estado) {
     `UPDATE goticas SET nivel = ?, xp = ?, barriga = ?, humor = ?, energia = ?, atualizado_em = ?, ultimas = ?
      WHERE guild_id = ? AND user_id = ?`,
   ).run(e.nivel, e.xp, e.barriga, e.humor, e.energia, e.atualizadoEm, JSON.stringify(e.ultimas), l.guild_id, l.user_id);
+}
+
+/** SVG do retrato com o humor atual (ou um forçado, como no fim do duelo). */
+export function retratoSvg(l: Linha, humor?: Humor) {
+  const e = estadoDe(l);
+  return desenharGotica(lerAparencia(l.aparencia), e.nivel, humor ?? humorDe(statusAgora(e, Date.now())), lerEquipados(l.equipados));
+}
+
+/** Dá XP e mexe no humor e na energia (duelo, visita). Devolve os níveis que subiu. */
+export function ajustarGotica(l: Linha, mudanca: { xp: number; humor?: number; energia?: number }) {
+  const agora = Date.now();
+  const e = estadoDe(l);
+  const s = statusAgora(e, agora);
+  let { nivel, xp } = e;
+  xp += mudanca.xp;
+  const subiu: number[] = [];
+  while (xp >= xpParaProximo(nivel)) {
+    xp -= xpParaProximo(nivel);
+    nivel++;
+    subiu.push(nivel);
+  }
+  const limitar = (v: number) => Math.max(0, Math.min(100, v));
+  salvar(l, {
+    ...e,
+    nivel,
+    xp,
+    barriga: s.barriga,
+    humor: limitar(s.humor + (mudanca.humor ?? 0)),
+    energia: limitar(s.energia + (mudanca.energia ?? 0)),
+    atualizadoEm: agora,
+  });
+  return subiu;
 }
 
 /** Embed com o retrato (PNG gerado na hora) e, para a dona, os botões de cuidar. */
@@ -147,6 +181,14 @@ export const gotica: Comando = {
       }
       return s;
     })
+    .addSubcommand((s) =>
+      s.setName('duelo').setDescription('Desafia a gótica de alguém para um duelo por turnos')
+        .addUserOption((o) => o.setName('membro').setDescription('Dona da gótica desafiada').setRequired(true)),
+    )
+    .addSubcommand((s) =>
+      s.setName('visitar').setDescription('Sua gótica visita a de alguém (as duas ganham XP)')
+        .addUserOption((o) => o.setName('membro').setDescription('Dona da gótica visitada').setRequired(true)),
+    )
     .addSubcommand((s) => s.setName('ranking').setDescription('As góticas mais bem cuidadas do servidor')),
 
   async executar(i) {
@@ -157,6 +199,9 @@ export const gotica: Comando = {
     if (canal && canal.id !== i.channelId) {
       return i.reply({ content: `🦇 As góticas ficam em ${canal}. Use o comando lá.`, flags: MessageFlags.Ephemeral });
     }
+
+    if (sub === 'duelo') return executarDuelo(i);
+    if (sub === 'visitar') return executarVisita(i);
 
     if (sub === 'adotar') {
       const existente = ler(g, i.user.id);
