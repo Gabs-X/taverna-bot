@@ -65,7 +65,6 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (c) => {
   registrarCliente(c);
-  iniciarPermissoes(c);
   // Comandos registrados por servidor aparecem na hora (os globais podem demorar).
   const corpo = COMANDOS.map((cmd) => cmd.data.toJSON());
   for (const guild of c.guilds.cache.values()) await guild.commands.set(corpo);
@@ -75,6 +74,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarAgenda(c);
   iniciarAtividade(c);
   iniciarRegistro(c);
+  iniciarPermissoes(c);
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });

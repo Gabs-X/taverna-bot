@@ -78,6 +78,19 @@ async function tokenValido(): Promise<string | undefined> {
 
 // ---------- Aplicar ----------
 
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Faz a requisição respeitando o limite do Discord: no 429, espera o tempo pedido e tenta de novo (até 6 vezes). */
+async function comLimite(fazer: () => Promise<Response>): Promise<Response> {
+  for (let tentativa = 1; ; tentativa++) {
+    const r = await fazer();
+    if (r.status !== 429 || tentativa >= 6) return r;
+    const corpo = (await r.json().catch(() => ({}))) as { retry_after?: number };
+    const segundos = corpo.retry_after ?? Number(r.headers.get('retry-after') ?? 2);
+    await esperar(Math.ceil(segundos * 1000) + 250);
+  }
+}
+
 let clienteId: string | undefined;
 
 /** Aplica o mapa nos comandos do servidor. Devolve um resumo (ou o motivo de não ter aplicado). */
@@ -100,13 +113,16 @@ export async function aplicarPermissoesComandos(guild: Guild): Promise<string> {
     const ids = [...new Set([...cargos, ...sempre].map((n) => cargoPorNome(guild, n)?.id).filter((x): x is string => !!x))];
     // type 1 = cargo; o id do servidor = @everyone (negado, para só os cargos acima verem).
     const permissions = [...ids.map((id) => ({ id, type: 1, permission: true })), { id: guild.id, type: 1, permission: false }];
-    const r = await fetch(`${API}/applications/${guild.client.application.id}/guilds/${guild.id}/commands/${cmd.id}/permissions`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ permissions }),
-    });
+    const r = await comLimite(() =>
+      fetch(`${API}/applications/${guild.client.application.id}/guilds/${guild.id}/commands/${cmd.id}/permissions`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissions }),
+      }),
+    );
     if (r.ok) ok++;
     else falhas.push(`/${nome} (${r.status})`);
+    await esperar(300);
   }
   return falhas.length
     ? `⚠️ Permissões por cargo: ${ok} comando(s) ok, falharam ${falhas.join(', ')}.`
@@ -215,4 +231,9 @@ export const permissoes: Comando = {
 /** Guarda o id do aplicativo (para renovar o token fora de um comando). */
 export const iniciarPermissoes = (client: Client) => {
   clienteId = client.application?.id;
+  // Já autorizado: reaplica ao ligar (os comandos são registrados de novo a cada partida).
+  if (!lerToken()) return;
+  for (const guild of client.guilds.cache.values()) {
+    aplicarPermissoesComandos(guild).then((r) => console.log(`[permissões] ${guild.name}: ${r}`)).catch((e) => console.error('[permissões]', e));
+  }
 };
