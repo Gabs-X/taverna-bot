@@ -27,6 +27,7 @@ import {
 } from '../lib/economia.ts';
 import { avisoCanalErrado, canalTexto, cargoPorNome } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
+import { registrar } from './registro.ts';
 
 export type Carteira = {
   guild_id: string;
@@ -83,6 +84,7 @@ async function ganharAtividade(membro: GuildMember, xp: number, moedas: number, 
   );
   if (!r.subiu.length) return;
   const cargoNovo = await atualizarCargoNivel(membro, r.nivel);
+  registrar({ guild: membro.guild, userId: membro.id, tipo: 'auto', acao: `⭐ subiu para o nível ${r.nivel}${cargoNovo ? ` e ganhou o cargo ${cargoNovo}` : ''}` });
   const bonus = r.nivel * 20;
   darMoedas(membro.guild.id, membro.id, bonus);
   // Com o canal de level up criado pelo /setup, todo aviso vai para lá.

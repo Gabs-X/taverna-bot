@@ -12,6 +12,7 @@ import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
 import { ehAdmin } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
+import { registrar } from './registro.ts';
 
 const inserir = db.prepare('INSERT OR REPLACE INTO calls_temporarias (canal_id, guild_id, dono_id) VALUES (?, ?, ?)');
 const remover = db.prepare('DELETE FROM calls_temporarias WHERE canal_id = ?');
@@ -34,6 +35,7 @@ export async function aoMudarVoz(antes: VoiceState, depois: VoiceState) {
       bitrate: depois.channel.bitrate,
     });
     inserir.run(call.id, call.guild.id, membro.id);
+    registrar({ guild: membro.guild, userId: membro.id, tipo: 'auto', acao: `ganhou a call temporária "${call.name}"`, canalId: call.id });
     await membro.voice.setChannel(call).catch(async () => {
       // Saiu antes de ser movido: desfaz.
       remover.run(call.id);
@@ -45,6 +47,7 @@ export async function aoMudarVoz(antes: VoiceState, depois: VoiceState) {
   const anterior = antes.channel;
   if (anterior && anterior.id !== depois.channelId && anterior.members.size === 0 && buscar.get(anterior.id)) {
     remover.run(anterior.id);
+    registrar({ guild: anterior.guild, userId: antes.member?.id, tipo: 'auto', acao: `saiu por último da call "${anterior.name}", que foi apagada` });
     await anterior.delete('Call temporária vazia').catch(() => {});
   }
 }

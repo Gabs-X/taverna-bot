@@ -15,6 +15,7 @@ import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
 import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
 import { botaoQuiz, quiz } from './recursos/quiz.ts';
+import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
@@ -29,7 +30,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo];
 const MODAIS: HandlerModal[] = [modalGrupo];
@@ -55,6 +56,7 @@ client.once(Events.ClientReady, async (c) => {
   await limparCallsOrfas(c);
   iniciarAgenda(c);
   iniciarAtividade(c);
+  iniciarRegistro(c);
   c.user.setActivity('/ajuda · Taverna dos Malucos', { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
@@ -74,8 +76,10 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
       const [prefixo, ...resto] = i.customId.split(':');
       await MODAIS.find((m) => m.prefixo === prefixo)?.executar(i, resto.join(':'));
     }
+    registrarInteracao(i);
   } catch (erro) {
     console.error('[interação]', erro);
+    registrarInteracao(i, erro);
     if (!i.isRepliable()) return;
     const msg = { content: '😵 Deu ruim aqui. Tenta de novo; se continuar, avisa o admin.', flags: MessageFlags.Ephemeral } as const;
     await (i.deferred || i.replied ? i.followUp(msg) : i.reply(msg)).catch(() => {});

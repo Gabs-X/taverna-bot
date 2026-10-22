@@ -1,6 +1,7 @@
 import { EmbedBuilder, type GuildMember, type PartialGuildMember } from 'discord.js';
 import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
 import { canalTexto, cargoPorNome } from '../lib/servidor.ts';
+import { registrar } from './registro.ts';
 
 const FRASES = [
   'mais um maluco chegou na taverna!',
@@ -12,6 +13,7 @@ const FRASES = [
 export async function aoEntrar(membro: GuildMember) {
   const cargo = cargoPorNome(membro.guild, CARGOS.membro.nome);
   if (cargo && !membro.user.bot) await membro.roles.add(cargo).catch(() => {});
+  registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: `📥 entrou no servidor${cargo ? ` e ganhou o cargo ${cargo.name}` : ''}` });
 
   const canal = canalTexto(membro.guild, CANAIS.boasVindas);
   const escolha = canalTexto(membro.guild, CANAIS.escolhaJogos);
@@ -33,13 +35,9 @@ export async function aoEntrar(membro: GuildMember) {
     .setFooter({ text: `Membro nº ${membro.guild.memberCount}` });
 
   await canal.send({ content: `${membro}`, embeds: [embed] });
-  await registrar(membro, `📥 ${membro.user.tag} entrou.`);
+  registrar({ guild: membro.guild, userId: membro.id, tipo: 'auto', acao: 'recebeu a mensagem de boas-vindas', canalId: canal.id });
 }
 
 export async function aoSair(membro: GuildMember | PartialGuildMember) {
-  await registrar(membro, `📤 ${membro.user?.tag ?? membro.id} saiu.`);
-}
-
-async function registrar(membro: GuildMember | PartialGuildMember, texto: string) {
-  await canalTexto(membro.guild, CANAIS.logs)?.send(texto).catch(() => {});
+  registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: `📤 saiu do servidor (${membro.user?.tag ?? 'sem nome'})` });
 }

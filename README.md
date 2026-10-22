@@ -22,7 +22,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🏹 Campeões do LoL | `/asheap`, `/darius`, `/teemo`, `/yasuo`, `/blitz`, `/garen`, `/jinx`, `/thresh`: o campeão "manda a mensagem" (webhook com nome e foto dele) com splash de uma skin sorteada. `/vitimas` mostra o placar de quem mais apanha. `/quiz iniciar`: rodadas com pedaço de splash ou descrição de habilidade, 4 botões, quem acertar primeiro ganha moedas; `/quiz ranking` |
 | 👥 Subgrupos | `/grupo criar nome emoji descricao fechado`: o pedido vai para #aprovacoes (staff) com Aprovar, Aprovar com outro nome e Recusar. Aprovado, o grupo ganha cargo, categoria, texto e voz próprios. Entra pelo painel de #subgrupos ou `/grupo entrar` (grupo fechado: o dono aprova). O dono pede canais extras (`/grupo canal`, também com aprovação), renomeia (com aprovação), convida, remove, abre/fecha, transfere e apaga |
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
-| 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
+| 🛡️ Admin | Log de tudo no #logs (quem, o que, onde e se deu erro: comandos, botões, formulários, calls, níveis, lembretes, entradas e saídas), `/logs membro quantidade so_erros` para consultar os últimos 30 dias. Boas-vindas com cargo automático, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
 ## Estrutura que o `/setup` cria
 

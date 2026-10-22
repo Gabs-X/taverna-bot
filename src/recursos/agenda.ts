@@ -23,6 +23,7 @@ import {
   tsRelativo,
 } from '../lib/tempo.ts';
 import type { Comando } from '../tipos.ts';
+import { registrar } from './registro.ts';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const HORA_PARABENS = 9; // horário de Brasília
@@ -214,6 +215,10 @@ async function entregarLembretes(client: Client) {
       const usuario = await client.users.fetch(l.user_id).catch(() => null);
       await usuario?.send(mensagem).catch(() => {});
     }
+    const guild = client.guilds.cache.get(l.guild_id);
+    if (guild) {
+      registrar({ guild, userId: l.user_id, tipo: 'auto', acao: `⏰ recebeu o lembrete "${l.texto.slice(0, 80)}"${canal?.isSendable() ? '' : ' por mensagem privada'}`, canalId: canal?.isSendable() ? l.canal_id : undefined });
+    }
   }
 }
 
@@ -341,6 +346,7 @@ async function darParabens(client: Client) {
       .setDescription(`${membro}, ${PARABENS[Math.floor(Math.random() * PARABENS.length)]}\n\nDeixem os parabéns aí embaixo! 🎉`)
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
     await canal.send({ content: `🎉 @here hoje é aniversário do(a) ${membro}!`, embeds: [embed], allowedMentions: { parse: ['everyone'], users: [membro.id] } }).catch(() => {});
+    registrar({ guild: guild!, userId: membro.id, tipo: 'auto', acao: '🎂 recebeu os parabéns de aniversário', canalId: canal.id });
   }
 }
 
