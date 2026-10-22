@@ -9,8 +9,10 @@ import {
   InteractionContextType,
   MessageFlags,
   SlashCommandBuilder,
+  Client,
+  Events,
+  GatewayIntentBits,
   type ChatInputCommandInteraction,
-  type Client,
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
@@ -23,9 +25,14 @@ type Sugestao = { title: string; author: string; durationMS: number; videoId: st
 type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; buscando?: boolean };
 type Metadados = { canal: SendableChannels; radio?: Radio };
 
-let player: Player;
-/** Calls com música tocando agora (o supervisor espera acabar antes de reiniciar). */
-export const musicasTocando = () => (player ? player.nodes.cache.filter((f) => f.isPlaying()).size : 0);
+// Tocadores: o Taverneiro e os bots ajudantes (TOKEN_MUSICA_2, TOKEN_MUSICA_3... no .env). O Discord só deixa
+// cada conta de bot numa call por servidor: cada ajudante é mais uma call tocando ao mesmo tempo.
+// Só o Taverneiro tem comandos; os ajudantes só entram na call e tocam.
+type Tocador = { nome: string; client: Client; player: Player };
+const tocadores: Tocador[] = [];
+
+/** Calls com música tocando agora, somando todos os tocadores (o supervisor espera acabar antes de reiniciar). */
+export const musicasTocando = () => tocadores.reduce((n, t) => n + t.player.nodes.cache.filter((f) => f.isPlaying()).size, 0);
 
 // O discord-player usa os tipos CJS do discord.js e o bot os ESM: é o mesmo objeto em
 // tempo de execução, mas o TypeScript enxerga duas classes. Converte só nesta fronteira.
@@ -33,10 +40,33 @@ type ClientDoPlayer = ConstructorParameters<typeof Player>[0];
 type CanalDoPlayer = Parameters<Player['play']>[0];
 
 export async function iniciarMusica(client: Client) {
-  player = new Player(client as unknown as ClientDoPlayer);
+  tocadores.push(await criarTocador(client, client.user?.username ?? 'Taverneiro'));
+  const tokens = Object.entries(process.env)
+    .filter(([chave, valor]) => /^TOKEN_MUSICA_\d+$/.test(chave) && valor)
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
+  for (const [chave, token] of tokens) {
+    try {
+      const ajudante = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+      const pronto = new Promise((r) => ajudante.once(Events.ClientReady, r));
+      await ajudante.login(token);
+      await pronto;
+      tocadores.push(await criarTocador(ajudante, ajudante.user!.username));
+      console.log(`🎵 Ajudante de música ${ajudante.user!.tag} online (${chave}).`);
+    } catch (erro) {
+      console.error(`[música] o ajudante ${chave} não conectou:`, (erro as Error).message);
+    }
+  }
+}
+
+async function criarTocador(client: Client, nome: string): Promise<Tocador> {
+  const player = new Player(client as unknown as ClientDoPlayer);
   await player.extractors.register(YoutubeExtractor, {});
   await player.extractors.loadMulti(DefaultExtractors);
+  registrarEventos(player);
+  return { nome, client, player };
+}
 
+function registrarEventos(player: Player) {
   player.events.on('playerStart', (fila: GuildQueue<Metadados>, faixa) => {
     const radio = fila.metadata.radio;
     if (radio) {
@@ -88,7 +118,7 @@ type ItemASeguir = {
   duration?: { seconds?: number };
 };
 
-async function sugestoesDoYoutubeMusic(base: Track, youtube: { searchEngine: `ext:${string}` }): Promise<Sugestao[]> {
+async function sugestoesDoYoutubeMusic(player: Player, base: Track, youtube: { searchEngine: `ext:${string}` }): Promise<Sugestao[]> {
   const ext = player.extractors.get(YoutubeExtractor.identifier) as YoutubeExtractor | undefined;
   let id: string | null = getVideoId(base.url);
   if (!id) {
@@ -113,13 +143,14 @@ async function encherRadio(fila: GuildQueue<Metadados>) {
   const base = fila.currentTrack ?? fila.history.previousTrack;
   if (!base) return;
   radio.buscando = true;
+  const player = fila.player;
   try {
     const youtube = { searchEngine: `ext:${YoutubeExtractor.identifier}` } as const;
     let proxima: Track | undefined;
     try {
       // Lista acabando: pede ao "a seguir" do YouTube Music (o mesmo rádio do app) a partir da música atual.
       if (radio.sugestoes.filter((s) => !radio.historico.includes(chaveMusica(s.title, s.author))).length < 5) {
-        radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(base, youtube)));
+        radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(player, base, youtube)));
       }
       const escolhida = escolherProxima(radio.sugestoes, radio.historico);
       if (escolhida) {
@@ -176,15 +207,32 @@ async function postarPainelRadio(fila: GuildQueue<Metadados>) {
   radio.painelId = msg?.id;
 }
 
-const filaDe = (i: ChatInputCommandInteraction) => player.nodes.get<Metadados>(i.guildId!);
+const filasDo = (guildId: string) =>
+  tocadores.map((t) => t.player.nodes.get<Metadados>(guildId)).filter((f): f is GuildQueue<Metadados> => !!f);
+
+/** A fila da call em que a pessoa está (cada tocador pode estar numa call diferente). */
+const filaDe = (i: ChatInputCommandInteraction) => {
+  const canal = (i.member as GuildMember).voice.channelId;
+  return canal ? filasDo(i.guildId!).find((f) => f.channel?.id === canal) : undefined;
+};
+
+/** Quem toca na call da pessoa: o tocador que já está nela, senão o primeiro livre que está no servidor. */
+function tocadorPara(guildId: string, canalId: string): Tocador | string {
+  const naCall = tocadores.find((t) => t.player.nodes.get(guildId)?.channel?.id === canalId);
+  if (naCall) return naCall;
+  const livre = tocadores.find((t) => t.client.guilds.cache.has(guildId) && !t.player.nodes.get(guildId)?.channel);
+  if (livre) return livre;
+  const ocupadas = filasDo(guildId).map((f) => `<#${f.channel?.id}>`).join(', ');
+  return `🎵 Todos os bots de música estão ocupados (${ocupadas}). Espera uma call liberar.`;
+}
 
 // Comandos que mexem na fila exigem estar na mesma call do bot.
 function validarFila(i: ChatInputCommandInteraction): GuildQueue<Metadados> | string {
   const fila = filaDe(i);
-  if (!fila || !fila.currentTrack) return 'Não tem nada tocando. Use `/tocar`.';
-  const canalMembro = (i.member as GuildMember).voice.channelId;
-  if (fila.channel && canalMembro !== fila.channel.id) return `Entre em <#${fila.channel.id}> para controlar a música.`;
-  return fila;
+  if (fila?.currentTrack) return fila;
+  const outras = filasDo(i.guildId!).filter((f) => f.channel);
+  if (outras.length) return `Entre em ${outras.map((f) => `<#${f.channel!.id}>`).join(' ou ')} para controlar a música.`;
+  return 'Não tem nada tocando. Use `/tocar`.';
 }
 
 async function comFila(i: ChatInputCommandInteraction, acao: (fila: GuildQueue<Metadados>) => Promise<unknown> | unknown) {
@@ -312,14 +360,15 @@ export const tocar: Comando = {
     const canalVoz = (i.member as GuildMember).voice.channel;
     if (!canalVoz) return i.reply({ content: 'Entre numa call primeiro.', flags: MessageFlags.Ephemeral });
 
-    const filaAtual = filaDe(i);
-    if (filaAtual?.channel && filaAtual.channel.id !== canalVoz.id) {
-      return i.reply({ content: `Já estou tocando em <#${filaAtual.channel.id}>.`, flags: MessageFlags.Ephemeral });
-    }
+    const t = tocadorPara(i.guildId!, canalVoz.id);
+    if (typeof t === 'string') return i.reply({ content: t, flags: MessageFlags.Ephemeral });
+    // O canal precisa vir do client de quem vai tocar (senão quem entra na call é o Taverneiro).
+    const canalDoTocador = t.client.channels.cache.get(canalVoz.id);
+    if (!canalDoTocador) return i.reply({ content: `O **${t.nome}** não consegue ver essa call (permissões).`, flags: MessageFlags.Ephemeral });
 
     await i.deferReply();
     try {
-      const { track, searchResult } = await player.play(canalVoz as unknown as CanalDoPlayer, i.options.getString('busca', true), {
+      const { track, searchResult } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, i.options.getString('busca', true), {
         requestedBy: i.user.id,
         nodeOptions: {
           metadata: { canal: i.channel as SendableChannels } satisfies Metadados,
@@ -331,12 +380,12 @@ export const tocar: Comando = {
         },
       });
       // Com o rádio ligado, o pedido passa na frente das músicas escolhidas pelo rádio.
-      const fila = filaDe(i);
+      const fila = t.player.nodes.get<Metadados>(i.guildId!);
       if (fila?.metadata.radio && !searchResult.playlist) fila.moveTrack(track, 0);
       const texto = searchResult.playlist
         ? `📃 Adicionei **${searchResult.tracks.length}** músicas de **${searchResult.playlist.title}**.`
         : `➕ Na fila: **${track.title}** · \`${track.duration}\``;
-      return i.editReply(texto);
+      return i.editReply(texto + (t === tocadores[0] ? '' : ` (tocando pelo **${t.nome}**)`));
     } catch (erro) {
       console.error('[música] /tocar', erro);
       return i.editReply('😵 Não achei nada com essa busca (ou o link não é suportado).');
@@ -354,13 +403,14 @@ export const radio: Comando = {
   async executar(i) {
     const canalVoz = (i.member as GuildMember).voice.channel;
     if (!canalVoz) return i.reply({ content: 'Entre numa call primeiro.', flags: MessageFlags.Ephemeral });
-    const filaAtual = filaDe(i);
-    if (filaAtual?.channel && filaAtual.channel.id !== canalVoz.id) {
-      return i.reply({ content: `Já estou tocando em <#${filaAtual.channel.id}>.`, flags: MessageFlags.Ephemeral });
-    }
+    const t = tocadorPara(i.guildId!, canalVoz.id);
+    if (typeof t === 'string') return i.reply({ content: t, flags: MessageFlags.Ephemeral });
+    const canalDoTocador = t.client.channels.cache.get(canalVoz.id);
+    if (!canalDoTocador) return i.reply({ content: `O **${t.nome}** não consegue ver essa call (permissões).`, flags: MessageFlags.Ephemeral });
+    const filaAtual = t.player.nodes.get<Metadados>(i.guildId!);
 
     await i.deferReply();
-    const busca = await player.search(i.options.getString('musica', true), { requestedBy: i.user.id }).catch(() => null);
+    const busca = await t.player.search(i.options.getString('musica', true), { requestedBy: i.user.id }).catch(() => null);
     const semente = busca?.tracks[0];
     if (!semente) return i.editReply('😵 Não achei essa música para começar o rádio.');
 
@@ -371,7 +421,7 @@ export const radio: Comando = {
         filaAtual.setRepeatMode(QueueRepeatMode.OFF);
         filaAtual.insertTrack(semente, 0);
       } else {
-        await player.play(canalVoz as unknown as CanalDoPlayer, semente, {
+        await t.player.play(canalDoTocador as unknown as CanalDoPlayer, semente, {
           requestedBy: i.user.id,
           nodeOptions: {
             metadata: { canal: i.channel as SendableChannels, radio: { historico: [], sugestoes: [] } } satisfies Metadados,
@@ -387,14 +437,17 @@ export const radio: Comando = {
       console.error('[rádio] /radio', erro);
       return i.editReply('😵 Não consegui começar o rádio com essa música.');
     }
-    return i.editReply(`📻 **Rádio ligado** com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
+    const quem = t === tocadores[0] ? '' : ` (tocando pelo **${t.nome}**)`;
+    return i.editReply(`📻 **Rádio ligado**${quem} com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
   },
 };
 
 export const botaoRadio: HandlerBotao = {
   prefixo: 'radio',
   async executar(i, acao) {
-    const fila = player.nodes.get<Metadados>(i.guildId!);
+    const canalDaPessoa = (i.member as GuildMember).voice.channelId;
+    const filas = filasDo(i.guildId!);
+    const fila = filas.find((f) => f.metadata.radio?.painelId === i.message.id) ?? filas.find((f) => f.channel?.id === canalDaPessoa);
     if (!fila) return i.update({ content: '⏹️ Não tem nada tocando.', embeds: [], components: [] });
     const canalMembro = (i.member as GuildMember).voice.channelId;
     if (fila.channel && canalMembro !== fila.channel.id) {
