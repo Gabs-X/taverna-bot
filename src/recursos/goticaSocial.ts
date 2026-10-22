@@ -29,6 +29,7 @@ import { emoji } from '../lib/servidor.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
 import { contar, verificarConquistas } from './conquistas.ts';
 import { contarSemana } from './resenha.ts';
+import { apostaAcimaDoLimite } from './limitesApostas.ts';
 
 const ENERGIA_DUELO = 20;
 const PRAZO_CONVITE = 2 * 60_000;
@@ -66,6 +67,8 @@ export async function executarDuelo(i: ChatInputCommandInteraction, aposta = i.o
     return i.reply({ content: 'Uma das duas já está num duelo (ou com convite aberto).', flags: MessageFlags.Ephemeral });
   }
   if (energiaDe(a) < ENERGIA_DUELO) return i.reply({ content: `A **${a.nome}** está cansada demais para duelar. Deixe ela dormir antes.`, flags: MessageFlags.Ephemeral });
+  const acima = aposta ? apostaAcimaDoLimite(i.guild, aposta) : undefined;
+  if (acima) return i.reply({ content: acima, flags: MessageFlags.Ephemeral });
   if (aposta && carteira(g, i.user.id).moedas < aposta) return i.reply({ content: `Você não tem ${moedas(i.guild, aposta)} para apostar.`, flags: MessageFlags.Ephemeral });
 
   await i.deferReply();

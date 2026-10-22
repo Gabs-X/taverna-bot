@@ -364,6 +364,15 @@ const MIGRACOES: (() => void)[] = [
       )
     `);
   },
+  // 9 (22/10/2026): configurações que a staff muda pelo Discord (ex.: limites de aposta).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS config_servidor (
+        guild_id TEXT NOT NULL, chave TEXT NOT NULL, valor TEXT NOT NULL,
+        PRIMARY KEY (guild_id, chave)
+      )
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

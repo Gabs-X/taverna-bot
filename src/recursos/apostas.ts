@@ -4,6 +4,7 @@ import { assaltar as tentarAssalto, FRASES_ASSALTO, MINIMO_LADRAO, MINIMO_VITIMA
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { carteira, darMoedas, gastarMoedas, moedas } from './economia.ts';
 import { executarDuelo } from './goticaSocial.ts';
+import { apostaAcimaDoLimite } from './limitesApostas.ts';
 import { registrar } from './registro.ts';
 
 // /desafiar: cara ou coroa, dado ou duelo de góticas valendo moedas entre dois membros (quem ganha leva as duas apostas).
@@ -40,6 +41,8 @@ export const desafiar: Comando = {
     const aposta = i.options.getInteger('aposta', true);
     const jogo = i.options.getString('jogo') ?? 'moeda';
     if (alvo.id === i.user.id || alvo.bot) return i.reply({ content: 'Desafie outra pessoa (bots não apostam).', flags: MessageFlags.Ephemeral });
+    const acima = apostaAcimaDoLimite(i.guild, aposta);
+    if (acima) return i.reply({ content: acima, flags: MessageFlags.Ephemeral });
     if (carteira(g, i.user.id).moedas < aposta) return i.reply({ content: `Você não tem ${moedas(i.guild, aposta)} para apostar.`, flags: MessageFlags.Ephemeral });
     if (jogo === 'duelo') return executarDuelo(i, aposta);
 

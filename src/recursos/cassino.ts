@@ -5,7 +5,6 @@ import {
   girarRoleta,
   girarSlots,
   jogarMoeda,
-  LIMITE_DIARIO,
   PAGA_MOEDA,
   premio,
   SIMBOLOS,
@@ -17,6 +16,7 @@ import { emoji } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { contar, verificarConquistas } from './conquistas.ts';
 import { carteira, darMoedas, gastarMoedas, moedas } from './economia.ts';
+import { apostaAcimaDoLimite, limitesApostas } from './limitesApostas.ts';
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const apostadoHoje = (g: string, u: string) =>
@@ -27,7 +27,10 @@ function cobrar(i: ChatInputCommandInteraction, aposta: number): string | undefi
   const g = i.guildId!;
   const u = i.user.id;
   const hoje = apostadoHoje(g, u);
-  if (hoje + aposta > LIMITE_DIARIO) return `🛑 Limite do dia: você já apostou ${moedas(i.guild, hoje)} de ${moedas(i.guild, LIMITE_DIARIO)}. Volta amanhã!`;
+  const acima = apostaAcimaDoLimite(i.guild, aposta);
+  if (acima) return acima;
+  const limite = limitesApostas(g).cassinoDia;
+  if (hoje + aposta > limite) return `🛑 Limite do dia: você já apostou ${moedas(i.guild, hoje)} de ${moedas(i.guild, limite)}. Volta amanhã!`;
   if (!gastarMoedas(g, u, aposta)) return `Saldo insuficiente: você tem ${moedas(i.guild, carteira(g, u).moedas)}.`;
   db.prepare('INSERT INTO cassino_dia (guild_id, user_id, dia, apostado) VALUES (?, ?, ?, ?) ON CONFLICT DO UPDATE SET apostado = apostado + excluded.apostado').run(g, u, diaDe(Date.now()), aposta);
   return undefined;
@@ -41,7 +44,7 @@ const resultado = (i: ChatInputCommandInteraction, aposta: number, ganho: number
 export const cassino: Comando = {
   data: new SlashCommandBuilder()
     .setName('cassino')
-    .setDescription(`Aposta moedas da Taverna (até ${LIMITE_DIARIO} por dia)`)
+    .setDescription('Aposta moedas da Taverna (com limite por dia)')
     .setContexts(InteractionContextType.Guild)
     .addSubcommand((s) =>
       s.setName('moeda').setDescription(`Cara ou coroa: acertou, leva ${PAGA_MOEDA}x`)
@@ -74,7 +77,7 @@ export const cassino: Comando = {
 
     if (sub === 'limite') {
       const hoje = apostadoHoje(g, u);
-      return i.reply({ content: `🎰 Hoje você apostou ${moedas(i.guild, hoje)}. Ainda pode ${moedas(i.guild, Math.max(0, LIMITE_DIARIO - hoje))}.`, flags: MessageFlags.Ephemeral });
+      return i.reply({ content: `🎰 Hoje você apostou ${moedas(i.guild, hoje)}. Ainda pode ${moedas(i.guild, Math.max(0, limitesApostas(i.guildId!).cassinoDia - hoje))}.`, flags: MessageFlags.Ephemeral });
     }
 
     const aposta = i.options.getInteger('aposta', true);
