@@ -159,7 +159,7 @@ async function executarCampeao(c: Campeao, i: ChatInputCommandInteraction) {
   let fala: string;
   let vezes = 0;
   if (ehBot) {
-    fala = `${c.emoji} Mirei na própria Taverna, mas ela se escondeu atrás do balcão. Me arruma outro alvo.`;
+    fala = `${c.emoji} Mirei no taverneiro, mas ele se escondeu atrás do balcão. Me arruma outro alvo.`;
   } else {
     db.prepare('INSERT INTO vitimas (guild_id, user_id, campeao, vezes) VALUES (?, ?, ?, 1) ON CONFLICT DO UPDATE SET vezes = vezes + 1').run(i.guildId, alvo.id, c.id);
     vezes = (db.prepare('SELECT vezes FROM vitimas WHERE guild_id = ? AND user_id = ? AND campeao = ?').get(i.guildId, alvo.id, c.id) as { vezes: number }).vezes;

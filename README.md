@@ -1,4 +1,4 @@
-# 🍺 Taverna · bot da Taverna dos Malucos
+# 🍺 Taverneiro · bot da Taverna dos Malucos
 
 Um bot só para o servidor todo, no lugar de dez: música, calls que se criam sozinhas, RPG de D&D 3.5 e Daggerheart,
 chamada para jogar, boas-vindas e moderação. O `/setup` monta o servidor inteiro.
@@ -64,7 +64,7 @@ Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode
 
 ### 1. Criar o bot no Discord (uma vez)
 
-1. Entre em <https://discord.com/developers/applications> → **New Application** → nome `Taverna` (o bot também se renomeia sozinho ao ligar; o nome fica em `NOME_BOT` no config).
+1. Entre em <https://discord.com/developers/applications> → **New Application** → nome `Taverneiro`.
 2. Aba **Bot**:
    - **Reset Token** → copie o token (ele aparece uma vez só; guarde para o passo 3).
    - Em **Privileged Gateway Intents**, ligue **Presence Intent** e **Server Members Intent** → **Save Changes**.
@@ -85,7 +85,7 @@ cp .env.example .env      # no Windows: copy .env.example .env
 npm start
 ```
 
-Aparecendo `🍺 Taverna#0000 online`, vá ao Discord e rode **`/setup`** (só admin vê o comando).
+Aparecendo `🍺 Taverneiro#0000 online`, vá ao Discord e rode **`/setup`** (só admin vê o comando).
 Para começar do zero, use **`/setup limpar_tudo:true`**: aparece um botão de confirmação; ao confirmar, o bot salva a estrutura antiga em `dados/backup-*.json`, apaga todos os canais (com as mensagens) e cargos, mantém membros, emojis e cargos de bots, e monta a Taverna. O resultado sai em #logs.
 Depois dê o cargo **🐉 Mestre** a quem narra o RPG e remova os bots de música antigos.
 

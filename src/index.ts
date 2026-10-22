@@ -21,7 +21,6 @@ import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
 import { canaisDoComando } from './canaisDosComandos.ts';
 import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
-import { NOME_BOT } from './config.ts';
 import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -62,13 +61,6 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (c) => {
   registrarCliente(c);
-  // O Discord deixa trocar o nome de usuário só 2 vezes por hora: troca só se estiver diferente.
-  if (c.user.username !== NOME_BOT) {
-    await c.user
-      .setUsername(NOME_BOT)
-      .then(() => console.log(`✏️ Bot renomeado para ${NOME_BOT}.`))
-      .catch((e) => console.error(`[nome] não consegui renomear para ${NOME_BOT}:`, e.message));
-  }
   // Comandos registrados por servidor aparecem na hora (os globais podem demorar).
   const corpo = COMANDOS.map((cmd) => cmd.data.toJSON());
   for (const guild of c.guilds.cache.values()) await guild.commands.set(corpo);

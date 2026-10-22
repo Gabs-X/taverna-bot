@@ -309,7 +309,7 @@ export const ajuda: Comando = {
   async executar(i) {
     const embed = new EmbedBuilder()
       .setColor(0xe67e22)
-      .setTitle(`${emoji(i.guild, 'taverna_cerveja', '🍺')} Taverna · comandos`)
+      .setTitle(`${emoji(i.guild, 'taverna_cerveja', '🍺')} Taverneiro · comandos`)
       .addFields(AJUDA.map(([name, value]) => ({ name, value })));
     return i.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
