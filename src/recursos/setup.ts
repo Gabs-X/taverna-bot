@@ -77,35 +77,54 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.daggerheart, hoist: false, permissions: [] },
     { ...CARGOS.membro, hoist: true, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
-    ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: false, permissions: [] })),
+    ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: true, permissions: [] })),
     ...ATIVIDADES.map((a) => ({ nome: nomeCargoAtividade(a), cor: a.cor, hoist: false, permissions: [] })),
   ];
   for (const c of desejados) {
-    if (cargoPorNome(guild, c.nome)) continue;
+    const existente = cargoPorNome(guild, c.nome);
+    if (existente) {
+      // Quem deve aparecer separado na lista de membros (ex.: cargos de nível criados antes disso).
+      if (c.hoist && !existente.hoist && existente.editable) {
+        await existente.setHoist(true).then(() => relatorio.push(`👥 ${c.nome} agora aparece separado na lista de membros`)).catch(() => {});
+      }
+      continue;
+    }
     await guild.roles.create({ name: c.nome, colors: { primaryColor: c.cor }, hoist: c.hoist, permissions: c.permissions, mentionable: true });
     relatorio.push(`➕ cargo ${c.nome}`);
   }
   await ordenarCargos(guild, relatorio);
 }
 
-/** Dono > Taverneiro > Staff, logo abaixo do cargo do bot (o bot só mexe em cargos abaixo do dele). */
+// Ordem dos cargos (de cima para baixo), logo abaixo do cargo do bot. Os de nível ficam acima dos Malucos
+// e aparecem separados na lista de membros, destacando quem é mais ativo no servidor.
+const HIERARQUIA = [
+  CARGOS.dono.nome,
+  CARGOS.admin.nome,
+  CARGOS.staff.nome,
+  ...[...CARGOS_NIVEL].reverse().map((c) => c.nome),
+  CARGOS.mestre.nome,
+  CARGOS.membro.nome,
+];
+
+/** Põe os cargos da HIERARQUIA em ordem, logo abaixo do cargo do bot (o bot só mexe em cargos abaixo do dele). */
 async function ordenarCargos(guild: Guild, relatorio: string[]) {
-  const [dono, admin, staff] = [CARGOS.dono, CARGOS.admin, CARGOS.staff].map((c) => cargoPorNome(guild, c.nome));
   const topoBot = guild.members.me?.roles.highest.position ?? 0;
-  if (!dono || !admin || !staff) return;
-  if (dono.position < topoBot && dono.position > admin.position && admin.position > staff.position) return;
+  const principais = HIERARQUIA.map((n) => cargoPorNome(guild, n)).filter((c) => !!c);
+  // O resto (RPG, atividades, jogos...) vai para baixo dos Malucos, mantendo a ordem que já tinha entre si.
+  const resto = [...guild.roles.cache.values()]
+    .filter((c) => !c.managed && c.id !== guild.id && c.position < topoBot && !principais.includes(c))
+    .sort((x, y) => y.position - x.position || x.name.localeCompare(y.name));
+  const cargos = [...principais, ...resto];
+  const emOrdem = cargos.every((c, k) => c.position < topoBot && (k === 0 || cargos[k - 1].position > c.position));
+  if (emOrdem) return;
   try {
     // Chamada direta à API: o setPositions do discord.js falha quando vários cargos têm a mesma posição
     // (comum depois de criar muitos cargos de uma vez).
     await guild.client.rest.patch(Routes.guildRoles(guild.id), {
-      body: [
-        { id: dono.id, position: topoBot - 1 },
-        { id: admin.id, position: topoBot - 2 },
-        { id: staff.id, position: topoBot - 3 },
-      ],
+      body: cargos.map((c, k) => ({ id: c.id, position: Math.max(1, topoBot - 1 - k) })),
       reason: 'Hierarquia da Taverna (/setup)',
     });
-    relatorio.push(`↕️ cargos em ordem: ${dono.name} > ${admin.name} > ${staff.name}`);
+    relatorio.push(`↕️ cargos em ordem: ${cargos.map((c) => c.name).join(' > ')}`);
   } catch {
     relatorio.push('⚠️ Não consegui ordenar os cargos. Em Configurações do servidor > Cargos, arraste o cargo do bot para o topo e rode /setup de novo.');
   }
