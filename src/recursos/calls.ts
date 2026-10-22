@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { ehAdmin } from '../lib/servidor.ts';
+import { canalPorNome, ehAdmin } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 
@@ -26,7 +26,7 @@ function nomeDaCall(membro: GuildMember) {
 
 export async function aoMudarVoz(antes: VoiceState, depois: VoiceState) {
   // Entrou no "➕ Calls": cria a call dele e move.
-  if (depois.channel && depois.channel.name === CANAIS.criarCall && depois.member) {
+  if (depois.channel && depois.channel.id === canalPorNome(depois.guild, CANAIS.criarCall, ChannelType.GuildVoice)?.id && depois.member) {
     const membro = depois.member;
     const call = await depois.guild.channels.create({
       name: nomeDaCall(membro),

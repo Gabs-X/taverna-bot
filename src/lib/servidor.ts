@@ -1,25 +1,59 @@
-import { ChannelType, MessageFlags, type ChatInputCommandInteraction, type Client, type Guild, type GuildMember, type Role, type TextChannel } from 'discord.js';
+import { ChannelType, MessageFlags, type ChatInputCommandInteraction, type Client, type Guild, type GuildBasedChannel, type GuildMember, type Role, type TextChannel } from 'discord.js';
 import { CANAIS, CARGOS } from '../config.ts';
+import { db } from '../db.ts';
+
+// Canais e cargos são achados pelo nome do plano (config.ts) só na primeira vez; daí o ID fica salvo
+// e vale mesmo que alguém renomeie no Discord.
+const lerId = db.prepare('SELECT id FROM ids_servidor WHERE guild_id = ? AND tipo = ? AND chave = ?');
+const salvarId = db.prepare('INSERT INTO ids_servidor (guild_id, tipo, chave, id) VALUES (?, ?, ?, ?) ON CONFLICT DO UPDATE SET id = excluded.id');
+
+function porChave<T extends { id: string }>(guild: Guild, tipo: string, chave: string, porId: (id: string) => T | undefined, porNome: () => T | undefined) {
+  const salvo = (lerId.get(guild.id, tipo, chave) as { id: string } | undefined)?.id;
+  const achado = (salvo && porId(salvo)) || porNome();
+  if (achado && achado.id !== salvo) salvarId.run(guild.id, tipo, chave, achado.id);
+  return achado || undefined;
+}
 
 export const cargoPorNome = (guild: Guild, nome: string): Role | undefined =>
-  guild.roles.cache.find((r) => r.name === nome);
+  porChave(guild, 'cargo', nome, (id) => guild.roles.cache.get(id), () => guild.roles.cache.find((r) => r.name === nome));
 
-export const canalTexto = (guild: Guild, nome: string): TextChannel | undefined =>
-  guild.channels.cache.find((c): c is TextChannel => c.type === ChannelType.GuildText && c.name === nome);
+/** Canal do plano de qualquer tipo (texto, voz, categoria), pelo ID salvo ou, na primeira vez, pelo nome. */
+export function canalPorNome<T extends GuildBasedChannel>(guild: Guild, nome: string, tipo: ChannelType): T | undefined {
+  return porChave(
+    guild,
+    `canal-${tipo}`,
+    nome,
+    (id) => {
+      const c = guild.channels.cache.get(id);
+      return c?.type === tipo ? (c as T) : undefined;
+    },
+    () => guild.channels.cache.find((c) => c.type === tipo && c.name === nome) as T | undefined,
+  );
+}
+
+export const canalTexto = (guild: Guild, nome: string): TextChannel | undefined => canalPorNome<TextChannel>(guild, nome, ChannelType.GuildText);
+
+const temCargo = (membro: GuildMember, nome: string) => {
+  const cargo = cargoPorNome(membro.guild, nome);
+  return !!cargo && membro.roles.cache.has(cargo.id);
+};
 
 export const ehAdmin = (guild: Guild, userId: string): boolean => {
   const membro = guild.members.cache.get(userId);
   if (!membro) return false;
-  return membro.permissions.has('Administrator') || membro.roles.cache.some((r) => r.name === CARGOS.admin.nome || r.name === CARGOS.dono.nome);
+  return membro.permissions.has('Administrator') || temCargo(membro, CARGOS.admin.nome) || temCargo(membro, CARGOS.dono.nome);
 };
 
 /** Staff e acima (Staff, Taverneiro, Dono ou quem tem Administrador). */
 export const ehStaff = (guild: Guild, userId: string): boolean =>
-  ehAdmin(guild, userId) || !!guild.members.cache.get(userId)?.roles.cache.some((r) => r.name === CARGOS.staff.nome);
+  ehAdmin(guild, userId) || (() => {
+    const membro = guild.members.cache.get(userId);
+    return !!membro && temCargo(membro, CARGOS.staff.nome);
+  })();
 
 // Mestre de qualquer mesa (D&D ou Daggerheart) ou admin.
 export const ehMestre = (membro: GuildMember): boolean =>
-  membro.roles.cache.some((r) => r.name === CARGOS.mestre.nome) || ehAdmin(membro.guild, membro.id);
+  temCargo(membro, CARGOS.mestre.nome) || ehAdmin(membro.guild, membro.id);
 
 /**
  * Comando com canal próprio: se veio de outro lugar, devolve o aviso (efêmero) dizendo onde usar.

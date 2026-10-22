@@ -20,7 +20,7 @@ import {
 } from 'discord.js';
 import { ATIVIDADES, CANAIS, CANAIS_REMOVIDOS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoAtividade, nomeCargoJogo, type Acesso } from '../config.ts';
 import { db } from '../db.ts';
-import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
+import { canalPorNome, cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 import { atualizarPainelGrupos } from './grupos.ts';
@@ -162,9 +162,7 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
   const doPlano = new Set<string>();
 
   for (const cat of PLANO) {
-    let categoria = guild.channels.cache.find(
-      (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === cat.nome,
-    );
+    let categoria = canalPorNome<CategoryChannel>(guild, cat.nome, ChannelType.GuildCategory);
     const antiga = guild.channels.cache.find(
       (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && (cat.antigos ?? []).includes(c.name),
     );
@@ -185,7 +183,7 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
 
     for (const canal of cat.canais) {
       const tipo = canal.voz ? ChannelType.GuildVoice : ChannelType.GuildText;
-      let existente = guild.channels.cache.find((c) => c.type === tipo && c.name === canal.nome);
+      let existente: GuildBasedChannel | undefined = canalPorNome(guild, canal.nome, tipo);
       const anterior = existente ? undefined : guild.channels.cache.find((c) => c.type === tipo && (canal.antigos ?? []).includes(c.name));
       if (anterior) {
         existente = await anterior.setName(canal.nome);
@@ -281,7 +279,7 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
     }
   }
 
-  const afk = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === '💤 AFK');
+  const afk = canalPorNome(guild, '💤 AFK', ChannelType.GuildVoice);
   if (afk && guild.afkChannelId !== afk.id) await guild.setAFKChannel(afk.id);
 
   // Quem já está no servidor vira Maluco; quem rodou o setup vira Taverneiro.

@@ -263,6 +263,19 @@ const MIGRACOES: (() => void)[] = [
       )
     `);
   },
+
+  // 2 (22/10/2026): IDs dos canais e cargos do plano, para renomear no Discord não quebrar nada.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS ids_servidor (
+        guild_id TEXT NOT NULL,
+        tipo TEXT NOT NULL,
+        chave TEXT NOT NULL,
+        id TEXT NOT NULL,
+        PRIMARY KEY (guild_id, tipo, chave)
+      )
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

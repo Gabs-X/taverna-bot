@@ -12,7 +12,7 @@ import {
 } from 'discord.js';
 import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
 import { db } from '../db.ts';
-import { canalTexto, cargoPorNome, ehMestre, emoji } from '../lib/servidor.ts';
+import { canalPorNome, canalTexto, cargoPorNome, ehMestre, emoji } from '../lib/servidor.ts';
 import {
   dataValida,
   ehBissexto,
@@ -97,7 +97,7 @@ export const sessao: Comando = {
     const titulo = i.options.getString('titulo') ?? mesaRpg.titulo;
     const descricao = i.options.getString('descricao') ?? undefined;
     const fim = new Date(inicio.getTime() + (i.options.getInteger('duracao') ?? 4) * 3_600_000);
-    const mesa = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === mesaRpg.voz);
+    const mesa = canalPorNome(guild, mesaRpg.voz, ChannelType.GuildVoice);
 
     await i.deferReply({ flags: MessageFlags.Ephemeral });
     const evento = await guild.scheduledEvents.create({
