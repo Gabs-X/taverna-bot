@@ -1,5 +1,13 @@
 # Novidades do Taverneiro
 
+## v1.3.0 (22/10/2026)
+
+- Aviso de comando no canal errado agora é público (marca a pessoa) e some em 30 s; o efêmero passava despercebido no chat das calls
+- Formulário de entrada obrigatório (jogos, atividades, subgrupos públicos e parabéns), cargo Cobblemon e categoria do Farbound
+- Música agora é tocada pelos bardos (Claudinho e Durgan); o Taverneiro só toca se nenhum bardo conectar. Bot que entra no servidor não ganha boas-vindas
+- /setup muito mais rápido (de ~2 min para ~6 s): as permissões por cargo só são regravadas quando mudam
+- Verificação: sem o cargo base (agora 🪑 Freguês, antes 🤪 Maluco) só se vê #verificacao, com o formulário do bot (jogos, atividades, subgrupos e parabéns); o formulário do Discord foi desligado
+
 ## v1.2.0 (22/10/2026)
 
 - /tela avisa no chat quando o compartilhamento acaba (botão Parei, ao sair da call ou pelo tempo)
