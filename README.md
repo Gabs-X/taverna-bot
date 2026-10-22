@@ -16,6 +16,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🎵 Música | `/tocar` com YouTube, Spotify e SoundCloud (links, playlists ou busca por nome), fila, loop, autoplay, volume. `/jam` divulga a sua Jam do Spotify com botão para entrar e a música que está tocando |
 | 🐉 D&D 3.5 | `/rolar` (1d20+5, 4d6kh3), fichas com graduações de perícia, BBA e resistências, `/teste` de perícia, resistência e ataque (margem de ameaça e confirmação de crítico), estabilizar, iniciativa |
 | 🌗 Daggerheart | `/dh rolar` com dados de dualidade (Esperança e Medo atualizados sozinhos, experiências, vantagem), ficha, `/dh dano` pelos limiares, Estresse, armadura e o Medo do Mestre |
+| 🧙 Ferramentas do Mestre | `/gerar npc` (raça, profissão, jeito, marca e um segredo em spoiler), `/gerar taverna` (nome, dono, cardápio, preços e rumor), `/gerar loot nivel:` (moedas, gemas, arte e itens mágicos do 3.5), `/gerar nome raca:`. `/ambiente tipo:` toca trilha em loop na call da mesa (volume baixo), pelo Taverneiro ou pelo Taverneiro 2 |
 | 📅 Sessões | `/sessao marcar mesa:…` cria o evento do Discord na call da mesa e avisa quem joga |
 | 🎮 Jogos | Botões de cargo por jogo (para ser chamado no `/lfg`), `/lfg` chama quem joga, `/times` divide a call, `/sortear` decide o indie da noite, `/enquete` abre uma votação |
 | 📅 Agenda | `/lembrete` (30m, 2h, 3d…) avisado no seu privado, ou no canal com `aqui:true`, `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |

@@ -23,7 +23,8 @@ import type { Comando, HandlerBotao } from '../tipos.ts';
 // estilo dela e só busca novas quando a lista acaba); historico: últimas tocadas, para não repetir.
 type Sugestao = { title: string; author: string; durationMS: number; videoId: string };
 type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; buscando?: boolean };
-type Metadados = { canal: SendableChannels; radio?: Radio };
+// ambiente: trilha da mesa de RPG (toca em loop, sem avisar cada volta).
+type Metadados = { canal: SendableChannels; radio?: Radio; ambiente?: string };
 
 // Tocadores: o Taverneiro e os bots ajudantes (TOKEN_MUSICA_2, TOKEN_MUSICA_3... no .env). O Discord só deixa
 // cada conta de bot numa call por servidor: cada ajudante é mais uma call tocando ao mesmo tempo.
@@ -68,6 +69,7 @@ async function criarTocador(client: Client, nome: string): Promise<Tocador> {
 
 function registrarEventos(player: Player) {
   player.events.on('playerStart', (fila: GuildQueue<Metadados>, faixa) => {
+    if (fila.metadata.ambiente) return;
     const radio = fila.metadata.radio;
     if (radio) {
       radio.historico = lembrar(radio.historico, faixa.title, faixa.author);
@@ -87,6 +89,7 @@ function registrarEventos(player: Player) {
     fila.metadata.canal.send({ embeds: [embed] }).catch(() => {});
   });
   player.events.on('emptyQueue', (fila: GuildQueue<Metadados>) => {
+    if (fila.metadata.ambiente) return;
     if (fila.metadata.radio) {
       // A busca antecipada falhou: tenta de novo e volta a tocar.
       encherRadio(fila)
@@ -469,3 +472,63 @@ export const botaoRadio: HandlerBotao = {
     return i.update({ content: `⏹️ Rádio desligado por ${i.user}. Parei a música e saí da call.`, components: [], allowedMentions: { parse: [] } });
   },
 };
+
+// ---------- Trilha sonora da mesa de RPG ----------
+
+export const AMBIENTES = {
+  taverna: { nome: '🍺 Taverna', busca: 'medieval tavern ambience music 1 hour' },
+  combate: { nome: '⚔️ Combate', busca: 'epic battle music dnd combat 1 hour' },
+  floresta: { nome: '🌲 Floresta', busca: 'fantasy forest ambience music 1 hour' },
+  masmorra: { nome: '🕯️ Masmorra', busca: 'dungeon ambience dark music dnd 1 hour' },
+  cidade: { nome: '🏰 Cidade', busca: 'medieval city market ambience 1 hour' },
+  chuva: { nome: '🌧️ Chuva e trovões', busca: 'rain thunder fantasy ambience 1 hour' },
+  misterio: { nome: '👁️ Mistério', busca: 'dark mystery horror rpg ambience music 1 hour' },
+  viagem: { nome: '🗺️ Viagem', busca: 'fantasy exploration travel music rpg 1 hour' },
+} as const;
+export type Ambiente = keyof typeof AMBIENTES;
+
+/** Toca a trilha na call de quem pediu (substitui a música que estiver tocando nela). 'parar' desliga. */
+export async function executarAmbiente(i: ChatInputCommandInteraction, tipo: Ambiente | 'parar') {
+  const canalVoz = (i.member as GuildMember).voice.channel;
+  if (!canalVoz) return i.reply({ content: 'Entre na call da mesa primeiro.', flags: MessageFlags.Ephemeral });
+
+  if (tipo === 'parar') {
+    const fila = filaDe(i);
+    if (!fila) return i.reply({ content: 'Não tem nada tocando na sua call.', flags: MessageFlags.Ephemeral });
+    fila.delete();
+    return i.reply('🔇 Trilha desligada.');
+  }
+
+  const t = tocadorPara(i.guildId!, canalVoz.id);
+  if (typeof t === 'string') return i.reply({ content: t, flags: MessageFlags.Ephemeral });
+  const canalDoTocador = t.client.channels.cache.get(canalVoz.id);
+  if (!canalDoTocador) return i.reply({ content: `O **${t.nome}** não consegue ver essa call (permissões).`, flags: MessageFlags.Ephemeral });
+
+  await i.deferReply();
+  const ambiente = AMBIENTES[tipo];
+  const busca = await t.player.search(ambiente.busca).catch(() => null);
+  // Prefere vídeos longos (trilhas de 20 min ou mais) para não trocar toda hora.
+  const faixa = busca?.tracks.find((x) => x.durationMS >= 20 * 60_000) ?? busca?.tracks[0];
+  if (!faixa) return i.editReply('😵 Não achei uma trilha agora. Tenta de novo daqui a pouco.');
+
+  // Trilha substitui o que estiver tocando nesta call.
+  t.player.nodes.get(i.guildId!)?.delete();
+  try {
+    const { queue } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, faixa, {
+      requestedBy: i.user.id,
+      nodeOptions: {
+        metadata: { canal: i.channel as SendableChannels, ambiente: tipo } satisfies Metadados,
+        volume: 35,
+        leaveOnEmpty: true,
+        leaveOnEmptyCooldown: 60_000,
+        leaveOnEnd: false,
+      },
+    });
+    queue.setRepeatMode(QueueRepeatMode.TRACK);
+  } catch (erro) {
+    console.error('[ambiente]', erro);
+    return i.editReply('😵 Não consegui tocar a trilha.');
+  }
+  const quem = t === tocadores[0] ? '' : ` pelo **${t.nome}**`;
+  return i.editReply(`${ambiente.nome}: trilha tocando em loop${quem}, volume baixo para a narração. Troque com \`/ambiente\` ou desligue com \`/ambiente tipo:parar\`.`);
+}
