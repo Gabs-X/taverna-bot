@@ -146,3 +146,6 @@ if (!colunasGoticas.some((c) => c.name === 'equipados')) db.exec("ALTER TABLE go
 
 const colunasLembretes = db.prepare("SELECT name FROM pragma_table_info('lembretes')").all() as { name: string }[];
 if (colunasLembretes.length && !colunasLembretes.some((c) => c.name === 'no_canal')) db.exec('ALTER TABLE lembretes ADD COLUMN no_canal INTEGER NOT NULL DEFAULT 1');
+
+const colunasCarteira = db.prepare("SELECT name FROM pragma_table_info('carteira')").all() as { name: string }[];
+if (!colunasCarteira.some((c) => c.name === 'xp_dobro_ate')) db.exec('ALTER TABLE carteira ADD COLUMN xp_dobro_ate INTEGER NOT NULL DEFAULT 0');

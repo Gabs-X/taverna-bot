@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test src/lib/dados.test.ts src/lib/tempo.test.ts src/lib/regras.test.ts src/lib/gotica.test.ts src/lib/economia.test.ts src/lib/loja.test.ts src/lib/duelo.test.ts src/lib/quiz.test.ts src/lib/grupos.test.ts src/lib/registro.test.ts src/lib/radio.test.ts",
+    "test": "node --test src/lib/dados.test.ts src/lib/tempo.test.ts src/lib/regras.test.ts src/lib/gotica.test.ts src/lib/economia.test.ts src/lib/loja.test.ts src/lib/duelo.test.ts src/lib/quiz.test.ts src/lib/grupos.test.ts src/lib/registro.test.ts src/lib/radio.test.ts src/lib/lojaTaverna.test.ts",
     "start": "node --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
     "dev": "node --watch --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
     "typecheck": "tsc",

@@ -42,7 +42,7 @@ const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 /** Aviso se o comando foi usado fora do canal dele (tabela em canaisDosComandos.ts). */
 function foraDoCanal(i: ChatInputCommandInteraction) {
-  const canais = canaisDoComando(i.commandName);
+  const canais = canaisDoComando(i.commandName, i.options.getSubcommandGroup(false));
   if (!canais || !i.inGuild()) return undefined;
   const categoria = i.channel && 'parentId' in i.channel ? i.channel.parentId : null;
   if (i.commandName === 'grupo' && ehCanalDeGrupo(i.guildId, categoria)) return undefined;

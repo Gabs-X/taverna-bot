@@ -5,6 +5,7 @@ import { ENCAIXES, equipar, ITENS, itemPorId, lerEquipados, type Encaixe, type I
 import type { Comando } from '../tipos.ts';
 import { carteira, gastarMoedas, moedas } from './economia.ts';
 import { cartao, estadoDe, ler } from './gotica.ts';
+import { escolhasCores, escolhasItensTaverna, executarLojaTaverna } from './lojaTaverna.ts';
 
 const SEM_GOTICA = 'Você precisa de uma gótica para usar a loja. Adote com `/gotica adotar`.';
 const escolhasItens = ITENS.map((i) => ({ name: `${i.nome} (${i.preco})`, value: i.id }));
@@ -17,8 +18,22 @@ const salvarEquipados = (g: string, u: string, eq: object) =>
 export const loja: Comando = {
   data: new SlashCommandBuilder()
     .setName('loja')
-    .setDescription('Loja de acessórios da gótica (paga com moedas da Taverna)')
+    .setDescription('Lojas da Taverna: acessórios da gótica e coisas para você (pagas com moedas)')
     .setContexts(InteractionContextType.Guild)
+    .addSubcommandGroup((grupo) =>
+      grupo.setName('taverna').setDescription('Cor do nome e XP em dobro')
+        .addSubcommand((s) => s.setName('ver').setDescription('Mostra os itens, preços e o que você já tem'))
+        .addSubcommand((s) =>
+          s.setName('comprar').setDescription('Compra um item (cor já entra no seu nome)')
+            .addStringOption((o) => o.setName('item').setDescription('Qual item').setRequired(true).addChoices(...escolhasItensTaverna)),
+        )
+        .addSubcommand((s) =>
+          s.setName('equipar').setDescription('Troca para uma cor que você já comprou')
+            .addStringOption((o) => o.setName('item').setDescription('Qual cor').setRequired(true).addChoices(...escolhasCores)),
+        )
+        .addSubcommand((s) => s.setName('tirar-cor').setDescription('Volta seu nome à cor normal')),
+    )
+    .addSubcommandGroup((grupo) => grupo.setName('gotica').setDescription('Acessórios para a sua gótica')
     .addSubcommand((s) => s.setName('ver').setDescription('Mostra os itens, preços e o que você já tem'))
     .addSubcommand((s) =>
       s.setName('comprar').setDescription('Compra um item (e já equipa)')
@@ -34,9 +49,10 @@ export const loja: Comando = {
           o.setName('encaixe').setDescription('De onde').setRequired(true)
             .addChoices(...Object.entries(ENCAIXES).map(([value, name]) => ({ name, value }))),
         ),
-    ),
+    )),
 
   async executar(i) {
+    if (i.options.getSubcommandGroup() === 'taverna') return executarLojaTaverna(i);
     const g = i.guildId!;
     const u = i.user.id;
     const sub = i.options.getSubcommand();
@@ -60,7 +76,7 @@ export const loja: Comando = {
               .join('\n'),
           })),
         )
-        .setFooter({ text: 'Compre com /loja comprar · troque com /loja equipar · tire com /loja tirar' });
+        .setFooter({ text: 'Compre com /loja gotica comprar · troque com /loja gotica equipar · tire com /loja gotica tirar' });
       return i.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 

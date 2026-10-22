@@ -18,7 +18,8 @@ const TABELA: [string[], string[]][] = [
   [['sessao'], [CANAIS.avisosRpg, CANAIS.avisosDh]],
 
   // Atividades
-  [['gotica', 'loja'], [CANAIS.goticas]],
+  [['gotica', 'loja gotica'], [CANAIS.goticas]],
+  [['loja taverna'], [CANAIS.economia]],
   [['quiz'], [CANAIS.quiz]],
   [[...CAMPEOES.map((c) => c.comando), 'vitimas'], [CANAIS.campeoes]],
   [['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'], [CANAIS.economia]],
@@ -32,4 +33,6 @@ const TABELA: [string[], string[]][] = [
 
 const porComando = new Map(TABELA.flatMap(([comandos, canais]) => comandos.map((c) => [c, canais] as const)));
 
-export const canaisDoComando = (nome: string): readonly string[] | undefined => porComando.get(nome);
+/** Canais do comando; para comandos com grupos (ex.: /loja taverna), o grupo pode ter canal próprio. */
+export const canaisDoComando = (nome: string, grupo?: string | null): readonly string[] | undefined =>
+  (grupo ? porComando.get(`${nome} ${grupo}`) : undefined) ?? porComando.get(nome);

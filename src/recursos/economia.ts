@@ -25,6 +25,7 @@ import {
   trabalhar as sortearTrabalho,
   xpDoNivel,
 } from '../lib/economia.ts';
+import { xpComBonus } from '../lib/lojaTaverna.ts';
 import { canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
@@ -41,6 +42,7 @@ export type Carteira = {
   ultimo_daily: number;
   sequencia: number;
   ultimo_trabalho: number;
+  xp_dobro_ate: number;
 };
 
 /** Valor em moedas com o emoji da moeda da Taverna (ou 🪙 se o servidor ainda não tem). */
@@ -81,7 +83,8 @@ async function atualizarCargoNivel(membro: GuildMember, nivel: number) {
 
 async function ganharAtividade(membro: GuildMember, xp: number, ganhoMoedas: number, aviso: TextBasedChannel | undefined, extra: string) {
   const c = carteira(membro.guild.id, membro.id);
-  const r = somarXp(c.nivel, c.xp, xp);
+  // XP em dobro comprado na loja da Taverna.
+  const r = somarXp(c.nivel, c.xp, xpComBonus(xp, c.xp_dobro_ate, Date.now()));
   db.prepare(`UPDATE carteira SET nivel = ?, xp = ?, moedas = moedas + ?, ${extra} WHERE guild_id = ? AND user_id = ?`).run(
     r.nivel, r.xp, ganhoMoedas, membro.guild.id, membro.id,
   );
