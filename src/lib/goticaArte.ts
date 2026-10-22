@@ -52,7 +52,7 @@ function filtroVolume(id: string, s: number, sombra: string, opSombra: number, b
 }
 
 function defs(a: Aparencia) {
-  const { pele, cabelo, olhos, batom } = a;
+  const { pele, cabelo, olhos, batom, vestido } = a;
   return `<defs>
     ${filtroVolume('vol', 1, '#1b0828', 0.6, '#d9b3ff', 0.55)}
     ${filtroVolume('volP', 0.4, '#1b0828', 0.55, '#e6ccff', 0.6)}
@@ -94,8 +94,8 @@ function defs(a: Aparencia) {
     <linearGradient id="batom" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${clarear(batom, 0.15)}"/><stop offset="1" stop-color="${sombrear(batom, 0.3)}"/></linearGradient>
     <radialGradient id="lagrima" cx=".35" cy=".35"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#bfe6ff"/><stop offset="1" stop-color="#6fb6f0"/></radialGradient>
 
-    <linearGradient id="vestido" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2850"/><stop offset="1" stop-color="#0d0814"/></linearGradient>
-    <radialGradient id="manga" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#4a3466"/><stop offset="1" stop-color="#140c1e"/></radialGradient>
+    <linearGradient id="vestido" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${vestido}"/><stop offset="1" stop-color="${sombrear(vestido, 0.8)}"/></linearGradient>
+    <radialGradient id="manga" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="${clarear(vestido, 0.14)}"/><stop offset="1" stop-color="${sombrear(vestido, 0.7)}"/></radialGradient>
     <linearGradient id="renda" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e7aa6"/><stop offset="1" stop-color="#3b2e4c"/></linearGradient>
     <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".45" stop-color="#d6ac52"/><stop offset="1" stop-color="#6e4c16"/></linearGradient>
     <linearGradient id="prata" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#bdbccb"/><stop offset="1" stop-color="#5d5a6e"/></linearGradient>

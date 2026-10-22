@@ -1,4 +1,4 @@
-// Gótica de estimação: aparência, desenho em SVG, status que caem com o tempo e ações que dão XP.
+// Gótica de estimação: aparência, status que caem com o tempo e ações que dão XP.
 // Tudo aqui é puro (sem Discord nem banco) para dar para testar.
 
 type Sorteio = () => number;
@@ -6,27 +6,81 @@ const sortear = <T>(lista: readonly T[], r: Sorteio) => lista[Math.floor(r() * l
 
 // ---------- Aparência ----------
 
-export const PELES = ['#f6e3d8', '#efd2c0', '#e2b89c', '#c99174', '#9c6648', '#6e4430'] as const;
-export const CABELOS = ['#121016', '#2a1036', '#5b0e2d', '#e8e4ee', '#0f4c4a', '#3a2a5c'] as const;
-export const OLHOS = ['#7a1f3d', '#4b2a7b', '#2f6f5e', '#9a8f9e', '#b5302f', '#3d5a99'] as const;
-export const BATONS = ['#1a0a12', '#4a0f2c', '#6b1d5c', '#8b0a1e', '#2d1a4a'] as const;
-export const PENTEADOS = ['liso', 'franja', 'maria-chiquinha', 'coque'] as const;
+// Cada parte tem nome (para escolher no /gotica customizar) e valor (cor ou estilo usado no desenho).
+export const OPCOES = {
+  penteado: [
+    { nome: 'Liso repartido', valor: 'liso' },
+    { nome: 'Franja reta', valor: 'franja' },
+    { nome: 'Maria-chiquinha com laços', valor: 'maria-chiquinha' },
+    { nome: 'Coque com palitos', valor: 'coque' },
+  ],
+  cabelo: [
+    { nome: 'Preto', valor: '#121016' },
+    { nome: 'Ameixa', valor: '#2a1036' },
+    { nome: 'Vinho', valor: '#5b0e2d' },
+    { nome: 'Branco', valor: '#e8e4ee' },
+    { nome: 'Verde-petróleo', valor: '#0f4c4a' },
+    { nome: 'Roxo', valor: '#3a2a5c' },
+  ],
+  olhos: [
+    { nome: 'Vinho', valor: '#7a1f3d' },
+    { nome: 'Violeta', valor: '#4b2a7b' },
+    { nome: 'Verde', valor: '#2f6f5e' },
+    { nome: 'Cinza', valor: '#9a8f9e' },
+    { nome: 'Vermelho', valor: '#b5302f' },
+    { nome: 'Azul', valor: '#3d5a99' },
+  ],
+  batom: [
+    { nome: 'Preto', valor: '#1a0a12' },
+    { nome: 'Vinho escuro', valor: '#4a0f2c' },
+    { nome: 'Ameixa', valor: '#6b1d5c' },
+    { nome: 'Vermelho', valor: '#8b0a1e' },
+    { nome: 'Roxo', valor: '#2d1a4a' },
+  ],
+  pele: [
+    { nome: 'Porcelana', valor: '#f6e3d8' },
+    { nome: 'Clara', valor: '#efd2c0' },
+    { nome: 'Bege', valor: '#e2b89c' },
+    { nome: 'Morena', valor: '#c99174' },
+    { nome: 'Marrom', valor: '#9c6648' },
+    { nome: 'Retinta', valor: '#6e4430' },
+  ],
+  vestido: [
+    { nome: 'Roxo', valor: '#3a2850' },
+    { nome: 'Vinho', valor: '#4a1426' },
+    { nome: 'Preto', valor: '#24202c' },
+    { nome: 'Azul-noite', valor: '#1c2550' },
+    { nome: 'Verde-musgo', valor: '#1f3a2c' },
+  ],
+} as const;
+
+export type Parte = keyof typeof OPCOES;
+export const PARTES = Object.keys(OPCOES) as Parte[];
+export const PENTEADOS = OPCOES.penteado.map((o) => o.valor);
 
 export type Aparencia = {
   pele: string;
   cabelo: string;
   olhos: string;
   batom: string;
-  penteado: (typeof PENTEADOS)[number];
+  penteado: (typeof OPCOES.penteado)[number]['valor'];
+  vestido: string;
 };
 
 export const sortearAparencia = (r: Sorteio = Math.random): Aparencia => ({
-  pele: sortear(PELES, r),
-  cabelo: sortear(CABELOS, r),
-  olhos: sortear(OLHOS, r),
-  batom: sortear(BATONS, r),
-  penteado: sortear(PENTEADOS, r),
+  pele: sortear(OPCOES.pele, r).valor,
+  cabelo: sortear(OPCOES.cabelo, r).valor,
+  olhos: sortear(OPCOES.olhos, r).valor,
+  batom: sortear(OPCOES.batom, r).valor,
+  penteado: sortear(OPCOES.penteado, r).valor,
+  vestido: sortear(OPCOES.vestido, r).valor,
 });
+
+/** Aparência salva (as antigas não tinham vestido) com padrões para o que faltar. */
+export const lerAparencia = (json: string): Aparencia => ({ vestido: OPCOES.vestido[0].valor, ...JSON.parse(json) });
+
+export const nomeDaOpcao = (parte: Parte, valor: string) =>
+  (OPCOES[parte] as readonly { nome: string; valor: string }[]).find((o) => o.valor === valor)?.nome ?? valor;
 
 export const PERSONALIDADES = [
   { nome: 'dramática', gosto: 'poesia triste e chuva na janela' },

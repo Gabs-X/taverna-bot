@@ -17,12 +17,16 @@ import {
   DESBLOQUEIOS,
   gostoDe,
   humorDe,
+  lerAparencia,
+  nomeDaOpcao,
+  OPCOES,
+  PARTES,
   sortearAparencia,
   sortearPersonalidade,
   statusAgora,
   xpParaProximo,
   type Acao,
-  type Aparencia,
+  type Parte,
   type Estado,
 } from '../lib/gotica.ts';
 import { desenharGotica } from '../lib/goticaArte.ts';
@@ -46,7 +50,15 @@ type Linha = {
 
 const COR = { feliz: 0x9b59b6, neutra: 0x6c3483, triste: 0x34495e } as const;
 const ROSTO = { feliz: '😊 feliz', neutra: '😐 de boa', triste: '😢 tristinha' } as const;
-const SEM_GOTICA = 'Você ainda não tem uma gótica. Adote uma com `/gotica adotar`.';
+const ROTULOS: Record<Parte, string> = {
+  penteado: 'Penteado',
+  cabelo: 'Cor do cabelo',
+  olhos: 'Cor dos olhos',
+  batom: 'Batom',
+  pele: 'Tom de pele',
+  vestido: 'Cor do vestido',
+};
+const SEM_GOTICA ='Você ainda não tem uma gótica. Adote uma com `/gotica adotar`.';
 
 const ler = (g: string, u: string) =>
   db.prepare('SELECT * FROM goticas WHERE guild_id = ? AND user_id = ?').get(g, u) as Linha | undefined;
@@ -72,7 +84,7 @@ function salvar(l: Linha, e: Estado) {
 function cartao(l: Linha, e: Estado, extra?: string) {
   const s = statusAgora(e, Date.now());
   const humor = humorDe(s);
-  const svg = desenharGotica(JSON.parse(l.aparencia) as Aparencia, e.nivel, humor);
+  const svg = desenharGotica(lerAparencia(l.aparencia), e.nivel, humor);
   const imagem = new AttachmentBuilder(new Resvg(svg).render().asPng(), { name: 'gotica.png' });
   const proximo = DESBLOQUEIOS.find((d) => d.nivel > e.nivel);
 
@@ -122,6 +134,15 @@ export const gotica: Comando = {
       s.setName('visual').setDescription('Sorteia de novo a aparência dela (nome, nível e XP continuam)')
         .addBooleanOption((o) => o.setName('personalidade').setDescription('Sortear a personalidade também')),
     )
+    .addSubcommand((s) => {
+      s.setName('customizar').setDescription('Escolhe o visual dela: penteado, cabelo, olhos, batom, pele e vestido');
+      for (const parte of PARTES) {
+        s.addStringOption((o) =>
+          o.setName(parte).setDescription(ROTULOS[parte]).addChoices(...OPCOES[parte].map((op) => ({ name: op.nome, value: op.valor }))),
+        );
+      }
+      return s;
+    })
     .addSubcommand((s) => s.setName('ranking').setDescription('As góticas mais bem cuidadas do servidor')),
 
   async executar(i) {
@@ -166,6 +187,28 @@ export const gotica: Comando = {
       const mudouJeito = personalidade !== l.personalidade ? ` E voltou ${personalidade}, agora gosta de ${gostoDe(personalidade)}.` : '';
       await i.deferReply();
       return i.editReply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
+    }
+
+    if (sub === 'customizar') {
+      const l = ler(g, i.user.id);
+      if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
+      const aparencia = lerAparencia(l.aparencia);
+      const mudou: string[] = [];
+      for (const parte of PARTES) {
+        const valor = i.options.getString(parte);
+        if (!valor) continue;
+        (aparencia as Record<Parte, string>)[parte] = valor;
+        mudou.push(`${ROTULOS[parte].toLowerCase()} ${nomeDaOpcao(parte, valor).toLowerCase()}`);
+      }
+      if (!mudou.length) {
+        const atual = PARTES.map((p) => `**${ROTULOS[p]}:** ${nomeDaOpcao(p, aparencia[p])}`).join('\n');
+        return i.reply({ content: `Escolha pelo menos uma opção no comando. O visual atual da **${l.nome}** é:\n${atual}`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+      }
+      const json = JSON.stringify(aparencia);
+      db.prepare('UPDATE goticas SET aparencia = ? WHERE guild_id = ? AND user_id = ?').run(json, g, i.user.id);
+      const nova = { ...l, aparencia: json };
+      await i.deferReply();
+      return i.editReply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
     }
 
     if (sub === 'renomear') {

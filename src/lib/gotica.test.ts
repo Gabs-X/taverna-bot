@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { desenharGotica } from './goticaArte.ts';
-import { aplicarAcao, ESPERA_ACAO, humorDe, sortearAparencia, statusAgora, xpParaProximo, type Estado } from './gotica.ts';
+import { aplicarAcao, ESPERA_ACAO, lerAparencia, nomeDaOpcao, OPCOES, PARTES, humorDe, sortearAparencia, statusAgora, xpParaProximo, type Estado } from './gotica.ts';
 
 const HORA = 3_600_000;
 const base = (extra: Partial<Estado> = {}): Estado => ({ nivel: 1, xp: 0, barriga: 70, humor: 70, energia: 80, atualizadoEm: 0, ultimas: {}, ...extra });
@@ -42,4 +42,10 @@ test('desenho gera SVG válido para qualquer aparência', () => {
     assert.match(svg, /^<svg[\s\S]*<\/svg>$/);
     assert.doesNotMatch(svg, /undefined|NaN/);
   }
+});
+
+test('aparência antiga (sem vestido) ganha o padrão; toda opção tem nome', () => {
+  const antiga = lerAparencia('{"pele":"#f6e3d8","cabelo":"#121016","olhos":"#7a1f3d","batom":"#1a0a12","penteado":"franja"}');
+  assert.equal(antiga.vestido, OPCOES.vestido[0].valor);
+  for (const parte of PARTES) for (const o of OPCOES[parte]) assert.equal(nomeDaOpcao(parte, o.valor), o.nome);
 });
