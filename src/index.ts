@@ -32,6 +32,7 @@ import { canaisDoComando } from './canaisDosComandos.ts';
 import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
 import { NOME_SERVIDOR } from './config.ts';
 import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recursos/resenha.ts';
+import { aoMudarPresenca, elo, gratis, iniciarJogosGratis } from './recursos/jogosExternos.ts';
 import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -43,7 +44,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao];
 const MODAIS: HandlerModal[] = [modalGrupo];
@@ -96,6 +97,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarRegistro(c);
   iniciarPermissoes(c);
   iniciarResumo(c);
+  iniciarJogosGratis(c);
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
@@ -134,6 +136,7 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
 });
 
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).catch((e) => console.error('[calls]', e)));
+client.on(Events.PresenceUpdate, (antes, depois) => aoMudarPresenca(antes, depois).catch((e) => console.error('[jogando]', e)));
 client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));

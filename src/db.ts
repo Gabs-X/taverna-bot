@@ -325,6 +325,20 @@ const MIGRACOES: (() => void)[] = [
       );
     `);
   },
+
+  // 5 (22/10/2026): contas da Riot vinculadas (/elo) e jogos grátis já avisados.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS riot_contas (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL, riot_id TEXT NOT NULL, regiao TEXT NOT NULL,
+        PRIMARY KEY (guild_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS jogos_gratis (
+        guild_id TEXT NOT NULL, id TEXT NOT NULL, em INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, id)
+      );
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

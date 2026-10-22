@@ -26,11 +26,12 @@ const TABELA: [string[], string[]][] = [
   [['cassino'], [CANAIS.economia]],
   [['conquistas'], [CANAIS.economia, CANAIS.comandos]],
   [[...CAMPEOES.map((c) => c.comando), 'vitimas'], [CANAIS.campeoes]],
+  [['elo'], [CANAIS.campeoes, CANAIS.comandos]],
   [['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'], [CANAIS.economia]],
 
   // O resto fica no chat de comandos (/grupo também vale dentro dos canais do próprio grupo).
   [
-    ['grupo', 'sugestao', 'citacao', 'lfg', 'times', 'sortear', 'enquete', 'lembrete', 'aniversario', 'moeda', '8ball', 'cafe', 'avatar', 'servidor', 'ajuda'],
+    ['grupo', 'sugestao', 'citacao', 'gratis', 'lfg', 'times', 'sortear', 'enquete', 'lembrete', 'aniversario', 'moeda', '8ball', 'cafe', 'avatar', 'servidor', 'ajuda'],
     [CANAIS.comandos],
   ],
 ];

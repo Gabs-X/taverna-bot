@@ -51,6 +51,7 @@ export const CANAIS = {
   subgrupos: '👥・subgrupos',
   sugestoes: '💡・sugestoes',
   hallFama: '🏆・hall-da-fama',
+  jogosGratis: '🆓・jogos-gratis',
   criarCall: '➕ Calls',
   avisosRpg: '📢・avisos-da-mesa',
   mesaRpgTexto: '🗺️・mesa-de-jogo',
@@ -128,6 +129,7 @@ export const PLANO: CategoriaPlano[] = [
     canais: [
       // Um canal só: quem entra ganha uma call própria, que some quando esvazia.
       { nome: CANAIS.criarCall, voz: true, antigos: ['➕ Criar call'] },
+      { nome: CANAIS.jogosGratis, acesso: { tipo: 'leitura' }, topico: 'Jogos de graça na Epic, Steam e GOG: o bot avisa sozinho quando aparece um novo.' },
     ],
   },
   {
