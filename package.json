@@ -7,7 +7,15 @@
     "test": "node --test src/lib/dados.test.ts src/lib/tempo.test.ts src/lib/regras.test.ts src/lib/gotica.test.ts src/lib/economia.test.ts src/lib/loja.test.ts src/lib/duelo.test.ts src/lib/quiz.test.ts src/lib/grupos.test.ts src/lib/registro.test.ts src/lib/radio.test.ts",
     "start": "node --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
     "dev": "node --watch --env-file=.env --disable-warning=ExperimentalWarning src/index.ts",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "servico:instalar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 instalar",
+    "servico:remover": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 remover",
+    "servico:iniciar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 iniciar",
+    "servico:parar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 parar",
+    "servico:reiniciar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 reiniciar",
+    "servico:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 status",
+    "servico:log": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 log",
+    "supervisor": "node scripts/supervisor.mjs"
   },
   "keywords": [],
   "author": "",

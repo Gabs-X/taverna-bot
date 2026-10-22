@@ -25,6 +25,20 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Log de tudo no #logs (quem, o que, onde e se deu erro: comandos, botões, formulários, calls, níveis, lembretes, entradas e saídas), `/logs membro quantidade so_erros` para consultar os últimos 30 dias. Boas-vindas com cargo automático, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
+## Rodar no Windows em segundo plano
+
+O supervisor (`scripts/supervisor.mjs`) mantém o bot ligado sem janela: reinicia sozinho quando você salva algo em `src/`, `assets/`, `.env` ou `package.json`, religa se o bot cair e grava tudo em `dados/bot.log`. Não precisa de administrador.
+
+| Comando | O que faz |
+|---|---|
+| `npm run servico:instalar` | Liga o bot e faz ele ligar sozinho quando você entra no Windows |
+| `npm run servico:remover` | Desliga e tira da inicialização |
+| `npm run servico:parar` / `servico:iniciar` / `servico:reiniciar` | Controle manual |
+| `npm run servico:status` | Se está rodando e as últimas linhas do log |
+| `npm run servico:log` | Acompanha o log ao vivo (Ctrl+C sai só do log, o bot continua) |
+
+No Gerenciador de Tarefas, o bot aparece como dois `node.exe` (o supervisor e o bot). Não rode `npm start` junto: seriam dois bots com o mesmo token.
+
 ## Estrutura que o `/setup` cria
 
 ```
