@@ -127,3 +127,50 @@ export const servidor: Comando = {
     return i.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   },
 };
+
+// ---------- /cafe: o taverneiro passa um café, com direito a animação ----------
+
+const CAFES = {
+  coado: { nome: 'café coado', emoji: '☕', passos: ['🔥 Esquentando a água (sem ferver, que queima o pó)...', '🫖 Colocando o filtro de pano e o pó...', '💧 Despejando a água devagarinho...'] },
+  expresso: { nome: 'expresso', emoji: '☕', passos: ['⚙️ Moendo os grãos na hora...', '🧱 Compactando o pó no porta-filtro...', '💨 Extraindo sob pressão...'] },
+  capuccino: { nome: 'capuccino', emoji: '🥛', passos: ['☕ Tirando um expresso...', '🥛 Vaporizando o leite até fazer espuma...', '🍫 Polvilhando chocolate e canela...'] },
+  pingado: { nome: 'pingado', emoji: '🥛', passos: ['🥛 Esquentando o leite...', '☕ Pingando o café por cima...', '🍞 Separando um pão na chapa pra acompanhar...'] },
+  gelado: { nome: 'café gelado', emoji: '🧊', passos: ['☕ Passando um café forte...', '🧊 Enchendo o copo de gelo...', '🥛 Completando com leite e um fio de doce de leite...'] },
+} as const;
+
+const FINAIS_CAFE = [
+  'Cuidado que tá quente.', 'Por conta da casa.', 'Esse aqui ressuscita qualquer um depois de sessão até as 3h.',
+  'Feito com o mesmo carinho do Mestre ao matar seu personagem.', 'Açúcar fica no balcão, cada um com seu pecado.',
+  'Se derramar no teclado, a taverna não se responsabiliza.',
+];
+
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export const cafe: Comando = {
+  data: new SlashCommandBuilder()
+    .setName('cafe')
+    .setDescription('O taverneiro passa um café pra você (ou pra alguém)')
+    .addStringOption((o) =>
+      o.setName('tipo').setDescription('Qual café (padrão: surpresa)').addChoices(
+        ...Object.entries(CAFES).map(([value, c]) => ({ name: c.nome, value })),
+      ),
+    )
+    .addUserOption((o) => o.setName('para').setDescription('Servir pra outra pessoa')),
+  async executar(i) {
+    const chave = (i.options.getString('tipo') ?? sortear(Object.keys(CAFES))) as keyof typeof CAFES;
+    const c = CAFES[chave];
+    const para = i.options.getUser('para');
+    const linhas = [`${c.emoji} **Preparando um ${c.nome}${para ? ` pra ${para}` : ''}...**`];
+
+    await i.reply({ content: linhas[0], allowedMentions: { parse: [] } });
+    for (const passo of c.passos) {
+      await esperar(1500);
+      linhas.push(`> ${passo}`);
+      await i.editReply({ content: linhas.join('\n'), allowedMentions: { parse: [] } });
+    }
+    await esperar(1500);
+    linhas.push('', `${c.emoji} Pronto, ${para ?? i.user}! Seu **${c.nome}** tá servido. ${sortear(FINAIS_CAFE)}`);
+    // Só a mensagem final menciona, pra quem recebeu o café ser avisado uma vez.
+    return i.editReply({ content: linhas.join('\n'), allowedMentions: { users: [(para ?? i.user).id] } });
+  },
+};

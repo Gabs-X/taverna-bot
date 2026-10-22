@@ -194,7 +194,7 @@ const AJUDA: [string, string][] = [
   ['🌗 Daggerheart', '`/dh rolar` (dualidade, com traço e experiência) · `/dh dano` · `/dh marcar` PV, Estresse, Esperança, Armadura · `/dh medo` · `/dh ficha criar | ver | editar | experiencias`'],
   ['📅 Sessões', '`/sessao marcar mesa:D&D|Daggerheart` vira evento do Discord · `/sessao proximas`'],
   ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
-  ['🎉 Diversão', '`/moeda` · `/8ball` · `/avatar` · `/servidor`'],
+  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` · `/castigo`'],
 ];
 
