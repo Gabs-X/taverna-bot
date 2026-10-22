@@ -49,15 +49,12 @@ async function encerrar(t: Tela, motivo: string) {
 export const tela: Comando = {
   data: new SlashCommandBuilder()
     .setName('tela')
-    .setDescription('Compartilha sua tela por um link (abre no navegador; a voz continua na call)')
-    .setContexts(InteractionContextType.Guild)
-    .addStringOption((o) => o.setName('titulo').setDescription('O que vai mostrar (ex.: mapa do RPG)').setMaxLength(40))
-    .addBooleanOption((o) => o.setName('audio').setDescription('Mandar também o som da tela (vídeo, jogo). Padrão: só a imagem')),
+    .setDescription('Compartilha sua tela (com o som) por um link: abre no navegador, a voz continua na call')
+    .setContexts(InteractionContextType.Guild),
 
   async executar(i) {
-    const titulo = i.options.getString('titulo')?.trim() ?? '';
-    const audio = i.options.getBoolean('audio') ?? false;
-    const sala = criarSala({ audio, titulo });
+    // Sem opções: título genérico e sempre com o som da tela.
+    const sala = criarSala({ audio: true });
     const call = (i.member as GuildMember).voice.channel;
     const botaoCompartilhar = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Começar a compartilhar').setEmoji('🖥️').setURL(sala.compartilhar);
 
@@ -65,9 +62,8 @@ export const tela: Comando = {
     await i.reply({
       content:
         '🖥️ **Sua sala está pronta.** Clique, escolha a tela ou a janela e pronto.' +
-        (audio ? '\n🔊 Para mandar o som, marque **"Compartilhar áudio"** na janela de escolha do navegador.' : '') +
-        '\n▶️ Vai mostrar vídeo (YouTube etc.)? Escolha a **guia do Chrome** com o vídeo em vez da tela inteira' +
-        (audio ? ', que o som dela vai junto.' : ' e use `/tela audio:true` para mandar o som.') +
+        '\n🔊 Para mandar o som, marque **"Compartilhar áudio"** na janela de escolha do navegador.' +
+        '\n▶️ Vai mostrar vídeo (YouTube etc.)? Escolha a **guia do Chrome** com o vídeo em vez da tela inteira, que o som dela vai junto.' +
         `\nPara parar, feche a aba e clique em **Parei**${call ? ' (ou só saia da call)' : ''}.`,
       components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botaoCompartilhar)],
       flags: MessageFlags.Ephemeral,
@@ -77,10 +73,10 @@ export const tela: Comando = {
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
       .setAuthor({ name: (i.member as GuildMember).displayName, iconURL: i.user.displayAvatarURL() })
-      .setTitle(`🖥️ ${titulo || 'Compartilhando a tela'}`)
+      .setTitle('🖥️ Compartilhando a tela')
       .setDescription(
         `${i.user} está compartilhando a tela${call ? ` na call ${call}` : ''}.\n` +
-          `Clique em **Assistir**: abre no navegador, sem instalar nada.${audio ? ' Com o som da tela.' : ''}` +
+          `Clique em **Assistir**: abre no navegador, sem instalar nada. Com o som da tela.` +
           (call ? '\nA conversa continua na call do Discord.' : ''),
       )
       .setFooter({ text: 'Sala com senha: só quem tem o link vê · /tela para abrir a sua' });
@@ -91,7 +87,7 @@ export const tela: Comando = {
     });
 
     // 3) Guarda para avisar quando parar, e dá o botão "Parei" para quem compartilha.
-    inserir.run(msg.id, i.guildId, msg.channelId, i.user.id, call?.id ?? null, titulo, Date.now());
+    inserir.run(msg.id, i.guildId, msg.channelId, i.user.id, call?.id ?? null, '', Date.now());
     return i.editReply({
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
