@@ -105,7 +105,20 @@ export const DESBLOQUEIOS = [
   { nivel: 5, item: 'morcego', texto: 'um morceguinho de estimação' },
   { nivel: 7, item: 'rosas', texto: 'uma tiara de rosas' },
   { nivel: 10, item: 'asas', texto: 'asas de morcego' },
+  { nivel: 15, item: 'aura', texto: 'uma aura sombria' },
+  { nivel: 20, item: 'coroa', texto: 'uma coroa de prata com rubis' },
+  { nivel: 30, item: 'lua', texto: 'a lua de sangue' },
 ] as const;
+
+/** Estágio da gótica pelo nível: muda o visual (asas, aura, coroa, lua) e o título no cartão. */
+export const EVOLUCOES = [
+  { nivel: 30, nome: 'Lenda da Noite', emoji: '🌕' },
+  { nivel: 20, nome: 'Rainha das Trevas', emoji: '👑' },
+  { nivel: 15, nome: 'Sombria', emoji: '🔮' },
+  { nivel: 10, nome: 'Alada', emoji: '🦇' },
+  { nivel: 1, nome: 'Iniciante', emoji: '🖤' },
+] as const;
+export const evolucaoDe = (nivel: number) => EVOLUCOES.find((e) => nivel >= e.nivel)!;
 
 export type Item = (typeof DESBLOQUEIOS)[number]['item'];
 export const temItem = (nivel: number, item: Item) => nivel >= DESBLOQUEIOS.find((d) => d.item === item)!.nivel;

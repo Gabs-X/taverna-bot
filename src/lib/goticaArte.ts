@@ -106,6 +106,9 @@ function defs(a: Aparencia) {
     <linearGradient id="folha" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5f9e6e"/><stop offset="1" stop-color="#1d4a2c"/></linearGradient>
     <linearGradient id="asa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a2b7a"/><stop offset="1" stop-color="#140a1e"/></linearGradient>
     <radialGradient id="pelucia" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#9a7cbf"/><stop offset=".6" stop-color="#5a3f7a"/><stop offset="1" stop-color="#2a1838"/></radialGradient>
+    <radialGradient id="aura" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#d28cff" stop-opacity=".75"/><stop offset=".55" stop-color="#8a2be2" stop-opacity=".35"/><stop offset="1" stop-color="#4b0f7a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="chama" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#c77dff" stop-opacity=".85"/><stop offset=".6" stop-color="#7b2cbf" stop-opacity=".5"/><stop offset="1" stop-color="#3c096c" stop-opacity="0"/></linearGradient>
+    <radialGradient id="luaSangue" cx=".4" cy=".38" r=".7"><stop offset="0" stop-color="#ff8a6b"/><stop offset=".55" stop-color="#c0192c"/><stop offset="1" stop-color="#4a0610"/></radialGradient>
     <linearGradient id="laco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a1f4a"/><stop offset="1" stop-color="#0f0716"/></linearGradient>
 
     <clipPath id="clipRosto"><path d="${ROSTO}"/></clipPath>
@@ -137,6 +140,38 @@ function cenario() {
 function poeira() {
   return [[70, 200, 2.5], [118, 380, 2], [430, 360, 3], [452, 160, 2], [380, 470, 2.5], [160, 120, 1.8], [340, 92, 2]]
     .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffe9c9" opacity=".8" filter="url(#d1)"/>`).join('');
+}
+
+// ---------- Evolução (níveis altos) ----------
+
+/** Nível 30: lua de sangue enorme atrás, com morcegos voando na frente dela. */
+function lua() {
+  const morceguinho = (x: number, y: number, s: number) =>
+    `<path transform="translate(${x} ${y}) scale(${s})" d="M0 0 C-6 -6 -14 -6 -20 -2 C-15 -1 -13 2 -14 6 C-9 3 -5 4 -3 8 C-1 5 1 5 3 8 C5 4 9 3 14 6 C13 2 15 -1 20 -2 C14 -6 6 -6 0 0 Z" fill="#12040a"/>`;
+  return `<circle cx="400" cy="104" r="96" fill="#ff2a3d" opacity=".22" filter="url(#d12)"/>
+    <circle cx="400" cy="104" r="66" fill="url(#luaSangue)"/>
+    <g fill="#5a0812" opacity=".45"><circle cx="378" cy="88" r="11"/><circle cx="420" cy="124" r="8"/><circle cx="414" cy="80" r="5"/></g>
+    ${morceguinho(352, 84, 1.1)}${morceguinho(436, 60, 0.8)}${morceguinho(452, 150, 0.9)}${morceguinho(118, 70, 0.7)}`;
+}
+
+/** Nível 15: aura roxa com chamas subindo atrás do corpo. */
+function aura() {
+  const chama = (x: number, h: number, w: number) => `<path d="M${x - w} 512 C${x - w} ${512 - h * 0.5} ${x - w * 0.2} ${512 - h * 0.7} ${x} ${512 - h} C${x + w * 0.3} ${512 - h * 0.7} ${x + w} ${512 - h * 0.5} ${x + w} 512 Z" fill="url(#chama)"/>`;
+  const faisca = (x: number, y: number, r: number) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#f0d0ff"/><circle cx="${x}" cy="${y}" r="${r * 3}" fill="#c77dff" opacity=".35" filter="url(#d3)"/>`;
+  return `<ellipse cx="256" cy="290" rx="240" ry="250" fill="url(#aura)"/>
+    <circle cx="256" cy="230" r="196" fill="none" stroke="#c77dff" stroke-width="10" opacity=".55" filter="url(#d6)"/>
+    <circle cx="256" cy="230" r="196" fill="none" stroke="#f0d0ff" stroke-width="2" opacity=".5"/>
+    <g filter="url(#d3)">${chama(40, 380, 40)}${chama(110, 440, 36)}${chama(402, 440, 36)}${chama(472, 380, 40)}${chama(170, 300, 26)}${chama(342, 300, 26)}</g>
+    ${faisca(64, 160, 2.5)}${faisca(448, 200, 2.5)}${faisca(100, 290, 2)}${faisca(420, 110, 2)}${faisca(470, 300, 2)}`;
+}
+
+/** Nível 20: coroa de prata com rubis, por cima da tiara de rosas. */
+function coroa() {
+  const pontas = 'M196 132 L204 84 L226 112 L242 68 L256 100 L270 68 L286 112 L308 84 L316 132 Z';
+  const rubi = (x: number, y: number, r: number) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#gema)"/><circle cx="${x - r * 0.35}" cy="${y - r * 0.35}" r="${r * 0.3}" fill="#fff" opacity=".8"/>`;
+  return `<g filter="url(#projP)"><g filter="url(#volP)"><path d="${pontas}" fill="url(#prata)" stroke="#4a4658" stroke-width="2"/>
+      <rect x="194" y="124" width="124" height="16" rx="5" fill="url(#prata)" stroke="#4a4658" stroke-width="2"/></g></g>
+    ${rubi(256, 132, 6)}${rubi(226, 132, 4.5)}${rubi(286, 132, 4.5)}${rubi(242, 74, 4)}${rubi(270, 74, 4)}${rubi(204, 90, 3.5)}${rubi(308, 90, 3.5)}`;
 }
 
 // ---------- Corpo e roupa ----------
@@ -403,6 +438,8 @@ export function desenharGotica(a: Aparencia, nivel: number, humor: Humor, eq: Eq
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   ${defs(a)}
   ${eq.fundo ? desenharItem(eq.fundo) : cenario()}
+  ${temItem(nivel, 'lua') ? lua() : ''}
+  ${temItem(nivel, 'aura') ? aura() : ''}
   ${temItem(nivel, 'asas') ? asas() : ''}
   ${cabeloAtras(a)}
   ${pescoco()}
@@ -414,6 +451,7 @@ export function desenharGotica(a: Aparencia, nivel: number, humor: Humor, eq: Eq
   ${desenharItem(eq.rosto)}
   ${cabeloFrente(a)}
   ${temItem(nivel, 'rosas') ? rosas() : ''}
+  ${temItem(nivel, 'coroa') && !eq.cabeca ? coroa() : ''}
   ${desenharItem(eq.cabeca)}
   ${temItem(nivel, 'morcego') ? morcego() : ''}
   ${desenharItem(eq.companheiro)}

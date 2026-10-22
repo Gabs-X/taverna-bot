@@ -16,6 +16,7 @@ import {
   aplicarAcao,
   barra,
   DESBLOQUEIOS,
+  evolucaoDe,
   gostoDe,
   humorDe,
   lerAparencia,
@@ -129,7 +130,7 @@ export async function cartao(l: Linha, e: Estado, extra?: string) {
 
   const embed = new EmbedBuilder()
     .setColor(COR[humor])
-    .setTitle(`${emoji(l.guild_id, 'morcego_fofo', '🦇')} ${l.nome} · nível ${e.nivel}`)
+    .setTitle(`${emoji(l.guild_id, 'morcego_fofo', '🦇')} ${l.nome} · nível ${e.nivel} · ${evolucaoDe(e.nivel).emoji} ${evolucaoDe(e.nivel).nome}`)
     .setDescription(
       [
         extra,
