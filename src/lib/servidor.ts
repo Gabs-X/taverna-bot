@@ -10,8 +10,12 @@ export const canalTexto = (guild: Guild, nome: string): TextChannel | undefined 
 export const ehAdmin = (guild: Guild, userId: string): boolean => {
   const membro = guild.members.cache.get(userId);
   if (!membro) return false;
-  return membro.permissions.has('Administrator') || membro.roles.cache.some((r) => r.name === CARGOS.admin.nome);
+  return membro.permissions.has('Administrator') || membro.roles.cache.some((r) => r.name === CARGOS.admin.nome || r.name === CARGOS.dono.nome);
 };
+
+/** Staff e acima (Staff, Taverneiro, Dono ou quem tem Administrador). */
+export const ehStaff = (guild: Guild, userId: string): boolean =>
+  ehAdmin(guild, userId) || !!guild.members.cache.get(userId)?.roles.cache.some((r) => r.name === CARGOS.staff.nome);
 
 // Mestre de qualquer mesa (D&D ou Daggerheart) ou admin.
 export const ehMestre = (membro: GuildMember): boolean =>

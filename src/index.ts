@@ -18,6 +18,7 @@ import { botaoQuiz, quiz } from './recursos/quiz.ts';
 import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
+import { staff } from './recursos/staff.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
 import { canaisDoComando } from './canaisDosComandos.ts';
 import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
@@ -33,7 +34,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio];
 const MODAIS: HandlerModal[] = [modalGrupo];

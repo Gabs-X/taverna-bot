@@ -2,8 +2,11 @@
 
 export const NOME_SERVIDOR = 'Taverna';
 
+// Hierarquia de cima para baixo: Dono > Taverneiro (admin) > Staff. Canais e comandos de staff valem para Staff e acima.
 export const CARGOS = {
+  dono: { nome: '👑 Dono', cor: 0xf1c40f },
   admin: { nome: '🍺 Taverneiro', cor: 0xe67e22 },
+  staff: { nome: '🛡️ Staff', cor: 0x3498db },
   mestre: { nome: '🐉 Mestre', cor: 0x8e44ad },
   aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b }, // mesa de D&D 3.5
   daggerheart: { nome: '🌗 Daggerheart', cor: 0x2e86c1 }, // mesa de Daggerheart

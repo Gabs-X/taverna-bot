@@ -131,8 +131,8 @@ type Linha = { user_id: string | null; tipo: Tipo; acao: string; canal_id: strin
 export const logs: Comando = {
   data: new SlashCommandBuilder()
     .setName('logs')
-    .setDescription('(Admin) O que o bot fez para alguém, ou as últimas ações no servidor')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDescription('(Staff) O que o bot fez para alguém, ou as últimas ações no servidor')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setContexts(InteractionContextType.Guild)
     .addUserOption((o) => o.setName('membro').setDescription('De quem (padrão: todo mundo)'))
     .addIntegerOption((o) => o.setName('quantidade').setDescription('Quantas ações (padrão: 20)').setMinValue(5).setMaxValue(50))

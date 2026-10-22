@@ -24,7 +24,19 @@ import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 import { atualizarPainelGrupos } from './grupos.ts';
 
-const { ViewChannel, SendMessages, Connect } = PermissionFlagsBits;
+const { ViewChannel, SendMessages, Connect, ReadMessageHistory } = PermissionFlagsBits;
+
+// Staff modera, mas não administra o servidor.
+const PERMISSOES_STAFF = [
+  PermissionFlagsBits.ManageMessages,
+  PermissionFlagsBits.ModerateMembers,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.MoveMembers,
+  PermissionFlagsBits.MuteMembers,
+  PermissionFlagsBits.DeafenMembers,
+  PermissionFlagsBits.ManageNicknames,
+  PermissionFlagsBits.ViewAuditLog,
+];
 
 function permissoes(guild: Guild, acesso: Acesso | undefined): OverwriteResolvable[] | undefined {
   if (!acesso || acesso.tipo === 'publico') return undefined;
@@ -36,8 +48,13 @@ function permissoes(guild: Guild, acesso: Acesso | undefined): OverwriteResolvab
   switch (acesso.tipo) {
     case 'leitura':
       return comAdmin([{ id: todos, deny: [SendMessages] }]);
-    case 'staff':
-      return comAdmin([{ id: todos, deny: [ViewChannel] }]);
+    case 'staff': {
+      // Só Staff e acima (Taverneiro e Dono têm Administrador, que já vê tudo).
+      const staff = cargoPorNome(guild, CARGOS.staff.nome)?.id;
+      const lista: OverwriteResolvable[] = [{ id: todos, deny: [ViewChannel] }];
+      if (staff) lista.push({ id: staff, allow: [ViewChannel, SendMessages, ReadMessageHistory, Connect] });
+      return comAdmin(lista);
+    }
     case 'cargo': {
       const cargo = cargoPorNome(guild, acesso.cargo)?.id;
       const escrita = acesso.escrita ? cargoPorNome(guild, acesso.escrita)?.id : undefined;
@@ -51,7 +68,9 @@ function permissoes(guild: Guild, acesso: Acesso | undefined): OverwriteResolvab
 
 async function garantirCargos(guild: Guild, relatorio: string[]) {
   const desejados = [
+    { ...CARGOS.dono, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
     { ...CARGOS.admin, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
+    { ...CARGOS.staff, hoist: true, permissions: PERMISSOES_STAFF },
     { ...CARGOS.mestre, hoist: true, permissions: [] },
     { ...CARGOS.aventureiro, hoist: false, permissions: [] },
     { ...CARGOS.daggerheart, hoist: false, permissions: [] },
@@ -64,6 +83,25 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     if (cargoPorNome(guild, c.nome)) continue;
     await guild.roles.create({ name: c.nome, colors: { primaryColor: c.cor }, hoist: c.hoist, permissions: c.permissions, mentionable: true });
     relatorio.push(`➕ cargo ${c.nome}`);
+  }
+  await ordenarCargos(guild, relatorio);
+}
+
+/** Dono > Taverneiro > Staff, logo abaixo do cargo do bot (o bot só mexe em cargos abaixo do dele). */
+async function ordenarCargos(guild: Guild, relatorio: string[]) {
+  const [dono, admin, staff] = [CARGOS.dono, CARGOS.admin, CARGOS.staff].map((c) => cargoPorNome(guild, c.nome));
+  const topoBot = guild.members.me?.roles.highest.position ?? 0;
+  if (!dono || !admin || !staff) return;
+  if (dono.position < topoBot && dono.position > admin.position && admin.position > staff.position) return;
+  try {
+    await guild.roles.setPositions([
+      { role: dono.id, position: topoBot - 1 },
+      { role: admin.id, position: topoBot - 2 },
+      { role: staff.id, position: topoBot - 3 },
+    ]);
+    relatorio.push(`↕️ cargos em ordem: ${dono.name} > ${admin.name} > ${staff.name}`);
+  } catch {
+    relatorio.push('⚠️ Não consegui ordenar os cargos. Em Configurações do servidor > Cargos, arraste o cargo do bot para o topo e rode /setup de novo.');
   }
 }
 
@@ -117,6 +155,7 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
       relatorio.push(`➕ categoria ${cat.nome}`);
     }
     doPlano.add(categoria.id);
+    if (cat.acesso?.tipo === 'staff') await categoria.permissionOverwrites.set(permissoes(guild, cat.acesso) ?? []).catch(() => {});
 
     for (const canal of cat.canais) {
       const tipo = canal.voz ? ChannelType.GuildVoice : ChannelType.GuildText;
@@ -144,6 +183,10 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
         if (regras) await existente.permissionOverwrites.set(regras);
         else await existente.lockPermissions();
         relatorio.push(`🔀 ${canal.nome} → ${cat.nome}`);
+      }
+      const acessoCanal = canal.acesso ?? cat.acesso;
+      if (acessoCanal?.tipo === 'staff' && 'permissionOverwrites' in existente) {
+        await existente.permissionOverwrites.set(permissoes(guild, acessoCanal) ?? []).catch(() => {});
       }
       doPlano.add(existente.id);
     }
@@ -227,6 +270,12 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
   }
   if (novos) relatorio.push(`🤪 cargo ${CARGOS.membro.nome} dado a ${novos} membro(s)`);
   if (admin) await membros.get(autorId)?.roles.add(admin).catch(() => {});
+  // O dono do servidor ganha o cargo de Dono.
+  const cargoDono = cargoPorNome(guild, CARGOS.dono.nome);
+  const dono = membros.get(guild.ownerId);
+  if (cargoDono && dono && !dono.roles.cache.has(cargoDono.id)) {
+    await dono.roles.add(cargoDono).then(() => relatorio.push(`👑 ${dono} recebeu ${cargoDono.name}`)).catch(() => relatorio.push(`⚠️ não consegui dar ${cargoDono.name} ao dono (o cargo do bot precisa estar acima)`));
+  }
 
   await postarMensagensFixas(guild, relatorio);
 
@@ -248,7 +297,7 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
     fora.size
       ? `\n**Canais fora do plano (não mexi):** ${fora.map((c) => `<#${c.id}>`).join(' ')}\nApague ou mova os que não usar mais.`
       : '',
-    `\nDê o cargo **${CARGOS.mestre.nome}** a quem narra o RPG.`,
+    `\nDê o cargo **${CARGOS.mestre.nome}** a quem narra o RPG e **${CARGOS.staff.nome}** a quem modera (\`/staff adicionar\`).`,
   ]
     .join('\n')
     .slice(0, 1900);

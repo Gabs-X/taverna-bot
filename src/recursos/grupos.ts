@@ -32,7 +32,7 @@ import {
   problemaNoNome,
   slugCanal,
 } from '../lib/grupos.ts';
-import { canalTexto, cargoPorNome, ehAdmin } from '../lib/servidor.ts';
+import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao, HandlerModal } from '../tipos.ts';
 
 // Subgrupos: qualquer um pede, o admin aprova; cada grupo ganha cargo, categoria, texto e voz.
@@ -269,7 +269,7 @@ async function avisar(guild: Guild, userId: string, texto: string) {
 
 async function decidir(i: ButtonInteraction | ModalSubmitInteraction, pedidoId: string, aprovar: boolean, nomeNovo?: string, motivo?: string) {
   const guild = i.guild!;
-  if (!ehAdmin(guild, i.user.id)) return i.reply(efemera('Só admins aprovam pedidos.'));
+  if (!ehStaff(guild, i.user.id)) return i.reply(efemera('Só a staff aprova pedidos.'));
   const p = pedidoPorId(pedidoId);
   if (!p || p.status !== 'pendente') return i.reply(efemera('Esse pedido já foi resolvido.'));
   const d = JSON.parse(p.dados) as DadosPedido;
@@ -376,7 +376,7 @@ async function alternar(i: ChatInputCommandInteraction | ButtonInteraction, gr: 
 /** Grupo de um comando do dono: o escolhido na opção, ou o único dele. Admin pode mexer em qualquer um. */
 function grupoDoDono(i: ChatInputCommandInteraction): Grupo | string {
   const escolhido = i.options.getString('grupo');
-  const admin = ehAdmin(i.guild!, i.user.id);
+  const admin = ehStaff(i.guild!, i.user.id);
   if (escolhido) {
     const gr = grupoPorId(escolhido);
     if (!gr || gr.guild_id !== i.guildId) return 'Grupo não encontrado.';
@@ -444,7 +444,7 @@ export const grupo: Comando = {
     const sub = i.options.getSubcommand();
     const digitado = i.options.getFocused().toLowerCase();
     const todos = gruposDo(i.guildId!);
-    const lista = sub === 'entrar' || sub === 'sair' || ehAdmin(i.guild!, i.user.id) ? todos : todos.filter((g) => g.dono_id === i.user.id);
+    const lista = sub === 'entrar' || sub === 'sair' || ehStaff(i.guild!, i.user.id) ? todos : todos.filter((g) => g.dono_id === i.user.id);
     return i.respond(
       lista.filter((g) => g.nome.toLowerCase().includes(digitado)).slice(0, 25).map((g) => ({ name: `${g.emoji} ${g.nome}`.slice(0, 100), value: String(g.id) })),
     );
@@ -565,7 +565,7 @@ export const botaoGrupo: HandlerBotao = {
 
     if (acao === 'aprovar') return decidir(i, id, true);
     if (acao === 'outronome' || acao === 'recusar') {
-      if (!ehAdmin(guild, i.user.id)) return i.reply(efemera('Só admins aprovam pedidos.'));
+      if (!ehStaff(guild, i.user.id)) return i.reply(efemera('Só a staff aprova pedidos.'));
       const p = pedidoPorId(id);
       if (!p || p.status !== 'pendente') return i.reply(efemera('Esse pedido já foi resolvido.'));
       const d = JSON.parse(p.dados) as DadosPedido;
@@ -586,7 +586,7 @@ export const botaoGrupo: HandlerBotao = {
     if (acao === 'alternar') return alternar(i, gr);
 
     if (acao === 'aceitar' || acao === 'negar') {
-      if (i.user.id !== gr.dono_id && !ehAdmin(guild, i.user.id)) return i.reply(efemera('Só o dono do grupo decide quem entra.'));
+      if (i.user.id !== gr.dono_id && !ehStaff(guild, i.user.id)) return i.reply(efemera('Só o dono do grupo decide quem entra.'));
       if (!db.prepare('SELECT 1 FROM grupo_entradas WHERE grupo_id = ? AND user_id = ?').get(gr.id, extra)) {
         return i.update({ content: 'Esse pedido já foi resolvido.', components: [] });
       }
@@ -603,7 +603,7 @@ export const botaoGrupo: HandlerBotao = {
     }
 
     if (acao === 'apagar') {
-      if (i.user.id !== gr.dono_id && !ehAdmin(guild, i.user.id)) return i.reply(efemera('Só o dono (ou um admin) pode apagar.'));
+      if (i.user.id !== gr.dono_id && !ehStaff(guild, i.user.id)) return i.reply(efemera('Só o dono (ou um admin) pode apagar.'));
       await i.update({ content: `🧨 Apagando **${titulo(gr)}**...`, components: [] });
       await apagarEstrutura(guild, gr);
       await atualizarPainelGrupos(guild).catch(() => {});
