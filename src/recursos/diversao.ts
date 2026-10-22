@@ -174,3 +174,33 @@ export const cafe: Comando = {
     return i.editReply({ content: linhas.join('\n'), allowedMentions: { users: [(para ?? i.user).id] } });
   },
 };
+
+// ---------- /asheap: a Ashe resolve as diferenças ----------
+
+const ASHE_EXTRAS = [
+  'Foi uma Flecha de Cristal Encantada de lá do outro lado do mapa.',
+  'Ela ativou a Rajada e não sobrou um centímetro livre.',
+  'O Falcão viu tudo e ainda marcou a posição pro resto do time.',
+  'Agora vai sentar de lado pelo resto da partida.',
+  'Diz ela que foi só um auto-ataque. Foram 47.',
+  'Lentidão aplicada com sucesso: não anda direito até amanhã.',
+];
+
+export const asheap: Comando = {
+  data: new SlashCommandBuilder()
+    .setName('asheap')
+    .setDescription('Chama a Ashe pra resolver o problema com alguém')
+    .setContexts(InteractionContextType.Guild)
+    .addUserOption((o) => o.setName('membro').setDescription('Quem vai levar as flechas').setRequired(true)),
+  async executar(i) {
+    const alvo = i.options.getUser('membro', true);
+    if (alvo.id === i.client.user.id) {
+      return i.reply('🏹 A Ashe mirou no taverneiro, mas ele se escondeu atrás do balcão. Tente outro alvo.');
+    }
+    const vitima = alvo.id === i.user.id ? `${alvo} (que pediu isso pra si mesmo, vai entender)` : `${alvo}`;
+    return i.reply({
+      content: `🏹❄️ **A Ashe encheu o rabo de ${vitima} de flechas!**\n> ${sortear(ASHE_EXTRAS)}`,
+      allowedMentions: { users: [alvo.id] },
+    });
+  },
+};

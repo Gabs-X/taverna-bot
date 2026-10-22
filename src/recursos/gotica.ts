@@ -15,7 +15,6 @@ import {
   aplicarAcao,
   barra,
   DESBLOQUEIOS,
-  desenharGotica,
   gostoDe,
   humorDe,
   sortearAparencia,
@@ -26,6 +25,7 @@ import {
   type Aparencia,
   type Estado,
 } from '../lib/gotica.ts';
+import { desenharGotica } from '../lib/goticaArte.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 
 type Linha = {
@@ -138,14 +138,17 @@ export const gotica: Comando = {
          VALUES (?, ?, ?, ?, ?, 70, 70, 80, ?, ?)`,
       ).run(g, i.user.id, i.options.getString('nome', true).trim(), JSON.stringify(sortearAparencia()), personalidade, agora, agora);
       const l = ler(g, i.user.id)!;
-      return i.reply(cartao(l, estadoDe(l), `🖤 **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
+      // Gerar a imagem leva ~0,5 s: responde "pensando" antes para não estourar os 3 s do Discord.
+      await i.deferReply();
+      return i.editReply(cartao(l, estadoDe(l), `🖤 **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
     }
 
     if (sub === 'ver') {
       const dono = i.options.getUser('membro') ?? i.user;
       const l = ler(g, dono.id);
       if (!l) return i.reply({ content: dono.id === i.user.id ? SEM_GOTICA : `${dono.username} ainda não adotou uma gótica.`, flags: MessageFlags.Ephemeral });
-      return i.reply(cartao(l, estadoDe(l)));
+      await i.deferReply();
+      return i.editReply(cartao(l, estadoDe(l)));
     }
 
     if (sub === 'visual') {
@@ -161,7 +164,8 @@ export const gotica: Comando = {
       db.prepare('UPDATE goticas SET aparencia = ?, personalidade = ? WHERE guild_id = ? AND user_id = ?').run(aparencia, personalidade, g, i.user.id);
       const nova = { ...l, aparencia, personalidade };
       const mudouJeito = personalidade !== l.personalidade ? ` E voltou ${personalidade}, agora gosta de ${gostoDe(personalidade)}.` : '';
-      return i.reply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
+      await i.deferReply();
+      return i.editReply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
     }
 
     if (sub === 'renomear') {
@@ -206,6 +210,7 @@ export const botaoGotica: HandlerBotao = {
       const ganhou = DESBLOQUEIOS.find((d) => d.nivel === n);
       linhas.push(`🎉 **Subiu para o nível ${n}!**${ganhou ? ` Ganhou ${ganhou.texto}.` : ''}`);
     }
-    return i.update({ ...cartao(l, r.estado, linhas.join('\n') + '\n'), attachments: [] });
+    await i.deferUpdate();
+    return i.editReply({ ...cartao(l, r.estado, linhas.join('\n') + '\n'), attachments: [] });
   },
 };

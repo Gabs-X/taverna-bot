@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { aplicarAcao, desenharGotica, ESPERA_ACAO, humorDe, sortearAparencia, statusAgora, xpParaProximo, type Estado } from './gotica.ts';
+import { desenharGotica } from './goticaArte.ts';
+import { aplicarAcao, ESPERA_ACAO, humorDe, sortearAparencia, statusAgora, xpParaProximo, type Estado } from './gotica.ts';
 
 const HORA = 3_600_000;
 const base = (extra: Partial<Estado> = {}): Estado => ({ nivel: 1, xp: 0, barriga: 70, humor: 70, energia: 80, atualizadoEm: 0, ultimas: {}, ...extra });

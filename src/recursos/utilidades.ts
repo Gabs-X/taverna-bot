@@ -195,7 +195,7 @@ const AJUDA: [string, string][] = [
   ['📅 Sessões', '`/sessao marcar mesa:D&D|Daggerheart` vira evento do Discord · `/sessao proximas`'],
   ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
   ['🦇 Gótica', '`/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica visual` sorteia um visual novo · `/gotica renomear` · `/gotica ranking`'],
-  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
+  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/asheap` · `/avatar` · `/servidor`'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` · `/castigo`'],
 ];
 
