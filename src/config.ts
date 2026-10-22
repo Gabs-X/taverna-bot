@@ -1,6 +1,6 @@
 // Tudo o que define o servidor fica aqui: mude nomes, jogos e canais e rode /setup de novo.
 
-export const NOME_SERVIDOR = 'Taverna dos Malucos';
+export const NOME_SERVIDOR = 'Taverna';
 
 export const CARGOS = {
   admin: { nome: '🍺 Taverneiro', cor: 0xe67e22 },

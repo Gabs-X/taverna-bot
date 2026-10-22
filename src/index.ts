@@ -21,6 +21,7 @@ import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
 import { canaisDoComando } from './canaisDosComandos.ts';
 import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
+import { NOME_SERVIDOR } from './config.ts';
 import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -70,7 +71,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarAgenda(c);
   iniciarAtividade(c);
   iniciarRegistro(c);
-  c.user.setActivity('/ajuda · Taverna dos Malucos', { type: ActivityType.Custom });
+  c.user.setActivity(`/ajuda · ${NOME_SERVIDOR}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
 
