@@ -1,5 +1,8 @@
-// Compartilhamento de tela por link (VDO.Ninja: gratuito, sem login, direto entre navegadores).
+// Compartilhamento de tela por link: a Tela da Taverna (cópia do VDO.Ninja com o visual da Taverna, no GitHub Pages:
+// github.com/Gabs-X/taverna-tela). Gratuito, sem login, direto entre navegadores.
 // A voz continua no Discord: quem compartilha não manda microfone; o som da tela só vai se pedir.
+
+export const SITE_TELA = 'https://gabs-x.github.io/taverna-tela/';
 
 type Sorteio = () => number;
 const LETRAS = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -15,9 +18,9 @@ export function criarSala({ audio = false, titulo = '' }: { audio?: boolean; tit
   const senha = codigo(16, r);
   const rotulo = titulo ? `&label=${encodeURIComponent(titulo.slice(0, 40))}` : '';
   // Quem compartilha: vai direto para escolher a tela, sem microfone (a voz é no Discord).
-  const compartilhar = `https://vdo.ninja/?push=${id}&screenshare&audiodevice=0&password=${senha}${rotulo}`;
+  const compartilhar = `${SITE_TELA}?push=${id}&screenshare&audiodevice=0&password=${senha}${rotulo}`;
   // Quem assiste: só a tela; sem som, a não ser que o som da tela tenha sido pedido.
-  const assistir = `https://vdo.ninja/?view=${id}&password=${senha}${audio ? '' : '&noaudio'}`;
+  const assistir = `${SITE_TELA}?view=${id}&password=${senha}${audio ? '' : '&noaudio'}`;
   return { id, senha, compartilhar, assistir };
 }
 

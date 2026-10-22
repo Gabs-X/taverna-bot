@@ -66,6 +66,8 @@ export const tela: Comando = {
       content:
         '🖥️ **Sua sala está pronta.** Clique, escolha a tela ou a janela e pronto.' +
         (audio ? '\n🔊 Para mandar o som, marque **"Compartilhar áudio"** na janela de escolha do navegador.' : '') +
+        '\n▶️ Vai mostrar vídeo (YouTube etc.)? Escolha a **guia do Chrome** com o vídeo em vez da tela inteira' +
+        (audio ? ', que o som dela vai junto.' : ' e use `/tela audio:true` para mandar o som.') +
         `\nPara parar, feche a aba e clique em **Parei**${call ? ' (ou só saia da call)' : ''}.`,
       components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botaoCompartilhar)],
       flags: MessageFlags.Ephemeral,
