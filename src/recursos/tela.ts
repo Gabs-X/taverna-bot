@@ -110,6 +110,8 @@ export const botaoTela: HandlerBotao = {
   },
 };
 
+export const telasAbertas = () => (db.prepare('SELECT COUNT(*) AS n FROM telas').get() as { n: number }).n;
+
 /** Saiu da call (ou trocou de call) com a tela aberta: encerra o aviso. */
 export async function aoMudarVozTela(antes: VoiceState, depois: VoiceState) {
   if (!antes.channelId || antes.channelId === depois.channelId || !antes.member) return;

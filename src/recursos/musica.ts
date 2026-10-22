@@ -36,6 +36,10 @@ const tocadores: Tocador[] = [];
 /** Calls com música tocando agora, somando todos os tocadores (o supervisor espera acabar antes de reiniciar). */
 export const musicasTocando = () => tocadores.reduce((n, t) => n + t.player.nodes.cache.filter((f) => f.isPlaying()).size, 0);
 
+/** Para o /status: cada tocador, se está conectado e quantas calls toca. */
+export const situacaoTocadores = () =>
+  tocadores.map((t) => ({ nome: t.nome, online: t.client.isReady(), tocando: t.player.nodes.cache.filter((f) => f.isPlaying()).size }));
+
 // O discord-player usa os tipos CJS do discord.js e o bot os ESM: é o mesmo objeto em
 // tempo de execução, mas o TypeScript enxerga duas classes. Converte só nesta fronteira.
 type ClientDoPlayer = ConstructorParameters<typeof Player>[0];

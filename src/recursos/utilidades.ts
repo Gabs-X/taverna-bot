@@ -303,7 +303,7 @@ const AJUDA: [string, string][] = [
   ['💡 Sugestões', '`/sugestao ideia:` manda uma ideia para o bot; a galera vota em #sugestoes e a staff aprova'],
   ['🎰 Jogos', '`/cassino moeda | slots | roleta | limite` (até 2.000 moedas por dia) · `/palavra chutar | ver | ranking` (palavra do dia) · `/conquistas`'],
   ['🧙 LoL e jogos', '`/elo vincular | ver | buscar` (elo, maestrias e partidas pela Riot) · `/gratis` jogos de graça (aviso automático em #jogos-gratis) · o bot avisa quando 2+ pessoas abrem o mesmo jogo'],
-  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
+  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor` · `/status` como o bot está'],
   ['👥 Subgrupos', '`/grupo criar` (admin aprova) · `/grupo entrar | sair | lista` · dono: `canal` (pede canal novo) · `renomear` · `convidar` · `remover` · `privacidade` · `transferir` · `apagar`. Lista e botões em #subgrupos'],
   ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-suas-atividades'],
   ['🛡️ Staff', '`/setup` monta o servidor (admin) · `/staff adicionar | remover | lista` (admin) · `/reiniciar` (admin) · `/permissoes autorizar | aplicar | status` (admin: cada comando só para quem tem o cargo) · `/logs` o que o bot fez para cada pessoa · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
