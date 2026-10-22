@@ -20,6 +20,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🦇 Gótica | No canal 🦇・goticas (criado pelo `/setup`): `/gotica adotar`: aparência e personalidade sorteadas, retrato desenhado pelo bot. `/gotica ver` com botões para alimentar, conversar, ouvir música, passear e dormir; ela sobe de nível e ganha acessórios. `/gotica customizar` escolhe penteado, cabelo, olhos, batom, pele e vestido desde o nível 1, `/gotica visual` sorteia a aparência de novo (e a personalidade, se quiser), `/gotica duelo @membro` (por turnos com botões: atacar, feitiço, defender; vale XP e moedas), `/gotica visitar @membro` (as duas ganham XP, retrato das duas juntas), `/gotica renomear`, `/gotica ranking`. `/loja`: compra com moedas chapéu de bruxa, véu, orelhas de gato, óculos de coração, estrelinhas, gatinho preto, corvo e 3 fundos (cemitério, lua de sangue, rosas) |
 | 💰 Moedas e níveis | Mensagens (1 por minuto) e tempo em call com mais gente dão XP e moedas. Avisos de nível no #level-up. Cargos automáticos por nível (🍻 Bebum 5, 🎲 Frequentador 10, 🗡️ Veterano 20, 👑 Lenda 35). `/daily` com sequência, `/trabalhar`, `/carteira`, `/pix`, `/rank` (cartão em imagem), `/top` |
 | 🏹 Campeões do LoL | `/asheap`, `/darius`, `/teemo`, `/yasuo`, `/blitz`, `/garen`, `/jinx`, `/thresh`: o campeão "manda a mensagem" (webhook com nome e foto dele) com splash de uma skin sorteada. `/vitimas` mostra o placar de quem mais apanha. `/quiz iniciar`: rodadas com pedaço de splash ou descrição de habilidade, 4 botões, quem acertar primeiro ganha moedas; `/quiz ranking` |
+| 👥 Subgrupos | `/grupo criar nome emoji descricao fechado`: o pedido vai para #aprovacoes (staff) com Aprovar, Aprovar com outro nome e Recusar. Aprovado, o grupo ganha cargo, categoria, texto e voz próprios. Entra pelo painel de #subgrupos ou `/grupo entrar` (grupo fechado: o dono aprova). O dono pede canais extras (`/grupo canal`, também com aprovação), renomeia (com aprovação), convida, remove, abre/fecha, transfere e apaga |
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
@@ -27,14 +28,15 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 
 ```
 📜 ENTRADA       #regras · #boas-vindas · #escolha-seus-jogos
-💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · 🔊 Resenha · 🔊 AFK
+💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · #subgrupos · 🔊 Resenha · 🔊 AFK
 🎵 MÚSICA        #pedidos-de-musica · 🔊 Rádio da Taverna
 🎮 JOGATINA      🔊 ➕ Criar call · 🔊 🎲 Indie Aleatório · #procurando-grupo
                  #valorant · #cs2 · #league-of-legends · #minecraft · #fortnite · #indie-aleatorio  (cada um só para quem tem o cargo)
 🎉 ATIVIDADES    #goticas · #quiz · #campeoes · #economia · #level-up  (cada um só para quem desbloquear no painel)
 🐉 RPG · D&D 3.5     #avisos-da-mesa · #mesa-de-jogo · #rolagens · #fichas · #off-rpg · 🔊 Mesa de RPG  (só ⚔️ Aventureiro)
 🌗 RPG · Daggerheart #avisos-dh · #mesa-dh · #rolagens-dh · #fichas-dh · 🔊 Mesa de Daggerheart  (só 🌗 Daggerheart)
-🛡️ STAFF         #logs
+🛡️ STAFF         #logs · #aprovacoes
+👥 (um por grupo) #nome-do-grupo · 🔊 Nome do grupo  (só quem está no grupo; criadas pelo /grupo)
 ```
 
 Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ Aventureiro (D&D) · 🌗 Daggerheart · 🤪 Maluco (todo mundo) · um por jogo · um por atividade (🦇 Góticas, 🧠 Quiz, 🏹 Campeões, 💰 Economia, ⭐ Level up) · por nível (🍻 Bebum a 👑 Lenda).

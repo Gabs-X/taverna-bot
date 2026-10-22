@@ -2,6 +2,7 @@ import type {
   AutocompleteInteraction,
   ButtonInteraction,
   ChatInputCommandInteraction,
+  ModalSubmitInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from 'discord.js';
 
@@ -15,4 +16,10 @@ export type Comando = {
 export type HandlerBotao = {
   prefixo: string;
   executar(i: ButtonInteraction, argumento: string): Promise<unknown>;
+};
+
+// Formulários (modais) seguem a mesma ideia dos botões: roteados pelo prefixo do customId.
+export type HandlerModal = {
+  prefixo: string;
+  executar(i: ModalSubmitInteraction, argumento: string): Promise<unknown>;
 };

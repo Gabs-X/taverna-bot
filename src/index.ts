@@ -9,6 +9,7 @@ import { botaoCargo } from './recursos/cargos.ts';
 import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoDuelo } from './recursos/goticaSocial.ts';
+import { botaoGrupo, grupo, modalGrupo } from './recursos/grupos.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
@@ -17,7 +18,7 @@ import { botaoQuiz, quiz } from './recursos/quiz.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
-import type { Comando, HandlerBotao } from './tipos.ts';
+import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -28,9 +29,10 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo];
+const MODAIS: HandlerModal[] = [modalGrupo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const client = new Client({
@@ -68,6 +70,9 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
     } else if (i.isButton()) {
       const [prefixo, ...resto] = i.customId.split(':');
       await BOTOES.find((b) => b.prefixo === prefixo)?.executar(i, resto.join(':'));
+    } else if (i.isModalSubmit()) {
+      const [prefixo, ...resto] = i.customId.split(':');
+      await MODAIS.find((m) => m.prefixo === prefixo)?.executar(i, resto.join(':'));
     }
   } catch (erro) {
     console.error('[interação]', erro);

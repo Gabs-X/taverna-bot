@@ -45,6 +45,8 @@ export const CANAIS = {
   campeoes: '🏹・campeoes',
   economia: '💰・economia',
   logs: '🛡️・logs',
+  aprovacoes: '📥・aprovacoes',
+  subgrupos: '👥・subgrupos',
   criarCall: '➕ Criar call',
   avisosRpg: '📢・avisos-da-mesa',
   mesaRpg: '🐉 Mesa de RPG',
@@ -97,6 +99,7 @@ export const PLANO: CategoriaPlano[] = [
       { nome: '😂・memes' },
       { nome: '🎬・clipes-e-prints', topico: 'Jogadas absurdas, fails e prints.' },
       { nome: CANAIS.comandos, topico: 'Use os comandos do bot aqui para não poluir o geral.' },
+      { nome: CANAIS.subgrupos, acesso: { tipo: 'leitura' }, topico: 'Grupos da galera: clique para entrar. Peça o seu com /grupo criar.' },
       { nome: '🍻 Resenha', voz: true },
       { nome: '💤 AFK', voz: true },
     ],
@@ -157,7 +160,10 @@ export const PLANO: CategoriaPlano[] = [
   {
     nome: '🛡️ STAFF',
     acesso: { tipo: 'staff' },
-    canais: [{ nome: CANAIS.logs, acesso: { tipo: 'staff' } }],
+    canais: [
+      { nome: CANAIS.logs, acesso: { tipo: 'staff' } },
+      { nome: CANAIS.aprovacoes, acesso: { tipo: 'staff' }, topico: 'Pedidos de subgrupos e de canais novos para aprovar.' },
+    ],
   },
 ];
 

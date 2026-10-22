@@ -19,6 +19,7 @@ import { db } from '../db.ts';
 import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
+import { atualizarPainelGrupos } from './grupos.ts';
 
 const { ViewChannel, SendMessages, Connect } = PermissionFlagsBits;
 
@@ -121,6 +122,7 @@ async function mensagemDoBot(canal: TextChannel, titulo: string) {
 }
 
 async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
+  await atualizarPainelGrupos(guild);
   const regras = canalTexto(guild, CANAIS.regras);
   if (regras && !(await mensagemDoBot(regras, `📜 Regras da ${NOME_SERVIDOR}`))) {
     const embed = new EmbedBuilder()
