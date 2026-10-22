@@ -30,7 +30,7 @@ const TABELA: [string[], string[]][] = [
 
   // O resto fica no chat de comandos (/grupo também vale dentro dos canais do próprio grupo).
   [
-    ['grupo', 'sugestao', 'lfg', 'times', 'sortear', 'enquete', 'lembrete', 'aniversario', 'moeda', '8ball', 'cafe', 'avatar', 'servidor', 'ajuda'],
+    ['grupo', 'sugestao', 'citacao', 'lfg', 'times', 'sortear', 'enquete', 'lembrete', 'aniversario', 'moeda', '8ball', 'cafe', 'avatar', 'servidor', 'ajuda'],
     [CANAIS.comandos],
   ],
 ];

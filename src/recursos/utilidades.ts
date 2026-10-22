@@ -299,6 +299,7 @@ const AJUDA: [string, string][] = [
   ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica duelo` por turnos · `/gotica visitar` · `/gotica renomear` · `/gotica ranking` · `/loja gotica ver | comprar | equipar | tirar` (chapéus, óculos, bichinhos e fundos)'],
   ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/loja taverna` cor do nome e XP em dobro · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
   ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
+  ['💬 Resenha', 'Reaja com ⭐: 3 estrelas e a mensagem vai para #hall-da-fama · botão direito → Apps → **Salvar citação** · `/citacao` sorteia uma · resumo da semana no #geral todo domingo às 20h'],
   ['💡 Sugestões', '`/sugestao ideia:` manda uma ideia para o bot; a galera vota em #sugestoes e a staff aprova'],
   ['🎰 Jogos', '`/cassino moeda | slots | roleta | limite` (até 2.000 moedas por dia) · `/palavra chutar | ver | ranking` (palavra do dia) · `/conquistas`'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],

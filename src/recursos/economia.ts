@@ -30,6 +30,7 @@ import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
 import { verificarConquistas } from './conquistas.ts';
+import { contarSemana } from './resenha.ts';
 
 export type Carteira = {
   guild_id: string;
@@ -91,6 +92,7 @@ async function ganharAtividade(membro: GuildMember, xp: number, ganhoMoedas: num
   );
   await verificarConquistas(membro.guild, membro.id).catch(() => {});
   if (!r.subiu.length) return;
+  contarSemana(membro.guild.id, membro.id, 'niveis', r.subiu.length);
   const cargoNovo = await atualizarCargoNivel(membro, r.nivel);
   registrar({ guild: membro.guild, userId: membro.id, tipo: 'auto', acao: `⭐ subiu para o nível ${r.nivel}${cargoNovo ? ` e ganhou o cargo ${cargoNovo}` : ''}` });
   const bonus = r.nivel * 20;
@@ -107,6 +109,7 @@ async function ganharAtividade(membro: GuildMember, xp: number, ganhoMoedas: num
 
 export async function aoMensagem(m: Message) {
   if (m.author.bot || !m.inGuild() || !m.member) return;
+  contarSemana(m.guildId, m.author.id, 'mensagens');
   const c = carteira(m.guildId, m.author.id);
   if (Date.now() - c.ultima_msg < ESPERA_MENSAGEM) {
     db.prepare('UPDATE carteira SET mensagens = mensagens + 1 WHERE guild_id = ? AND user_id = ?').run(m.guildId, m.author.id);
@@ -133,6 +136,7 @@ async function creditarCalls(guild: Guild) {
     if (pessoas.size < 2) continue;
     for (const membro of pessoas.values()) {
       if (membro.voice.selfDeaf || membro.voice.serverDeaf) continue;
+      contarSemana(guild.id, membro.id, 'call');
       await ganharAtividade(membro, GANHO_MINUTO_CALL.xp, GANHO_MINUTO_CALL.moedas, aviso, 'minutos_call = minutos_call + 1');
     }
   }

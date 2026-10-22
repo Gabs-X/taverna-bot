@@ -3,7 +3,9 @@ import type {
   ButtonInteraction,
   ChatInputCommandInteraction,
   ModalSubmitInteraction,
+  MessageContextMenuCommandInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
+  RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from 'discord.js';
 
 export type Comando = {
@@ -22,4 +24,10 @@ export type HandlerBotao = {
 export type HandlerModal = {
   prefixo: string;
   executar(i: ModalSubmitInteraction, argumento: string): Promise<unknown>;
+};
+
+// Menus do botão direito numa mensagem (Apps → "Salvar citação").
+export type MenuMensagem = {
+  data: { name: string; toJSON(): RESTPostAPIContextMenuApplicationCommandsJSONBody };
+  executar(i: MessageContextMenuCommandInteraction): Promise<unknown>;
 };

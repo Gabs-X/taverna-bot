@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
+import { ActivityType, ApplicationFlagsBitField, Client, Events, GatewayIntentBits, MessageFlags, Partials, REST, Routes, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
@@ -31,7 +31,8 @@ import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times 
 import { canaisDoComando } from './canaisDosComandos.ts';
 import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
 import { NOME_SERVIDOR } from './config.ts';
-import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
+import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recursos/resenha.ts';
+import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -42,10 +43,11 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao];
 const MODAIS: HandlerModal[] = [modalGrupo];
+const MENUS: MenuMensagem[] = [salvarCitacao];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 /** Aviso se o comando foi usado fora do canal dele (tabela em canaisDosComandos.ts). */
@@ -57,6 +59,16 @@ function foraDoCanal(i: ChatInputCommandInteraction) {
   return avisoCanalErrado(i, canais);
 }
 
+// "Message Content Intent" (texto das mensagens, para o hall da fama) é privilegiada: se estiver desligada no
+// Developer Portal e o bot pedir, o Discord recusa a conexão inteira. Então pergunta antes e só pede se estiver ligada.
+const flags = await new REST()
+  .setToken(token)
+  .get(Routes.currentApplication())
+  .then((app) => new ApplicationFlagsBitField((app as { flags?: number }).flags ?? 0))
+  .catch(() => new ApplicationFlagsBitField(0));
+const podeLerMensagens = flags.any([ApplicationFlagsBitField.Flags.GatewayMessageContent, ApplicationFlagsBitField.Flags.GatewayMessageContentLimited]);
+if (!podeLerMensagens) console.warn('⚠️ "Message Content Intent" está desligada no Developer Portal: o hall da fama vai mostrar só imagens e o link, sem o texto.');
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -65,14 +77,16 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages, // não privilegiada: XP por mensagem (o texto não é lido)
     GatewayIntentBits.GuildExpressions, // não privilegiada: mantém a lista de emojis do servidor atualizada
+    GatewayIntentBits.GuildMessageReactions, // não privilegiada: ⭐ do hall da fama
+    ...(podeLerMensagens ? [GatewayIntentBits.MessageContent] : []), // privilegiada: texto das mensagens no hall da fama
   ],
-  partials: [Partials.GuildMember],
+  partials: [Partials.GuildMember, Partials.Message, Partials.Reaction, Partials.Channel, Partials.User],
 });
 
 client.once(Events.ClientReady, async (c) => {
   registrarCliente(c);
   // Comandos registrados por servidor aparecem na hora (os globais podem demorar).
-  const corpo = COMANDOS.map((cmd) => cmd.data.toJSON());
+  const corpo = [...COMANDOS.map((cmd) => cmd.data.toJSON()), ...MENUS.map((m) => m.data.toJSON())];
   for (const guild of c.guilds.cache.values()) await guild.commands.set(corpo);
 
   await iniciarMusica(c);
@@ -81,6 +95,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarAtividade(c);
   iniciarRegistro(c);
   iniciarPermissoes(c);
+  iniciarResumo(c);
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
@@ -97,6 +112,8 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
         return;
       }
       await porNome.get(i.commandName)?.executar(i);
+    } else if (i.isMessageContextMenuCommand()) {
+      await MENUS.find((m) => m.data.name === i.commandName)?.executar(i);
     } else if (i.isAutocomplete()) {
       await porNome.get(i.commandName)?.autocompletar?.(i);
     } else if (i.isButton()) {
@@ -117,6 +134,8 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
 });
 
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).catch((e) => console.error('[calls]', e)));
+client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
+client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));
 client.on(Events.GuildMemberAdd, (m) => aoEntrar(m).catch((e) => console.error('[boas-vindas]', e)));
 client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error('[saída]', e)));

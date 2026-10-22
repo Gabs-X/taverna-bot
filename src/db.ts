@@ -298,6 +298,33 @@ const MIGRACOES: (() => void)[] = [
       );
     `);
   },
+
+  // 4 (22/10/2026): hall da fama, citações e contadores da semana (resumo de domingo).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS hall_fama (
+        guild_id TEXT NOT NULL, msg_id TEXT NOT NULL, hall_msg_id TEXT NOT NULL,
+        PRIMARY KEY (guild_id, msg_id)
+      );
+      CREATE TABLE IF NOT EXISTS citacoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL, autor_id TEXT NOT NULL, texto TEXT NOT NULL, salvo_por TEXT NOT NULL,
+        canal_id TEXT NOT NULL, msg_id TEXT NOT NULL UNIQUE, em INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS semana (
+        guild_id TEXT NOT NULL, semana TEXT NOT NULL, user_id TEXT NOT NULL, chave TEXT NOT NULL, valor INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, semana, user_id, chave)
+      );
+      CREATE TABLE IF NOT EXISTS semana_musicas (
+        guild_id TEXT NOT NULL, semana TEXT NOT NULL, titulo TEXT NOT NULL, vezes INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, semana, titulo)
+      );
+      CREATE TABLE IF NOT EXISTS resumos (
+        guild_id TEXT NOT NULL, semana TEXT NOT NULL,
+        PRIMARY KEY (guild_id, semana)
+      );
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

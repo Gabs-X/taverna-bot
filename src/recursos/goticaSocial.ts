@@ -28,6 +28,7 @@ import { ajustarGotica, estadoDe, ler, retratoSvg, type Linha } from './gotica.t
 import { emoji } from '../lib/servidor.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
 import { contar, verificarConquistas } from './conquistas.ts';
+import { contarSemana } from './resenha.ts';
 
 const ENERGIA_DUELO = 20;
 const PRAZO_CONVITE = 2 * 60_000;
@@ -145,6 +146,7 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
   const subiuP = ajustarGotica(lp, { xp: 10, humor: -10, energia: -ENERGIA_DUELO });
   darMoedas(g, d[venceu].id, 60);
   contar(g, d[venceu].id, 'duelos_vencidos');
+  contarSemana(g, d[venceu].id, 'duelos');
   await verificarConquistas(mensagem.guild!, d[venceu].id).catch(() => {});
 
   // Relê depois do XP para o retrato final já mostrar acessórios novos.

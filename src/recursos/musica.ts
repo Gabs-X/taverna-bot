@@ -18,6 +18,7 @@ import {
 } from 'discord.js';
 import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
+import { contarMusicaSemana } from './resenha.ts';
 
 // radio: ligado pelo /radio. sugestoes: associadas à música inicial ainda não tocadas (o rádio fica no
 // estilo dela e só busca novas quando a lista acaba); historico: últimas tocadas, para não repetir.
@@ -385,6 +386,7 @@ export const tocar: Comando = {
       // Com o rádio ligado, o pedido passa na frente das músicas escolhidas pelo rádio.
       const fila = t.player.nodes.get<Metadados>(i.guildId!);
       if (fila?.metadata.radio && !searchResult.playlist) fila.moveTrack(track, 0);
+      if (!searchResult.playlist) contarMusicaSemana(i.guildId!, track.title);
       const texto = searchResult.playlist
         ? `📃 Adicionei **${searchResult.tracks.length}** músicas de **${searchResult.playlist.title}**.`
         : `➕ Na fila: **${track.title}** · \`${track.duration}\``;
@@ -416,6 +418,7 @@ export const radio: Comando = {
     const busca = await t.player.search(i.options.getString('musica', true), { requestedBy: i.user.id }).catch(() => null);
     const semente = busca?.tracks[0];
     if (!semente) return i.editReply('😵 Não achei essa música para começar o rádio.');
+    contarMusicaSemana(i.guildId!, semente.title);
 
     try {
       if (filaAtual) {

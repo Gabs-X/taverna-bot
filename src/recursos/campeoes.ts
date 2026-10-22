@@ -14,6 +14,7 @@ import { emoji } from '../lib/servidor.ts';
 import { skinsComSplash, urlIcone, urlSplash, versaoAtual } from '../lib/ddragon.ts';
 import type { Comando } from '../tipos.ts';
 import { verificarConquistas } from './conquistas.ts';
+import { contarSemana } from './resenha.ts';
 
 // Campeões do LoL que "falam" no chat (via webhook, com nome e foto deles) e descem a lenha em alguém.
 // Arte oficial do Data Dragon da Riot (uso de fã, sem fins comerciais).
@@ -160,6 +161,7 @@ async function executarCampeao(c: Campeao, i: ChatInputCommandInteraction) {
   } else {
     db.prepare('INSERT INTO vitimas (guild_id, user_id, campeao, vezes) VALUES (?, ?, ?, 1) ON CONFLICT DO UPDATE SET vezes = vezes + 1').run(i.guildId, alvo.id, c.id);
     void verificarConquistas(i.guild!, alvo.id).catch(() => {});
+    contarSemana(i.guildId!, alvo.id, 'apanhou');
     vezes = (db.prepare('SELECT vezes FROM vitimas WHERE guild_id = ? AND user_id = ? AND campeao = ?').get(i.guildId, alvo.id, c.id) as { vezes: number }).vezes;
     const quem = alvo.id === i.user.id ? `${alvo}, que pediu pra apanhar` : `${alvo}`;
     fala = `${c.golpe(quem)}\n${sortear(c.falas)}`;
