@@ -1,5 +1,10 @@
 # Novidades do Taverneiro
 
+## v1.1.0 (22/10/2026)
+
+- Lançamento cria a página da versão no GitHub Releases
+- Compartilhar tela por link com /tela (VDO.Ninja, sem login, com senha)
+
 ## v1.0.0 (22/10/2026)
 
 - Primeira versão oficial do Taverneiro, o bot da Taverna
