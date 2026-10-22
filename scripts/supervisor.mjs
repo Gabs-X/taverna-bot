@@ -71,6 +71,8 @@ function iniciar() {
     cwd: RAIZ,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    // Avisa o bot que ele está sob o supervisor (o /reiniciar só funciona assim).
+    env: { ...process.env, TAVERNA_SUPERVISOR: '1' },
   });
   log(`▶️ Bot iniciado (PID ${bot.pid}).`);
   bot.stdout.on('data', (d) => log(d));
@@ -79,6 +81,13 @@ function iniciar() {
     bot = null;
     if (reiniciandoDeProposito) {
       reiniciandoDeProposito = false;
+      iniciar();
+      return;
+    }
+    // 99 = /reiniciar no Discord: volta na hora, sem contar como queda.
+    if (codigo === 99) {
+      log('🔄 Reinício pedido pelo Discord.');
+      quedasSeguidas = 0;
       iniciar();
       return;
     }
