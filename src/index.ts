@@ -120,6 +120,7 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
       const fora = foraDoCanal(i);
       if (fora) {
         await i.reply(fora);
+        setTimeout(() => i.deleteReply().catch(() => {}), 30_000);
         registrarInteracao(i, 'usado fora do canal do comando');
         return;
       }

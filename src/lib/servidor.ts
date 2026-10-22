@@ -1,4 +1,4 @@
-import { ChannelType, MessageFlags, type ChatInputCommandInteraction, type Client, type Guild, type GuildBasedChannel, type GuildMember, type Role, type TextChannel } from 'discord.js';
+import { ChannelType, type ChatInputCommandInteraction, type Client, type Guild, type GuildBasedChannel, type GuildMember, type Role, type TextChannel } from 'discord.js';
 import { CANAIS, CARGOS } from '../config.ts';
 import { db } from '../db.ts';
 
@@ -56,7 +56,8 @@ export const ehMestre = (membro: GuildMember): boolean =>
   temCargo(membro, CARGOS.mestre.nome) || ehAdmin(membro.guild, membro.id);
 
 /**
- * Comando com canal próprio: se veio de outro lugar, devolve o aviso (efêmero) dizendo onde usar.
+ * Comando com canal próprio: se veio de outro lugar, devolve o aviso dizendo onde usar. É público (o efêmero
+ * passa despercebido, sobretudo no chat das calls) e o index apaga depois de alguns segundos.
  * Se nenhum dos canais existe (servidor sem /setup), o comando funciona em qualquer canal.
  */
 export function avisoCanalErrado(i: ChatInputCommandInteraction, nomesCanais: readonly string[]) {
@@ -69,9 +70,9 @@ export function avisoCanalErrado(i: ChatInputCommandInteraction, nomesCanais: re
   const escolha = canalTexto(i.guild!, CANAIS.escolhaJogos);
   const dica = naoVe && escolha ? `\nNão está vendo o canal? Desbloqueie em ${escolha}.` : '';
   return {
-    content: `👉 O \`/${i.commandName}\` só funciona em ${lista}. Manda lá!${dica}`,
-    flags: MessageFlags.Ephemeral,
-  } as const;
+    content: `👉 ${i.user}, o \`/${i.commandName}\` só funciona em ${lista}. Manda lá!${dica}`,
+    allowedMentions: { users: [i.user.id] },
+  };
 }
 
 /**
