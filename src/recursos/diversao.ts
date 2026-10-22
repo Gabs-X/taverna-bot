@@ -129,7 +129,7 @@ export const servidor: Comando = {
   },
 };
 
-// ---------- /cafe: o taverneiro passa um café, com direito a animação ----------
+// ---------- /cafe: a Taverna passa um café, com direito a animação ----------
 
 const CAFES = {
   coado: { nome: 'café coado', emoji: '☕', passos: ['🔥 Esquentando a água (sem ferver, que queima o pó)...', '🫖 Colocando o filtro de pano e o pó...', '💧 Despejando a água devagarinho...'] },
@@ -150,7 +150,7 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const cafe: Comando = {
   data: new SlashCommandBuilder()
     .setName('cafe')
-    .setDescription('O taverneiro passa um café pra você (ou pra alguém)')
+    .setDescription('A Taverna passa um café pra você (ou pra alguém)')
     .addStringOption((o) =>
       o.setName('tipo').setDescription('Qual café (padrão: surpresa)').addChoices(
         ...Object.entries(CAFES).map(([value, c]) => ({ name: c.nome, value })),

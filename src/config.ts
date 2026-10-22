@@ -1,6 +1,8 @@
 // Tudo o que define o servidor fica aqui: mude nomes, jogos e canais e rode /setup de novo.
 
 export const NOME_SERVIDOR = 'Taverna dos Malucos';
+// Nome do próprio bot no Discord: ele se renomeia sozinho ao ligar se estiver diferente.
+export const NOME_BOT = 'Taverna';
 
 export const CARGOS = {
   admin: { nome: '🍺 Taverneiro', cor: 0xe67e22 },
