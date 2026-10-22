@@ -11,8 +11,13 @@ const FRASES = [
 ];
 
 export async function aoEntrar(membro: GuildMember) {
+  // Bot (ex.: um bardo de música novo): só registra, sem cargo nem boas-vindas.
+  if (membro.user.bot) {
+    registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: '🤖 bot entrou no servidor' });
+    return;
+  }
   const cargo = cargoPorNome(membro.guild, CARGOS.membro.nome);
-  if (cargo && !membro.user.bot) await membro.roles.add(cargo).catch(() => {});
+  if (cargo) await membro.roles.add(cargo).catch(() => {});
   registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: `📥 entrou no servidor${cargo ? ` e ganhou o cargo ${cargo.name}` : ''}` });
 
   const canal = canalTexto(membro.guild, CANAIS.boasVindas);

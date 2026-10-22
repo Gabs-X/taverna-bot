@@ -27,11 +27,12 @@ type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; bu
 // ambiente: trilha da mesa de RPG (toca em loop, sem avisar cada volta).
 type Metadados = { canal: SendableChannels; radio?: Radio; ambiente?: string };
 
-// Tocadores: o Taverneiro e os bots ajudantes (TOKEN_MUSICA_2, TOKEN_MUSICA_3... no .env). O Discord só deixa
-// cada conta de bot numa call por servidor: cada ajudante é mais uma call tocando ao mesmo tempo.
-// Só o Taverneiro tem comandos; os ajudantes só entram na call e tocam.
+// Tocadores: os bardos (TOKEN_MUSICA_2, TOKEN_MUSICA_3... no .env). O Discord só deixa cada conta de bot numa
+// call por servidor: cada bardo é mais uma call tocando ao mesmo tempo. Só o Taverneiro tem comandos; os bardos
+// só entram na call e tocam. Se nenhum bardo conectar, o próprio Taverneiro toca, para a música não parar.
 type Tocador = { nome: string; client: Client; player: Player };
 const tocadores: Tocador[] = [];
+let taverneiro: Client | undefined;
 
 /** Calls com música tocando agora, somando todos os tocadores (o supervisor espera acabar antes de reiniciar). */
 export const musicasTocando = () => tocadores.reduce((n, t) => n + t.player.nodes.cache.filter((f) => f.isPlaying()).size, 0);
@@ -46,7 +47,7 @@ type ClientDoPlayer = ConstructorParameters<typeof Player>[0];
 type CanalDoPlayer = Parameters<Player['play']>[0];
 
 export async function iniciarMusica(client: Client) {
-  tocadores.push(await criarTocador(client, client.user?.username ?? 'Taverneiro'));
+  taverneiro = client;
   const tokens = Object.entries(process.env)
     .filter(([chave, valor]) => /^TOKEN_MUSICA_\d+$/.test(chave) && valor)
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
@@ -57,10 +58,14 @@ export async function iniciarMusica(client: Client) {
       await ajudante.login(token);
       await pronto;
       tocadores.push(await criarTocador(ajudante, ajudante.user!.username));
-      console.log(`🎵 Ajudante de música ${ajudante.user!.tag} online (${chave}).`);
+      console.log(`🎵 Bardo ${ajudante.user!.tag} online (${chave}).`);
     } catch (erro) {
-      console.error(`[música] o ajudante ${chave} não conectou:`, (erro as Error).message);
+      console.error(`[música] o bardo ${chave} não conectou:`, (erro as Error).message);
     }
+  }
+  if (!tocadores.length) {
+    console.warn('⚠️ Nenhum bardo conectou: o Taverneiro vai tocar a música.');
+    tocadores.push(await criarTocador(client, client.user?.username ?? 'Taverneiro'));
   }
 }
 
@@ -394,7 +399,7 @@ export const tocar: Comando = {
       const texto = searchResult.playlist
         ? `📃 Adicionei **${searchResult.tracks.length}** músicas de **${searchResult.playlist.title}**.`
         : `➕ Na fila: **${track.title}** · \`${track.duration}\``;
-      return i.editReply(texto + (t === tocadores[0] ? '' : ` (tocando pelo **${t.nome}**)`));
+      return i.editReply(texto + (t.client === taverneiro ? '' : ` (tocando pelo **${t.nome}**)`));
     } catch (erro) {
       console.error('[música] /tocar', erro);
       return i.editReply('😵 Não achei nada com essa busca (ou o link não é suportado).');
@@ -447,7 +452,7 @@ export const radio: Comando = {
       console.error('[rádio] /radio', erro);
       return i.editReply('😵 Não consegui começar o rádio com essa música.');
     }
-    const quem = t === tocadores[0] ? '' : ` (tocando pelo **${t.nome}**)`;
+    const quem = t.client === taverneiro ? '' : ` (tocando pelo **${t.nome}**)`;
     return i.editReply(`📻 **Rádio ligado**${quem} com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
   },
 };
@@ -536,6 +541,6 @@ export async function executarAmbiente(i: ChatInputCommandInteraction, tipo: Amb
     console.error('[ambiente]', erro);
     return i.editReply('😵 Não consegui tocar a trilha.');
   }
-  const quem = t === tocadores[0] ? '' : ` pelo **${t.nome}**`;
+  const quem = t.client === taverneiro ? '' : ` pelo **${t.nome}**`;
   return i.editReply(`${ambiente.nome}: trilha tocando em loop${quem}, volume baixo para a narração. Troque com \`/ambiente\` ou desligue com \`/ambiente tipo:parar\`.`);
 }
