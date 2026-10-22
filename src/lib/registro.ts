@@ -64,6 +64,8 @@ export function descreverBotao(customId: string, valorFormulario?: string): stri
       return `Duelo: ${ACOES_DUELO[acao] ?? acao}`;
     case 'radio':
       return `Rádio: ${{ pular: 'pulou a música', pausar: 'pausou/continuou', desligar: 'desligou o rádio' }[acao] ?? acao}`;
+    case 'sugestao':
+      return `Sugestão: marcou a #${a} como ${{ aprovada: 'aprovada', recusada: 'recusada', feita: 'implementada' }[acao] ?? acao}`;
     case 'quiz':
       return `Quiz: chutou ${acao}`;
     case 'grupo':
