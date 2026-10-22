@@ -337,7 +337,7 @@ export const aniversario: Comando = {
 };
 
 const PARABENS = [
-  'mais um ano de maluquice completo!',
+  'mais um ano de taverna completo!',
   'a taverna inteira levanta a caneca por você! 🍻',
   'rolou um 20 natural na vida hoje.',
   'subiu de nível! +1 em tudo.',
