@@ -105,8 +105,13 @@ export async function aplicarPermissoesComandos(guild: Guild): Promise<string> {
   if (!token) return 'ℹ️ Comandos por cargo ainda não autorizados: rode `/permissoes autorizar` uma vez.';
 
   const comandos = await guild.commands.fetch();
+  // Permissões que já estão no Discord: só regrava o que mudou (cada gravação é lenta, o limite do Discord é apertado).
+  const atuais = await guild.commands.permissions.fetch({}).catch(() => undefined);
+  const assinatura = (lista: readonly { id: string; type: number; permission: boolean }[]) =>
+    lista.map((p) => `${p.id}:${p.type}:${p.permission}`).sort().join(',');
   const sempre = [CARGOS.dono.nome, CARGOS.admin.nome, CARGOS.staff.nome];
   let ok = 0;
+  let iguais = 0;
   const falhas: string[] = [];
   for (const [nome, cargos] of Object.entries(mapa())) {
     const cmd = comandos.find((c) => c.name === nome);
@@ -114,6 +119,10 @@ export async function aplicarPermissoesComandos(guild: Guild): Promise<string> {
     const ids = [...new Set([...cargos, ...sempre].map((n) => cargoPorNome(guild, n)?.id).filter((x): x is string => !!x))];
     // type 1 = cargo; o id do servidor = @everyone (negado, para só os cargos acima verem).
     const permissions = [...ids.map((id) => ({ id, type: 1, permission: true })), { id: guild.id, type: 1, permission: false }];
+    if (atuais?.get(cmd.id) && assinatura(atuais.get(cmd.id)!) === assinatura(permissions)) {
+      iguais++;
+      continue;
+    }
     const r = await comLimite(() =>
       fetch(`${API}/applications/${guild.client.application.id}/guilds/${guild.id}/commands/${cmd.id}/permissions`, {
         method: 'PUT',
@@ -125,9 +134,10 @@ export async function aplicarPermissoesComandos(guild: Guild): Promise<string> {
     else falhas.push(`/${nome} (${r.status})`);
     await esperar(300);
   }
-  return falhas.length
-    ? `⚠️ Permissões por cargo: ${ok} comando(s) ok, falharam ${falhas.join(', ')}.`
-    : `🔒 ${ok} comando(s) agora aparecem só para quem tem o cargo deles.`;
+  if (falhas.length) return `⚠️ Permissões por cargo: ${ok} comando(s) ok, falharam ${falhas.join(', ')}.`;
+  return ok
+    ? `🔒 ${ok + iguais} comando(s) aparecem só para quem tem o cargo deles (${ok} atualizado(s)).`
+    : `🔒 Permissões por cargo já estavam em dia (${iguais} comandos).`;
 }
 
 // ---------- Autorização (servidorzinho local que recebe o retorno do Discord) ----------
