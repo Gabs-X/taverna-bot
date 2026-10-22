@@ -16,7 +16,7 @@ import type { Comando, HandlerBotao } from '../tipos.ts';
 
 // /tela: compartilhamento de tela por link (o vídeo do Discord não está disponível para a galera).
 // Quem pediu recebe, só para si, o botão de começar a compartilhar; no chat sai o botão de assistir.
-// O VDO.Ninja não avisa quando a tela fecha, então o aviso do chat é encerrado quando a pessoa sai da call,
+// A página da tela não avisa o bot quando a tela fecha, então o aviso do chat é encerrado quando a pessoa sai da call,
 // clica em "Parei" ou o tempo máximo passa.
 
 type Tela = { msg_id: string; guild_id: string; canal_id: string; user_id: string; call_id: string | null; titulo: string; inicio: number };
@@ -54,7 +54,7 @@ export const tela: Comando = {
 
   async executar(i) {
     // Sem opções: título genérico e sempre com o som da tela.
-    const sala = criarSala({ audio: true });
+    const sala = criarSala();
     const call = (i.member as GuildMember).voice.channel;
     const botaoCompartilhar = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Começar a compartilhar').setEmoji('🖥️').setURL(sala.compartilhar);
 

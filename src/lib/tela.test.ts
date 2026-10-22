@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { codigo, criarSala, duracaoTexto } from './tela.ts';
+import { codigo, criarSala, duracaoTexto, SITE_TELA } from './tela.ts';
 
-test('senha e sala só com letras e números (exigência do VDO.Ninja)', () => {
+test('senha e sala só com letras e números (exigência da página)', () => {
   for (let k = 0; k < 50; k++) {
     const s = criarSala();
     assert.match(s.senha, /^[A-Za-z0-9]{16}$/);
@@ -11,18 +11,15 @@ test('senha e sala só com letras e números (exigência do VDO.Ninja)', () => {
   assert.equal(codigo(5, () => 0), 'aaaaa');
 });
 
-test('quem compartilha vai direto para a tela, sem microfone; quem assiste usa a mesma sala e senha', () => {
-  const s = criarSala({ titulo: 'Mapa do RPG' });
+test('quem compartilha e quem assiste usam a mesma sala e senha na Tela da Taverna', () => {
+  const s = criarSala();
   const c = new URL(s.compartilhar);
   const v = new URL(s.assistir);
-  assert.equal(c.searchParams.get('push'), s.id);
-  assert.ok(c.searchParams.has('screenshare'));
-  assert.equal(c.searchParams.get('audiodevice'), '0');
-  assert.equal(c.searchParams.get('label'), 'Mapa do RPG');
-  assert.equal(v.searchParams.get('view'), s.id);
-  assert.equal(v.searchParams.get('password'), c.searchParams.get('password'));
-  assert.ok(v.searchParams.has('noaudio'));
-  assert.ok(!new URL(criarSala({ audio: true }).assistir).searchParams.has('noaudio'));
+  assert.equal(c.origin + c.pathname, SITE_TELA);
+  assert.equal(c.searchParams.get('compartilhar'), s.id);
+  assert.equal(v.searchParams.get('assistir'), s.id);
+  assert.equal(c.searchParams.get('chave'), s.senha);
+  assert.equal(v.searchParams.get('chave'), s.senha);
 });
 
 test('duração da tela em texto curto', () => {
