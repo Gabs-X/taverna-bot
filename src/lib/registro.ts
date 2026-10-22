@@ -62,6 +62,8 @@ export function descreverBotao(customId: string, valorFormulario?: string): stri
       return `Gótica: ${ACOES_GOTICA[acao] ?? acao} a gótica${a ? ` de <@${a}>` : ''}`;
     case 'duelo':
       return `Duelo: ${ACOES_DUELO[acao] ?? acao}`;
+    case 'radio':
+      return `Rádio: ${{ pular: 'pulou a música', pausar: 'pausou/continuou', desligar: 'desligou o rádio' }[acao] ?? acao}`;
     case 'quiz':
       return `Quiz: chutou ${acao}`;
     case 'grupo':

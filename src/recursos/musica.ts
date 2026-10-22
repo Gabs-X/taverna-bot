@@ -1,7 +1,10 @@
 import { DefaultExtractors } from '@discord-player/extractor';
-import { Player, QueueRepeatMode, type GuildQueue } from 'discord-player';
-import { YoutubeExtractor } from 'discord-player-youtubei';
+import { Player, QueueRepeatMode, type GuildQueue, type Track } from 'discord-player';
+import { getVideoId, YoutubeExtractor } from 'discord-player-youtubei';
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   EmbedBuilder,
   InteractionContextType,
   MessageFlags,
@@ -11,9 +14,14 @@ import {
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
-import type { Comando } from '../tipos.ts';
+import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
+import type { Comando, HandlerBotao } from '../tipos.ts';
 
-type Metadados = { canal: SendableChannels };
+// radio: ligado pelo /radio. sugestoes: associadas à música inicial ainda não tocadas (o rádio fica no
+// estilo dela e só busca novas quando a lista acaba); historico: últimas tocadas, para não repetir.
+type Sugestao = { title: string; author: string; durationMS: number; videoId: string };
+type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; buscando?: boolean };
+type Metadados = { canal: SendableChannels; radio?: Radio };
 
 let player: Player;
 
@@ -28,6 +36,14 @@ export async function iniciarMusica(client: Client) {
   await player.extractors.loadMulti(DefaultExtractors);
 
   player.events.on('playerStart', (fila: GuildQueue<Metadados>, faixa) => {
+    const radio = fila.metadata.radio;
+    if (radio) {
+      radio.historico = lembrar(radio.historico, faixa.title, faixa.author);
+      // Última da fila: busca a associada agora, para não ter silêncio entre as músicas.
+      const pronto = fila.tracks.size === 0 ? encherRadio(fila) : Promise.resolve();
+      pronto.finally(() => postarPainelRadio(fila)).catch((e) => console.error('[rádio]', e));
+      return;
+    }
     const embed = new EmbedBuilder()
       .setColor(0x1db954)
       .setAuthor({ name: '🎵 Tocando agora' })
@@ -39,6 +55,16 @@ export async function iniciarMusica(client: Client) {
     fila.metadata.canal.send({ embeds: [embed] }).catch(() => {});
   });
   player.events.on('emptyQueue', (fila: GuildQueue<Metadados>) => {
+    if (fila.metadata.radio) {
+      // A busca antecipada falhou: tenta de novo e volta a tocar.
+      encherRadio(fila)
+        .then(async () => {
+          if (fila.tracks.size) await fila.node.play();
+          else await fila.metadata.canal.send('📻 O rádio não achou mais músicas associadas. Recomece com `/radio`.');
+        })
+        .catch((e) => console.error('[rádio]', e));
+      return;
+    }
     fila.metadata.canal.send('📭 A fila acabou. Manda mais com `/tocar`!').catch(() => {});
   });
   player.events.on('playerError', (fila: GuildQueue<Metadados>, erro, faixa) => {
@@ -46,6 +72,106 @@ export async function iniciarMusica(client: Client) {
     fila.metadata.canal.send(`⚠️ Não consegui tocar **${faixa.title}**. Pulando.`).catch(() => {});
   });
   player.events.on('error', (_fila, erro) => console.error('[música]', erro));
+}
+
+// ---------- Rádio ----------
+
+// Item do "a seguir" do YouTube Music (só os campos usados).
+type ItemASeguir = {
+  type: string;
+  video_id?: string;
+  title?: unknown;
+  author?: string;
+  artists?: { name: string }[];
+  duration?: { seconds?: number };
+};
+
+async function sugestoesDoYoutubeMusic(base: Track, youtube: { searchEngine: `ext:${string}` }): Promise<Sugestao[]> {
+  const ext = player.extractors.get(YoutubeExtractor.identifier) as YoutubeExtractor | undefined;
+  let id: string | null = getVideoId(base.url);
+  if (!id) {
+    // Música de outra fonte (ex.: Spotify): acha a versão do YouTube para pegar as sugestões.
+    const achada = await player.search(`${base.title} ${base.author}`, youtube);
+    id = achada.tracks[0] ? getVideoId(achada.tracks[0].url) : null;
+  }
+  if (!ext?.innertube || !id) return [];
+  const aSeguir = await ext.innertube.music.getUpNext(id, true);
+  return (aSeguir.contents ?? []).flatMap((item) => {
+    const v = item as unknown as ItemASeguir;
+    if (v.type !== 'PlaylistPanelVideo' || !v.video_id) return [];
+    const autor = v.author || v.artists?.map((a) => a.name).join(', ') || '';
+    return [{ title: String(v.title), author: autor, durationMS: (v.duration?.seconds ?? 0) * 1000, videoId: v.video_id }];
+  });
+}
+
+/** Põe na fila a próxima associada (da lista da música inicial), sem repetir as recentes. */
+async function encherRadio(fila: GuildQueue<Metadados>) {
+  const radio = fila.metadata.radio;
+  if (!radio || radio.buscando) return;
+  const base = fila.currentTrack ?? fila.history.previousTrack;
+  if (!base) return;
+  radio.buscando = true;
+  try {
+    const youtube = { searchEngine: `ext:${YoutubeExtractor.identifier}` } as const;
+    let proxima: Track | undefined;
+    try {
+      // Lista acabando: pede ao "a seguir" do YouTube Music (o mesmo rádio do app) a partir da música atual.
+      if (radio.sugestoes.filter((s) => !radio.historico.includes(chaveMusica(s.title, s.author))).length < 5) {
+        radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(base, youtube)));
+      }
+      const escolhida = escolherProxima(radio.sugestoes, radio.historico);
+      if (escolhida) {
+        radio.sugestoes = radio.sugestoes.filter((s) => s !== escolhida);
+        radio.historico = lembrar(radio.historico, escolhida.title, escolhida.author);
+        proxima = (await player.search(`https://www.youtube.com/watch?v=${escolhida.videoId}`, youtube)).tracks[0];
+      }
+    } catch (erro) {
+      console.error('[rádio] sem sugestões do YouTube Music', erro);
+    }
+    if (!proxima) {
+      // Sem associadas boas: mais músicas do mesmo artista.
+      const busca = await player.search(`${base.author} música`, youtube).catch(() => null);
+      proxima = escolherProxima(busca?.tracks ?? [], radio.historico);
+    }
+    if (proxima) {
+      proxima.requestedBy = null; // marca como escolhida pelo rádio (o botão de desligar tira essas)
+      fila.addTrack(proxima);
+    }
+  } finally {
+    radio.buscando = false;
+  }
+}
+
+function botoesRadio(pausado: boolean) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('radio:pular').setLabel('Pular').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('radio:pausar').setLabel(pausado ? 'Continuar' : 'Pausar').setEmoji(pausado ? '▶️' : '⏸️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('radio:desligar').setLabel('Desligar rádio').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+  );
+}
+
+function painelRadio(fila: GuildQueue<Metadados>) {
+  const atual = fila.currentTrack;
+  const proxima = fila.tracks.at(0);
+  const aSeguir = proxima ? `${proxima.title} · ${proxima.author}` : '_procurando uma associada..._';
+  const embed = new EmbedBuilder()
+    .setColor(0xe67e22)
+    .setAuthor({ name: '📻 Rádio da Taverna · tocando sem parar' })
+    .setTitle(atual?.title ?? '...')
+    .setURL(atual?.url ?? null)
+    .setDescription(`${atual?.author ?? ''} · \`${atual?.duration ?? ''}\`\n\n**A seguir:** ${aSeguir}`)
+    .setThumbnail(atual?.thumbnail || null)
+    .setFooter({ text: `${atual?.requestedBy ? `Pedido por ${atual.requestedBy.username}` : 'Escolhida pelo rádio'} · peça músicas no meio com /tocar` });
+  return { embeds: [embed], components: [botoesRadio(fila.node.isPaused())] };
+}
+
+/** Apaga o painel anterior e manda um novo embaixo, para ficar sempre visível. */
+async function postarPainelRadio(fila: GuildQueue<Metadados>) {
+  const { canal, radio } = fila.metadata;
+  if (!radio) return;
+  if (radio.painelId && 'messages' in canal) await canal.messages.delete(radio.painelId).catch(() => {});
+  const msg = await canal.send(painelRadio(fila)).catch(() => null);
+  radio.painelId = msg?.id;
 }
 
 const filaDe = (i: ChatInputCommandInteraction) => player.nodes.get<Metadados>(i.guildId!);
@@ -202,6 +328,9 @@ export const tocar: Comando = {
           leaveOnEndCooldown: 180_000,
         },
       });
+      // Com o rádio ligado, o pedido passa na frente das músicas escolhidas pelo rádio.
+      const fila = filaDe(i);
+      if (fila?.metadata.radio && !searchResult.playlist) fila.moveTrack(track, 0);
       const texto = searchResult.playlist
         ? `📃 Adicionei **${searchResult.tracks.length}** músicas de **${searchResult.playlist.title}**.`
         : `➕ Na fila: **${track.title}** · \`${track.duration}\``;
@@ -210,5 +339,78 @@ export const tocar: Comando = {
       console.error('[música] /tocar', erro);
       return i.editReply('😵 Não achei nada com essa busca (ou o link não é suportado).');
     }
+  },
+};
+
+export const radio: Comando = {
+  data: new SlashCommandBuilder()
+    .setName('radio')
+    .setDescription('Toca uma música e segue sozinho com músicas associadas, sem parar')
+    .setContexts(InteractionContextType.Guild)
+    .addStringOption((o) => o.setName('musica').setDescription('Música que começa o rádio (nome ou link)').setRequired(true)),
+
+  async executar(i) {
+    const canalVoz = (i.member as GuildMember).voice.channel;
+    if (!canalVoz) return i.reply({ content: 'Entre numa call primeiro.', flags: MessageFlags.Ephemeral });
+    const filaAtual = filaDe(i);
+    if (filaAtual?.channel && filaAtual.channel.id !== canalVoz.id) {
+      return i.reply({ content: `Já estou tocando em <#${filaAtual.channel.id}>.`, flags: MessageFlags.Ephemeral });
+    }
+
+    await i.deferReply();
+    const busca = await player.search(i.options.getString('musica', true), { requestedBy: i.user.id }).catch(() => null);
+    const semente = busca?.tracks[0];
+    if (!semente) return i.editReply('😵 Não achei essa música para começar o rádio.');
+
+    try {
+      if (filaAtual) {
+        // Já tem música: liga o rádio na fila atual (a semente entra na frente).
+        filaAtual.metadata.radio ??= { historico: [], sugestoes: [] };
+        filaAtual.setRepeatMode(QueueRepeatMode.OFF);
+        filaAtual.insertTrack(semente, 0);
+      } else {
+        await player.play(canalVoz as unknown as CanalDoPlayer, semente, {
+          requestedBy: i.user.id,
+          nodeOptions: {
+            metadata: { canal: i.channel as SendableChannels, radio: { historico: [], sugestoes: [] } } satisfies Metadados,
+            volume: 60,
+            leaveOnEmpty: true,
+            leaveOnEmptyCooldown: 60_000,
+            leaveOnEnd: true,
+            leaveOnEndCooldown: 180_000,
+          },
+        });
+      }
+    } catch (erro) {
+      console.error('[rádio] /radio', erro);
+      return i.editReply('😵 Não consegui começar o rádio com essa música.');
+    }
+    return i.editReply(`📻 **Rádio ligado** com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
+  },
+};
+
+export const botaoRadio: HandlerBotao = {
+  prefixo: 'radio',
+  async executar(i, acao) {
+    const fila = player.nodes.get<Metadados>(i.guildId!);
+    if (!fila?.metadata.radio) return i.update({ components: [] });
+    const canalMembro = (i.member as GuildMember).voice.channelId;
+    if (fila.channel && canalMembro !== fila.channel.id) {
+      return i.reply({ content: `Entre em <#${fila.channel.id}> para controlar o rádio.`, flags: MessageFlags.Ephemeral });
+    }
+
+    if (acao === 'pular') {
+      await i.deferUpdate();
+      fila.node.skip(); // o painel novo sai sozinho quando a próxima começar
+      return;
+    }
+    if (acao === 'pausar') {
+      fila.node.setPaused(!fila.node.isPaused());
+      return i.update(painelRadio(fila));
+    }
+    // desligar: tira as músicas que o rádio escolheu; as pedidas com /tocar continuam.
+    delete fila.metadata.radio;
+    for (const t of fila.tracks.toArray()) if (!t.requestedBy) fila.removeTrack(t);
+    return i.update({ content: `⏹️ Rádio desligado por ${i.user}. ${fila.tracks.size ? 'A fila normal continua.' : 'Esta é a última música.'}`, components: [], allowedMentions: { parse: [] } });
   },
 };

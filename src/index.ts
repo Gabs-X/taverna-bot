@@ -13,7 +13,7 @@ import { botaoGrupo, grupo, modalGrupo } from './recursos/grupos.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
-import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
+import { botaoRadio, iniciarMusica, musica, radio, tocar } from './recursos/musica.ts';
 import { botaoQuiz, quiz } from './recursos/quiz.ts';
 import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
@@ -28,11 +28,11 @@ if (!token) {
 }
 
 const COMANDOS: Comando[] = [
-  setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
+  setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio];
 const MODAIS: HandlerModal[] = [modalGrupo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
