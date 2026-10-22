@@ -31,6 +31,26 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Log de tudo no #logs (quem, o que, onde e se deu erro: comandos, botões, formulários, calls, níveis, lembretes, entradas e saídas), `/logs membro quantidade so_erros` para consultar os últimos 30 dias. Boas-vindas com cargo automático, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
+## Versões
+
+O bot segue versões (v1.0.0, v1.1.0...). Para lançar uma nova, com tudo já em commit:
+
+```
+npm run lancar -- minor   # funções novas (patch = correções, major = mudança grande)
+```
+
+O script escreve no [CHANGELOG.md](CHANGELOG.md) os commits desde a última versão, sobe o número, faz o commit "Versão vX.Y.Z", marca a tag e envia ao GitHub. O bot reinicia sozinho e anuncia a versão no #novidades e no grupo do WhatsApp. `/versao` mostra a versão atual e o que mudou.
+
+### Aviso no WhatsApp (opcional)
+
+Usa a biblioteca não oficial Baileys: prefira um número extra. Conecta só para mandar a mensagem e desconecta.
+
+```
+npm run whatsapp:conectar               # mostra o QR code: escaneie em WhatsApp → Aparelhos conectados
+npm run whatsapp:grupo -- "Nome do grupo"
+npm run whatsapp:desconectar            # para de usar o WhatsApp
+```
+
 ## Rodar no Windows em segundo plano
 
 O supervisor (`scripts/supervisor.mjs`) mantém o bot ligado sem janela: reinicia sozinho quando você salva algo em `src/`, `assets/`, `.env` ou `package.json`, religa se o bot cair e grava tudo em `dados/bot.log`. Não precisa de administrador.
