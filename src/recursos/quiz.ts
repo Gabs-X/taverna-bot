@@ -19,6 +19,7 @@ import { alternativas, esconderNome, limparHtml, svgRecorte } from '../lib/quiz.
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { darMoedas, moedas } from './economia.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
+import { verificarConquistas } from './conquistas.ts';
 
 
 const TEMPO_RODADA = 20_000;
@@ -111,6 +112,7 @@ async function jogarRodada(canal: TextChannel, numero: number, total: number, mo
     placar.set(u, (placar.get(u) ?? 0) + 1);
     db.prepare('INSERT INTO quiz_pontos (guild_id, user_id, acertos) VALUES (?, ?, 1) ON CONFLICT DO UPDATE SET acertos = acertos + 1').run(canal.guildId, u);
     darMoedas(canal.guildId, u, PREMIO);
+    await verificarConquistas(canal.guild, u).catch(() => {});
   }
 }
 

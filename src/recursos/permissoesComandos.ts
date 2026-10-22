@@ -33,6 +33,8 @@ function mapa(): Record<string, string[]> {
     gotica: [atividade('goticas')],
     loja: [atividade('goticas'), economia],
     quiz: [atividade('quiz')],
+    palavra: [atividade('quiz')],
+    cassino: [economia],
     ...Object.fromEntries([...CAMPEOES.map((c) => c.comando), 'vitimas'].map((c) => [c, [atividade('campeoes')]])),
     ...Object.fromEntries(['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'].map((c) => [c, [economia]])),
     rolar: [CARGOS.aventureiro.nome, CARGOS.daggerheart.nome],

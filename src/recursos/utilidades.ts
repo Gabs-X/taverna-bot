@@ -299,6 +299,7 @@ const AJUDA: [string, string][] = [
   ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/loja taverna` cor do nome e XP em dobro · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
   ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
   ['💡 Sugestões', '`/sugestao ideia:` manda uma ideia para o bot; a galera vota em #sugestoes e a staff aprova'],
+  ['🎰 Jogos', '`/cassino moeda | slots | roleta | limite` (até 2.000 moedas por dia) · `/palavra chutar | ver | ranking` (palavra do dia) · `/conquistas`'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
   ['👥 Subgrupos', '`/grupo criar` (admin aprova) · `/grupo entrar | sair | lista` · dono: `canal` (pede canal novo) · `renomear` · `convidar` · `remover` · `privacidade` · `transferir` · `apagar`. Lista e botões em #subgrupos'],
   ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-suas-atividades'],

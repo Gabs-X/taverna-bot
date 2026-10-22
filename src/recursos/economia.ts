@@ -29,6 +29,7 @@ import { canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
+import { verificarConquistas } from './conquistas.ts';
 
 export type Carteira = {
   guild_id: string;
@@ -88,6 +89,7 @@ async function ganharAtividade(membro: GuildMember, xp: number, ganhoMoedas: num
   db.prepare(`UPDATE carteira SET nivel = ?, xp = ?, moedas = moedas + ?, ${extra} WHERE guild_id = ? AND user_id = ?`).run(
     r.nivel, r.xp, ganhoMoedas, membro.guild.id, membro.id,
   );
+  await verificarConquistas(membro.guild, membro.id).catch(() => {});
   if (!r.subiu.length) return;
   const cargoNovo = await atualizarCargoNivel(membro, r.nivel);
   registrar({ guild: membro.guild, userId: membro.id, tipo: 'auto', acao: `⭐ subiu para o nível ${r.nivel}${cargoNovo ? ` e ganhou o cargo ${cargoNovo}` : ''}` });
@@ -156,6 +158,7 @@ export const daily: Comando = {
     );
     const fogo = r.sequencia > 1 ? ` 🔥 ${r.sequencia} dias seguidos!` : '';
     const perdeu = r.perdeuSequencia ? ' (a sequência zerou, ficou mais de 2 dias sem vir)' : '';
+    await verificarConquistas(i.guild!, i.user.id).catch(() => {});
     return i.reply(`💰 ${i.user} pegou o daily: **${moedas(i.guild, r.moedas)}**.${fogo}${perdeu}`);
   },
 };

@@ -20,7 +20,9 @@ const TABELA: [string[], string[]][] = [
   // Atividades
   [['gotica', 'loja gotica'], [CANAIS.goticas]],
   [['loja taverna'], [CANAIS.economia]],
-  [['quiz'], [CANAIS.quiz]],
+  [['quiz', 'palavra'], [CANAIS.quiz]],
+  [['cassino'], [CANAIS.economia]],
+  [['conquistas'], [CANAIS.economia, CANAIS.comandos]],
   [[...CAMPEOES.map((c) => c.comando), 'vitimas'], [CANAIS.campeoes]],
   [['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'], [CANAIS.economia]],
 

@@ -276,6 +276,28 @@ const MIGRACOES: (() => void)[] = [
       )
     `);
   },
+
+  // 3 (22/10/2026): cassino, conquistas, palavra do dia e contadores (duelos vencidos, jackpots...).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS cassino_dia (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL, dia TEXT NOT NULL, apostado INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id, dia)
+      );
+      CREATE TABLE IF NOT EXISTS estatisticas (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL, chave TEXT NOT NULL, valor INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id, chave)
+      );
+      CREATE TABLE IF NOT EXISTS conquistas (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL, conquista TEXT NOT NULL, em INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, user_id, conquista)
+      );
+      CREATE TABLE IF NOT EXISTS palavra_jogos (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL, dia TEXT NOT NULL, chutes TEXT NOT NULL DEFAULT '[]', acertou INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id, dia)
+      );
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
