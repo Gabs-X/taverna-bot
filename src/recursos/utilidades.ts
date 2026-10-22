@@ -12,7 +12,7 @@ import {
   type Message,
 } from 'discord.js';
 import { CANAIS, JOGOS, nomeCargoJogo } from '../config.ts';
-import { cargoPorNome } from '../lib/servidor.ts';
+import { cargoPorNome, emoji } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 
 const embaralhar = <T>(lista: T[]) => {
@@ -57,7 +57,7 @@ export const lfg: Comando = {
     const embed = new EmbedBuilder()
       .setColor(jogo.cor)
       .setTitle(`${jogo.emoji} Bora de ${jogo.nome}?`)
-      .setDescription(`${i.user} está chamando!${recado ? `\n> ${recado}` : ''}`)
+      .setDescription(`${emoji(i.guild, 'hype', '🔥')} ${i.user} está chamando!${recado ? `\n> ${recado}` : ''}`)
       .addFields({ name: `Confirmados (0/${vagas})`, value: '_ninguém ainda_' })
       .setFooter({ text: `Entre em "${CANAIS.criarCall}" quando fechar o grupo.` });
 
@@ -309,7 +309,7 @@ export const ajuda: Comando = {
   async executar(i) {
     const embed = new EmbedBuilder()
       .setColor(0xe67e22)
-      .setTitle('🍺 Taverneiro · comandos')
+      .setTitle(`${emoji(i.guild, 'taverna_cerveja', '🍺')} Taverneiro · comandos`)
       .addFields(AJUDA.map(([name, value]) => ({ name, value })));
     return i.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },

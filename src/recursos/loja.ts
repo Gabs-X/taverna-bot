@@ -1,11 +1,10 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { formatarMoedas } from '../lib/economia.ts';
 import { avisoCanalErrado } from '../lib/servidor.ts';
 import { ENCAIXES, equipar, ITENS, itemPorId, lerEquipados, type Encaixe, type IdItem } from '../lib/loja.ts';
 import type { Comando } from '../tipos.ts';
-import { carteira, gastarMoedas } from './economia.ts';
+import { carteira, gastarMoedas, moedas } from './economia.ts';
 import { cartao, estadoDe, ler } from './gotica.ts';
 
 const SEM_GOTICA = 'Você precisa de uma gótica para usar a loja. Adote com `/gotica adotar`.';
@@ -50,14 +49,14 @@ export const loja: Comando = {
       const embed = new EmbedBuilder()
         .setColor(0x9b59b6)
         .setTitle('🛍️ Loja da Gótica')
-        .setDescription(`Seu saldo: **${formatarMoedas(carteira(g, u).moedas)}** · ganhe mais com \`/daily\`, \`/trabalhar\`, conversando e em call.`)
+        .setDescription(`Seu saldo: **${moedas(i.guild, carteira(g, u).moedas)}** · ganhe mais com \`/daily\`, \`/trabalhar\`, conversando e em call.`)
         .addFields(
           (Object.keys(ENCAIXES) as Encaixe[]).map((enc) => ({
             name: ENCAIXES[enc],
             value: ITENS.filter((it) => it.encaixe === enc)
               .map((it) => {
                 const status = eq[enc] === it.id ? ' · ✅ equipado' : meus.has(it.id) ? ' · comprado' : '';
-                return `${it.emoji} **${it.nome}** · ${formatarMoedas(it.preco)}${status}`;
+                return `${it.emoji} **${it.nome}** · ${moedas(i.guild, it.preco)}${status}`;
               })
               .join('\n'),
           })),
@@ -88,10 +87,10 @@ export const loja: Comando = {
       if (temItem(g, u, id)) return i.reply({ content: `Você já tem ${item.emoji} ${item.nome}. Use \`/loja equipar\`.`, flags: MessageFlags.Ephemeral });
       if (!gastarMoedas(g, u, item.preco)) {
         const saldo = carteira(g, u).moedas;
-        return i.reply({ content: `Faltam ${formatarMoedas(item.preco - saldo)} para ${item.nome} (você tem ${formatarMoedas(saldo)}).`, flags: MessageFlags.Ephemeral });
+        return i.reply({ content: `Faltam ${moedas(i.guild, item.preco - saldo)} para ${item.nome} (você tem ${moedas(i.guild, saldo)}).`, flags: MessageFlags.Ephemeral });
       }
       db.prepare('INSERT INTO gotica_itens (guild_id, user_id, item) VALUES (?, ?, ?)').run(g, u, id);
-      aviso = `🛍️ **${l.nome}** ganhou ${item.emoji} **${item.nome}** (${formatarMoedas(item.preco)}) e já está usando!`;
+      aviso = `🛍️ **${l.nome}** ganhou ${item.emoji} **${item.nome}** (${moedas(i.guild, item.preco)}) e já está usando!`;
     } else {
       if (!temItem(g, u, id)) return i.reply({ content: `Você ainda não tem ${item.nome}. Compre com \`/loja comprar\`.`, flags: MessageFlags.Ephemeral });
       aviso = `👗 **${l.nome}** colocou ${item.emoji} **${item.nome}**.`;

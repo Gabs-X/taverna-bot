@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado } from '../lib/servidor.ts';
+import { avisoCanalErrado, emoji } from '../lib/servidor.ts';
 import {
   ACOES,
   aplicarAcao,
@@ -55,7 +55,8 @@ export type Linha = {
 };
 
 const COR = { feliz: 0x9b59b6, neutra: 0x6c3483, triste: 0x34495e } as const;
-const ROSTO = { feliz: '😊 feliz', neutra: '😐 de boa', triste: '😢 tristinha' } as const;
+const ROSTO = { feliz: 'feliz', neutra: 'de boa', triste: 'tristinha' } as const;
+const CARINHA = { feliz: ['gotica_feliz', '😊'], neutra: ['gotica_bruxa', '😐'], triste: ['gotica_triste', '😢'] } as const;
 const ROTULOS: Record<Parte, string> = {
   penteado: 'Penteado',
   cabelo: 'Cor do cabelo',
@@ -128,11 +129,11 @@ export function cartao(l: Linha, e: Estado, extra?: string) {
 
   const embed = new EmbedBuilder()
     .setColor(COR[humor])
-    .setTitle(`🦇 ${l.nome} · nível ${e.nivel}`)
+    .setTitle(`${emoji(l.guild_id, 'morcego_fofo', '🦇')} ${l.nome} · nível ${e.nivel}`)
     .setDescription(
       [
         extra,
-        `De <@${l.user_id}> · ${l.personalidade}, ${ROSTO[humor]}`,
+        `De <@${l.user_id}> · ${l.personalidade}, ${emoji(l.guild_id, CARINHA[humor][0], CARINHA[humor][1])} ${ROSTO[humor]}`,
         '',
         `🍰 Barriga  ${barra(s.barriga)}`,
         `🖤 Humor    ${barra(s.humor)}`,
@@ -213,7 +214,7 @@ export const gotica: Comando = {
       const l = ler(g, i.user.id)!;
       // Gerar a imagem leva ~0,5 s: responde "pensando" antes para não estourar os 3 s do Discord.
       await i.deferReply();
-      return i.editReply(cartao(l, estadoDe(l), `🖤 **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
+      return i.editReply(cartao(l, estadoDe(l), `${emoji(i.guild, 'gotica_feliz', '🖤')} **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
     }
 
     if (sub === 'ver') {
@@ -238,7 +239,7 @@ export const gotica: Comando = {
       const nova = { ...l, aparencia, personalidade };
       const mudouJeito = personalidade !== l.personalidade ? ` E voltou ${personalidade}, agora gosta de ${gostoDe(personalidade)}.` : '';
       await i.deferReply();
-      return i.editReply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
+      return i.editReply(cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
     }
 
     if (sub === 'customizar') {
@@ -260,7 +261,7 @@ export const gotica: Comando = {
       db.prepare('UPDATE goticas SET aparencia = ? WHERE guild_id = ? AND user_id = ?').run(json, g, i.user.id);
       const nova = { ...l, aparencia: json };
       await i.deferReply();
-      return i.editReply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
+      return i.editReply(cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
     }
 
     if (sub === 'renomear') {
@@ -276,7 +277,7 @@ export const gotica: Comando = {
     const medalhas = ['🥇', '🥈', '🥉'];
     const embed = new EmbedBuilder()
       .setColor(COR.feliz)
-      .setTitle('🦇 Ranking das góticas')
+      .setTitle(`${emoji(i.guild, 'morcego_fofo', '🦇')} Ranking das góticas`)
       .setDescription(top.map((l, k) => `${medalhas[k] ?? `**${k + 1}.**`} **${l.nome}** · nível ${l.nivel} · de <@${l.user_id}>`).join('\n'));
     return i.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   },
@@ -303,7 +304,7 @@ export const botaoGotica: HandlerBotao = {
     const linhas = [`${ACOES[acao].emoji} **${l.nome}** ${r.fala}. (+${r.xpGanho} XP)`];
     for (const n of r.subiu) {
       const ganhou = DESBLOQUEIOS.find((d) => d.nivel === n);
-      linhas.push(`🎉 **Subiu para o nível ${n}!**${ganhou ? ` Ganhou ${ganhou.texto}.` : ''}`);
+      linhas.push(`${emoji(i.guild, 'level_up', '🎉')} **Subiu para o nível ${n}!**${ganhou ? ` Ganhou ${ganhou.texto}.` : ''}`);
     }
     await i.deferUpdate();
     return i.editReply({ ...cartao(l, r.estado, linhas.join('\n') + '\n'), attachments: [] });

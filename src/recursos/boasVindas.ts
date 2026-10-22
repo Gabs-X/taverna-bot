@@ -1,6 +1,6 @@
 import { EmbedBuilder, type GuildMember, type PartialGuildMember } from 'discord.js';
 import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
-import { canalTexto, cargoPorNome } from '../lib/servidor.ts';
+import { canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import { registrar } from './registro.ts';
 
 const FRASES = [
@@ -24,12 +24,12 @@ export async function aoEntrar(membro: GuildMember) {
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
     .setAuthor({ name: membro.user.username, iconURL: membro.displayAvatarURL() })
-    .setTitle(`Bem-vindo(a) à ${NOME_SERVIDOR}!`)
+    .setTitle(`${emoji(membro.guild, 'taverna_cerveja', '🍺')} Bem-vindo(a) à ${NOME_SERVIDOR}!`)
     .setDescription(
-      `${membro}, ${frase}\n\n` +
+      `${emoji(membro.guild, 'maluco', '🤪')} ${membro}, ${frase}\n\n` +
         `${regras ? `📜 Leia as ${regras}\n` : ''}` +
         `${escolha ? `🎮 Escolha seus jogos em ${escolha}\n` : ''}` +
-        `🔊 Para jogar, entre em **${CANAIS.criarCall}**`,
+        `${emoji(membro.guild, 'call', '🔊')} Para jogar, entre em **${CANAIS.criarCall}**`,
     )
     .setThumbnail(membro.displayAvatarURL({ size: 256 }))
     .setFooter({ text: `Membro nº ${membro.guild.memberCount}` });

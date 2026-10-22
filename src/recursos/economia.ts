@@ -25,7 +25,7 @@ import {
   trabalhar as sortearTrabalho,
   xpDoNivel,
 } from '../lib/economia.ts';
-import { avisoCanalErrado, canalTexto, cargoPorNome } from '../lib/servidor.ts';
+import { avisoCanalErrado, canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 
@@ -42,6 +42,9 @@ export type Carteira = {
   sequencia: number;
   ultimo_trabalho: number;
 };
+
+/** Valor em moedas com o emoji da moeda da Taverna (ou 🪙 se o servidor ainda não tem). */
+export const moedas = (guild: Guild | null, n: number) => formatarMoedas(n, emoji(guild, 'moeda_taverna', '🪙'));
 
 // ---------- Carteira (usada também pela loja, gótica, quiz...) ----------
 
@@ -76,11 +79,11 @@ async function atualizarCargoNivel(membro: GuildMember, nivel: number) {
   return merecido && merecido.nivel === nivel ? merecido.nome : undefined;
 }
 
-async function ganharAtividade(membro: GuildMember, xp: number, moedas: number, aviso: TextBasedChannel | undefined, extra: string) {
+async function ganharAtividade(membro: GuildMember, xp: number, ganhoMoedas: number, aviso: TextBasedChannel | undefined, extra: string) {
   const c = carteira(membro.guild.id, membro.id);
   const r = somarXp(c.nivel, c.xp, xp);
   db.prepare(`UPDATE carteira SET nivel = ?, xp = ?, moedas = moedas + ?, ${extra} WHERE guild_id = ? AND user_id = ?`).run(
-    r.nivel, r.xp, moedas, membro.guild.id, membro.id,
+    r.nivel, r.xp, ganhoMoedas, membro.guild.id, membro.id,
   );
   if (!r.subiu.length) return;
   const cargoNovo = await atualizarCargoNivel(membro, r.nivel);
@@ -91,7 +94,7 @@ async function ganharAtividade(membro: GuildMember, xp: number, moedas: number, 
   const destino = canalTexto(membro.guild, CANAIS.levelUp) ?? aviso;
   if (destino && 'send' in destino) {
     await destino.send({
-      content: `⭐ ${membro} subiu para o **nível ${r.nivel}**! Ganhou ${formatarMoedas(bonus)}.${cargoNovo ? ` E agora é **${cargoNovo}**!` : ''}`,
+      content: `${emoji(membro.guild, 'level_up', '⭐')} ${membro} subiu para o **nível ${r.nivel}**! Ganhou ${moedas(membro.guild, bonus)}.${cargoNovo ? ` E agora é **${cargoNovo}**!` : ''}`,
       allowedMentions: { users: [membro.id] },
     }).catch(() => {});
   }
@@ -152,7 +155,7 @@ export const daily: Comando = {
     );
     const fogo = r.sequencia > 1 ? ` 🔥 ${r.sequencia} dias seguidos!` : '';
     const perdeu = r.perdeuSequencia ? ' (a sequência zerou, ficou mais de 2 dias sem vir)' : '';
-    return i.reply(`💰 ${i.user} pegou o daily: **${formatarMoedas(r.moedas)}**.${fogo}${perdeu}`);
+    return i.reply(`💰 ${i.user} pegou o daily: **${moedas(i.guild, r.moedas)}**.${fogo}${perdeu}`);
   },
 };
 
@@ -165,7 +168,7 @@ export const trabalhar: Comando = {
     const r = sortearTrabalho(c.ultimo_trabalho, Date.now());
     if (!r.ok) return i.reply({ content: `😮‍💨 Você ainda está cansado. Volte ${tempo(r.liberaEm)}.`, flags: MessageFlags.Ephemeral });
     db.prepare('UPDATE carteira SET moedas = moedas + ?, ultimo_trabalho = ? WHERE guild_id = ? AND user_id = ?').run(r.moedas, Date.now(), i.guildId, i.user.id);
-    return i.reply(`🛠️ ${i.user} ${r.texto} e ganhou **${formatarMoedas(r.moedas)}**.`);
+    return i.reply(`🛠️ ${i.user} ${r.texto} e ganhou **${moedas(i.guild, r.moedas)}**.`);
   },
 };
 
@@ -184,7 +187,7 @@ export const carteiraCmd: Comando = {
       .setColor(0xf1c40f)
       .setAuthor({ name: u.displayName, iconURL: u.displayAvatarURL() })
       .addFields(
-        { name: 'Moedas', value: formatarMoedas(c.moedas), inline: true },
+        { name: 'Moedas', value: moedas(i.guild, c.moedas), inline: true },
         { name: 'Nível', value: `${c.nivel} (${c.xp}/${xpDoNivel(c.nivel)} XP)`, inline: true },
         { name: 'Ranking', value: `#${posicao(i.guildId!, u.id)}`, inline: true },
         { name: 'Mensagens', value: `${c.mensagens}`, inline: true },
@@ -209,10 +212,10 @@ export const pix: Comando = {
     const valor = i.options.getInteger('valor', true);
     if (para.bot || para.id === i.user.id) return i.reply({ content: 'Pix só para outra pessoa (bots não têm carteira).', flags: MessageFlags.Ephemeral });
     if (!gastarMoedas(i.guildId!, i.user.id, valor)) {
-      return i.reply({ content: `Saldo insuficiente: você tem ${formatarMoedas(carteira(i.guildId!, i.user.id).moedas)}.`, flags: MessageFlags.Ephemeral });
+      return i.reply({ content: `Saldo insuficiente: você tem ${moedas(i.guild, carteira(i.guildId!, i.user.id).moedas)}.`, flags: MessageFlags.Ephemeral });
     }
     darMoedas(i.guildId!, para.id, valor);
-    return i.reply({ content: `💸 ${i.user} mandou **${formatarMoedas(valor)}** para ${para}.`, allowedMentions: { users: [para.id] } });
+    return i.reply({ content: `💸 ${i.user} mandou **${moedas(i.guild, valor)}** para ${para}.`, allowedMentions: { users: [para.id] } });
   },
 };
 
@@ -275,10 +278,10 @@ export const top: Comando = {
     if (!linhas.length) return i.reply({ content: 'Ninguém pontuou ainda. Bora conversar!', flags: MessageFlags.Ephemeral });
     const medalhas = ['🥇', '🥈', '🥉'];
     const valor = (c: Carteira) =>
-      por === 'moedas' ? formatarMoedas(c.moedas) : por === 'call' ? `${Math.floor(c.minutos_call / 60)} h ${c.minutos_call % 60} min` : `nível ${c.nivel}`;
+      por === 'moedas' ? moedas(i.guild, c.moedas) : por === 'call' ? `${Math.floor(c.minutos_call / 60)} h ${c.minutos_call % 60} min` : `nível ${c.nivel}`;
     const embed = new EmbedBuilder()
       .setColor(0xf1c40f)
-      .setTitle({ nivel: '⭐ Top níveis', moedas: '💰 Top moedas', call: '🔊 Top tempo em call' }[por]!)
+      .setTitle({ nivel: `${emoji(i.guild, 'level_up', '⭐')} Top níveis`, moedas: `${emoji(i.guild, 'moeda_taverna', '💰')} Top moedas`, call: `${emoji(i.guild, 'call', '🔊')} Top tempo em call` }[por]!)
       .setDescription(linhas.map((c, k) => `${medalhas[k] ?? `**${k + 1}.**`} <@${c.user_id}> · ${valor(c)}`).join('\n'));
     return i.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   },

@@ -12,7 +12,7 @@ import {
 } from 'discord.js';
 import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
 import { db } from '../db.ts';
-import { canalTexto, cargoPorNome, ehMestre } from '../lib/servidor.ts';
+import { canalTexto, cargoPorNome, ehMestre, emoji } from '../lib/servidor.ts';
 import {
   dataValida,
   ehBissexto,
@@ -345,7 +345,7 @@ async function darParabens(client: Client) {
       .setTitle(`🎂 Feliz aniversário, ${membro.displayName}!`)
       .setDescription(`${membro}, ${PARABENS[Math.floor(Math.random() * PARABENS.length)]}\n\nDeixem os parabéns aí embaixo! 🎉`)
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
-    await canal.send({ content: `🎉 @here hoje é aniversário do(a) ${membro}!`, embeds: [embed], allowedMentions: { parse: ['everyone'], users: [membro.id] } }).catch(() => {});
+    await canal.send({ content: `${emoji(guild, 'hype', '🎉')} @here hoje é aniversário do(a) ${membro}!`, embeds: [embed], allowedMentions: { parse: ['everyone'], users: [membro.id] } }).catch(() => {});
     registrar({ guild: guild!, userId: membro.id, tipo: 'auto', acao: '🎂 recebeu os parabéns de aniversário', canalId: canal.id });
   }
 }

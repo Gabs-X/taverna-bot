@@ -65,4 +65,4 @@ export function trabalhar(ultimo: number, agora: number, r: Sorteio = Math.rando
   return { ok: true as const, texto: t.texto, moedas: entre(t.min, t.max, r) };
 }
 
-export const formatarMoedas = (n: number) => `🪙 ${n.toLocaleString('pt-BR')}`;
+export const formatarMoedas = (n: number, icone = '🪙') => `${icone} ${n.toLocaleString('pt-BR')}`;

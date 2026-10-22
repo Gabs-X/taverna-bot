@@ -25,6 +25,7 @@ import {
   type Resistencia,
 } from '../lib/dnd35.ts';
 import type { Comando } from '../tipos.ts';
+import { emoji } from '../lib/servidor.ts';
 
 // ---------- Fichas de D&D 3.5 ----------
 
@@ -259,11 +260,11 @@ async function responderRolagem(i: ChatInputCommandInteraction, titulo: string, 
     return i.reply({ content: `🎲 ${(e as Error).message}`, flags: MessageFlags.Ephemeral });
   }
   const nat = natural ? r.d20 : undefined;
-  const destaque = nat === 20 ? '\n✨ **20 natural!**' : nat === 1 ? '\n💀 **1 natural!**' : '';
+  const destaque = nat === 20 ? `\n${emoji(i.guild, 'd20_critico', '✨')} **20 natural!**` : nat === 1 ? `\n${emoji(i.guild, 'd20_falha', '💀')} **1 natural!**` : '';
   const embed = new EmbedBuilder()
     .setColor(nat === 20 ? 0xf1c40f : nat === 1 ? 0x992d22 : 0x8e44ad)
     .setAuthor(autor(i))
-    .setTitle(`${titulo}: ${r.total}`)
+    .setTitle(`${emoji(i.guild, 'd20', '🎲')} ${titulo}: ${r.total}`)
     .setDescription(`\`${r.expressao}\`\n${formatar(r)} = **${r.total}**${destaque}${extra}`.slice(0, 4000));
   return i.reply({ embeds: [embed] });
 }
@@ -396,7 +397,7 @@ export const teste: Comando = {
     const arma = i.options.getString('arma');
     const ataque = rolar(d20com(bonus));
     const natural = ataque.d20!;
-    let nota = natural === 20 ? '\n✅ Acerto automático.' : natural === 1 ? '\n❌ Erro automático.' : '';
+    let nota = natural === 20 ? `\n${emoji(i.guild, 'd20_critico', '✅')} Acerto automático.` : natural === 1 ? `\n${emoji(i.guild, 'd20_falha', '❌')} Erro automático.` : '';
     if (natural >= margem) {
       const confirmacao = rolar(d20com(bonus));
       nota += `\n⚠️ **Ameaça de crítico!** Confirmação: ${formatar(confirmacao)} = **${confirmacao.total}**. Se acertar a CA, é crítico.`;

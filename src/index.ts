@@ -19,6 +19,7 @@ import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.t
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
+import { registrarCliente } from './lib/servidor.ts';
 import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -43,11 +44,13 @@ const client = new Client({
     GatewayIntentBits.GuildPresences, // privilegiada: nomear a call com o jogo
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages, // não privilegiada: XP por mensagem (o texto não é lido)
+    GatewayIntentBits.GuildExpressions, // não privilegiada: mantém a lista de emojis do servidor atualizada
   ],
   partials: [Partials.GuildMember],
 });
 
 client.once(Events.ClientReady, async (c) => {
+  registrarCliente(c);
   // Comandos registrados por servidor aparecem na hora (os globais podem demorar).
   const corpo = COMANDOS.map((cmd) => cmd.data.toJSON());
   for (const guild of c.guilds.cache.values()) await guild.commands.set(corpo);

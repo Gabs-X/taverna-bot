@@ -21,12 +21,12 @@ import {
   type AcaoDuelo,
   type Duelo,
 } from '../lib/duelo.ts';
-import { formatarMoedas } from '../lib/economia.ts';
 import { humorDe, statusAgora } from '../lib/gotica.ts';
 import { juntarRetratos } from '../lib/goticaDupla.ts';
 import type { HandlerBotao } from '../tipos.ts';
-import { darMoedas } from './economia.ts';
+import { darMoedas, moedas } from './economia.ts';
 import { ajustarGotica, estadoDe, ler, retratoSvg, type Linha } from './gotica.ts';
+import { emoji } from '../lib/servidor.ts';
 
 const ENERGIA_DUELO = 20;
 const PRAZO_CONVITE = 2 * 60_000;
@@ -71,7 +71,7 @@ export async function executarDuelo(i: ChatInputCommandInteraction) {
   const embed = new EmbedBuilder()
     .setColor(0xf5b544)
     .setTitle(`⚔️ ${a.nome} desafiou ${b.nome} para um duelo!`)
-    .setDescription(`<@${a.user_id}> (nível ${a.nivel}) contra <@${b.user_id}> (nível ${b.nivel}).\nQuem vence leva XP e ${formatarMoedas(60)}. Cada duelo gasta ${ENERGIA_DUELO} de energia.`)
+    .setDescription(`<@${a.user_id}> (nível ${a.nivel}) contra <@${b.user_id}> (nível ${b.nivel}).\nQuem vence leva XP e ${moedas(i.guild, 60)}. Cada duelo gasta ${ENERGIA_DUELO} de energia.`)
     .setImage('attachment://duelo.png')
     .setFooter({ text: 'O convite vale por 2 minutos.' });
   const botoes = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -153,10 +153,10 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
   const humores: ['feliz' | 'triste', 'feliz' | 'triste'] = venceu === 'a' ? ['feliz', 'triste'] : ['triste', 'feliz'];
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
-    .setTitle(`🏆 ${d[venceu].nome} venceu o duelo!`)
+    .setTitle(`${emoji(mensagem.guild, 'gg', '🏆')} ${d[venceu].nome} venceu o duelo!`)
     .setDescription(
       [...d.log, motivo].filter(Boolean).join('\n') +
-        `\n\n**${d[venceu].nome}** ganhou 30 XP e ${formatarMoedas(60)} para <@${d[venceu].id}>. **${d[perdeu].nome}** ganhou 10 XP pela coragem.` +
+        `\n\n**${d[venceu].nome}** ganhou 30 XP e ${moedas(mensagem.guild, 60)} para <@${d[venceu].id}>. ${emoji(mensagem.guild, 'rip', '🪦')} **${d[perdeu].nome}** ganhou 10 XP pela coragem.` +
         subiuTexto(d[venceu].nome, subiuV) +
         subiuTexto(d[perdeu].nome, subiuP),
     )
@@ -249,9 +249,9 @@ export async function executarVisita(i: ChatInputCommandInteraction) {
 
   const embed = new EmbedBuilder()
     .setColor(0xe8436f)
-    .setTitle(`🏠 ${a.nome} foi visitar ${b.nome}!`)
+    .setTitle(`${emoji(i.guild, 'coracao_gotico', '🏠')} ${a.nome} foi visitar ${b.nome}!`)
     .setDescription(
-      `Elas ${sortear(VISITAS)}. 🖤\nAs duas ganharam 10 XP e ficaram mais felizes; <@${a.user_id}> ganhou ${formatarMoedas(15)} pela gentileza.` +
+      `Elas ${sortear(VISITAS)}. ${emoji(i.guild, 'coracao_gotico', '🖤')}\nAs duas ganharam 10 XP e ficaram mais felizes; <@${a.user_id}> ganhou ${moedas(i.guild, 15)} pela gentileza.` +
         subiuTexto(a.nome, subiuA) +
         subiuTexto(b.nome, subiuB),
     )

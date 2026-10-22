@@ -14,12 +14,11 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado } from '../lib/servidor.ts';
+import { avisoCanalErrado, emoji } from '../lib/servidor.ts';
 import { campeoes, detalheCampeao, skinsComSplash, urlSplash, type Campeao } from '../lib/ddragon.ts';
-import { formatarMoedas } from '../lib/economia.ts';
 import { alternativas, esconderNome, limparHtml, svgRecorte } from '../lib/quiz.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
-import { darMoedas } from './economia.ts';
+import { darMoedas, moedas } from './economia.ts';
 
 db.exec(`CREATE TABLE IF NOT EXISTS quiz_pontos (
   guild_id TEXT NOT NULL, user_id TEXT NOT NULL, acertos INTEGER NOT NULL DEFAULT 0,
@@ -97,8 +96,8 @@ async function jogarRodada(canal: TextChannel, numero: number, total: number, mo
     .setTitle(`Era ${certa.name}, ${certa.title}!`)
     .setDescription(
       rodada.acertou
-        ? `🎯 <@${rodada.acertou.id}> acertou em ${(rodada.acertou.ms / 1000).toFixed(1)} s e ganhou ${formatarMoedas(PREMIO)}.`
-        : '⌛ Ninguém acertou.',
+        ? `🎯 <@${rodada.acertou.id}> acertou em ${(rodada.acertou.ms / 1000).toFixed(1)} s e ganhou ${moedas(canal.guild, PREMIO)}.`
+        : `${emoji(canal.guild, 'caveira', '⌛')} Ninguém acertou.`,
     )
     .setImage(p.revelar)
     .setFooter({ text: `Rodada ${numero}/${total}` });
@@ -164,7 +163,7 @@ export const quiz: Comando = {
     }
 
     quizzes.add(canal.id);
-    await i.reply(`🧠 **Quiz de campeões!** ${total} rodada(s), ${TEMPO_RODADA / 1000} s cada. Quem acertar primeiro leva ${formatarMoedas(PREMIO)}. Valendo!`);
+    await i.reply(`🧠 **Quiz de campeões!** ${total} rodada(s), ${TEMPO_RODADA / 1000} s cada. Quem acertar primeiro leva ${moedas(i.guild, PREMIO)}. Valendo!`);
     const placar = new Map<string, number>();
     try {
       for (let n = 1; n <= total; n++) {
@@ -181,7 +180,7 @@ export const quiz: Comando = {
     const final = [...placar.entries()].sort((a, b) => b[1] - a[1]);
     const embed = new EmbedBuilder()
       .setColor(0xf1c40f)
-      .setTitle('🏁 Fim do quiz!')
+      .setTitle(`${emoji(canal.guild, 'gg', '🏁')} Fim do quiz!`)
       .setDescription(final.length ? final.map(([u, p], k) => `${['🥇', '🥈', '🥉'][k] ?? `**${k + 1}.**`} <@${u}> · ${p} acerto(s)`).join('\n') : 'Ninguém acertou nada. Vergonha da Taverna.');
     return canal.send({ embeds: [embed], allowedMentions: { parse: [] } });
   },

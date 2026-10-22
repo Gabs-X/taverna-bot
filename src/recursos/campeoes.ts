@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado } from '../lib/servidor.ts';
+import { avisoCanalErrado, emoji } from '../lib/servidor.ts';
 import { skinsComSplash, urlIcone, urlSplash, versaoAtual } from '../lib/ddragon.ts';
 import type { Comando } from '../tipos.ts';
 
@@ -29,13 +29,14 @@ type Campeao = {
   descricao: string;
   cor: number;
   emoji: string;
+  emojiTaverna?: string; // emoji próprio do servidor que substitui o comum, se existir
   golpe: (alvo: string) => string;
   falas: string[];
 };
 
 export const CAMPEOES: Campeao[] = [
   {
-    comando: 'asheap', id: 'Ashe', nome: 'Ashe AP', cor: 0x5bc0eb, emoji: '🏹',
+    comando: 'asheap', id: 'Ashe', nome: 'Ashe AP', cor: 0x5bc0eb, emoji: '🏹', emojiTaverna: 'flechada',
     descricao: 'Chama a Ashe AP pra resolver o problema com alguém',
     golpe: (a) => `🏹❄️ **Acabei de encher o rabo de ${a} de flechas.**`,
     falas: [
@@ -166,6 +167,7 @@ async function executarCampeao(c: Campeao, i: ChatInputCommandInteraction) {
     vezes = (db.prepare('SELECT vezes FROM vitimas WHERE guild_id = ? AND user_id = ? AND campeao = ?').get(i.guildId, alvo.id, c.id) as { vezes: number }).vezes;
     const quem = alvo.id === i.user.id ? `${alvo}, que pediu pra apanhar` : `${alvo}`;
     fala = `${c.golpe(quem)}\n${sortear(c.falas)}`;
+    if (c.emojiTaverna) fala = fala.replace(c.emoji, emoji(i.guild, c.emojiTaverna, c.emoji));
   }
 
   // Busca skins e ícone (com cache); se o Data Dragon cair, vai sem imagem.
@@ -252,7 +254,7 @@ export const vitimas: Comando = {
     const medalhas = ['🥇', '🥈', '🥉'];
     const embed = new EmbedBuilder()
       .setColor(0xc0392b)
-      .setTitle('🩹 Placar de vítimas da Taverna')
+      .setTitle(`${emoji(i.guild, 'f_respeito', '🩹')} Placar de vítimas da Taverna`)
       .setDescription(top.map((t, k) => `${medalhas[k] ?? `**${k + 1}.**`} <@${t.user_id}> · apanhou **${t.total}x** · ${favorito(t.user_id)}`).join('\n'))
       .setFooter({ text: 'Veja a ficha de alguém com /vitimas membro:' });
     return i.reply({ embeds: [embed], allowedMentions: { parse: [] } });

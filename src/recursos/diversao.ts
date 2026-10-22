@@ -6,6 +6,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import type { Comando } from '../tipos.ts';
+import { emoji } from '../lib/servidor.ts';
 
 const sortear = <T>(lista: readonly T[]) => lista[Math.floor(Math.random() * lista.length)];
 
@@ -109,7 +110,7 @@ export const servidor: Comando = {
 
     const embed = new EmbedBuilder()
       .setColor(0xe67e22)
-      .setTitle(`🍺 ${guild.name}`)
+      .setTitle(`${emoji(guild, 'taverna_cerveja', '🍺')} ${guild.name}`)
       .setThumbnail(guild.iconURL({ size: 256 }))
       .addFields(
         { name: '👥 Membros', value: `${humanos.size} malucos · ${membros.size - humanos.size} bots`, inline: true },
@@ -169,7 +170,7 @@ export const cafe: Comando = {
       await i.editReply({ content: linhas.join('\n'), allowedMentions: { parse: [] } });
     }
     await esperar(1500);
-    linhas.push('', `${c.emoji} Pronto, ${para ?? i.user}! Seu **${c.nome}** tá servido. ${sortear(FINAIS_CAFE)}`);
+    linhas.push('', `${emoji(i.guild, 'cafe', '☕')} Pronto, ${para ?? i.user}! Seu **${c.nome}** tá servido. ${sortear(FINAIS_CAFE)}`);
     // Só a mensagem final menciona, pra quem recebeu o café ser avisado uma vez.
     return i.editReply({ content: linhas.join('\n'), allowedMentions: { users: [(para ?? i.user).id] } });
   },

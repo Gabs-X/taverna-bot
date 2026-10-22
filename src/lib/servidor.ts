@@ -1,4 +1,4 @@
-import { ChannelType, MessageFlags, type ChatInputCommandInteraction, type Guild, type GuildMember, type Role, type TextChannel } from 'discord.js';
+import { ChannelType, MessageFlags, type ChatInputCommandInteraction, type Client, type Guild, type GuildMember, type Role, type TextChannel } from 'discord.js';
 import { CANAIS, CARGOS } from '../config.ts';
 
 export const cargoPorNome = (guild: Guild, nome: string): Role | undefined =>
@@ -29,4 +29,20 @@ export function avisoCanalErrado(i: ChatInputCommandInteraction, nomeCanal: stri
     content: `👉 Isso é em ${canal}.${escolha ? ` Não está vendo o canal? Desbloqueie em ${escolha}.` : ''}`,
     flags: MessageFlags.Ephemeral,
   } as const;
+}
+
+/**
+ * Emoji próprio do servidor (os da Taverna, enviados pelo /setup) em formato de mensagem (<:nome:id>).
+ * Se o servidor ainda não tem esse emoji, usa o emoji comum de reserva.
+ */
+let cliente: Client | undefined;
+/** Guarda o client para o emoji() achar o servidor só pelo ID (ex.: retrato da gótica, que só tem o guild_id). */
+export const registrarCliente = (c: Client) => {
+  cliente = c;
+};
+
+export function emoji(servidor: Guild | string | null | undefined, nome: string, reserva: string): string {
+  const guild = typeof servidor === 'string' ? cliente?.guilds.cache.get(servidor) : servidor;
+  const e = guild?.emojis.cache.find((x) => x.name === nome && x.available !== false);
+  return e ? e.toString() : reserva;
 }
