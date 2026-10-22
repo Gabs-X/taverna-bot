@@ -34,7 +34,7 @@ export const nomeCargoJogo = (j: Jogo) => `${j.emoji} ${j.nome}`;
 export const CANAIS = {
   regras: '📜・regras',
   boasVindas: '👋・boas-vindas',
-  escolhaJogos: '🎮・escolha-seus-jogos',
+  escolhaJogos: '🎮・escolha-suas-atividades',
   geral: '💬・geral',
   comandos: '🤖・comandos-do-bot',
   musica: '🎵・pedidos-de-musica',
@@ -53,7 +53,7 @@ export const CANAIS = {
   mesaDh: '🌗 Mesa de Daggerheart',
 } as const;
 
-// Atividades do bot: cada uma tem um canal que só aparece para quem desbloquear no painel de #escolha-seus-jogos.
+// Atividades do bot: cada uma tem um canal que só aparece para quem desbloquear no painel de #escolha-suas-atividades.
 export type Atividade = { id: string; nome: string; emoji: string; cor: number; canal: string; topico: string; somenteLeitura?: boolean };
 
 export const ATIVIDADES: Atividade[] = [
@@ -88,7 +88,7 @@ export const PLANO: CategoriaPlano[] = [
     canais: [
       { nome: CANAIS.regras, acesso: { tipo: 'leitura' }, topico: 'Leia antes de causar.' },
       { nome: CANAIS.boasVindas, acesso: { tipo: 'leitura' } },
-      { nome: CANAIS.escolhaJogos, acesso: { tipo: 'leitura' }, topico: 'Escolha seus jogos (chamados do /lfg) e desbloqueie as atividades do bot.' },
+      { nome: CANAIS.escolhaJogos, antigos: ['🎮・escolha-seus-jogos'], acesso: { tipo: 'leitura' }, topico: 'Escolha seus jogos (chamados do /lfg) e desbloqueie as atividades do bot.' },
     ],
   },
   {

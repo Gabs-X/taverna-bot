@@ -300,7 +300,7 @@ const AJUDA: [string, string][] = [
   ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
   ['👥 Subgrupos', '`/grupo criar` (admin aprova) · `/grupo entrar | sair | lista` · dono: `canal` (pede canal novo) · `renomear` · `convidar` · `remover` · `privacidade` · `transferir` · `apagar`. Lista e botões em #subgrupos'],
-  ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-seus-jogos'],
+  ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-suas-atividades'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/logs` o que o bot fez para cada pessoa · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];
 

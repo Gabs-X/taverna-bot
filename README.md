@@ -28,7 +28,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 ## Estrutura que o `/setup` cria
 
 ```
-📜 ENTRADA       #regras · #boas-vindas · #escolha-seus-jogos
+📜 ENTRADA       #regras · #boas-vindas · #escolha-suas-atividades
 💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · #subgrupos · 🔊 Resenha · 🔊 AFK
 🎵 MÚSICA        #pedidos-de-musica · 🔊 Rádio da Taverna
 🎮 JOGATINA      🔊 ➕ Calls  (entrou, ganhou uma call sua; esvaziou, some)
