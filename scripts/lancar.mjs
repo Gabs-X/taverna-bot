@@ -65,5 +65,12 @@ if (enviar) {
   git('push');
   git('push', 'origin', `v${nova}`);
   console.log('✅ Enviada para o GitHub.');
+  // Página da versão no GitHub (se o gh estiver instalado e logado).
+  try {
+    execFileSync('gh', ['release', 'create', `v${nova}`, '--title', `Taverneiro v${nova}`, '--notes', commits.map((c) => `- ${c}`).join('\n')], { cwd: RAIZ, stdio: 'ignore' });
+    console.log('✅ Página da versão criada no GitHub (Releases).');
+  } catch {
+    console.log('ℹ️ Não criei a página no GitHub Releases (gh não disponível); a tag já está lá.');
+  }
 }
 console.log('O bot reinicia sozinho e anuncia no #novidades e no WhatsApp.');
