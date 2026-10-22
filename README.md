@@ -43,6 +43,7 @@ Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ A
 Os comandos de cada atividade só funcionam no canal dela; usados em outro lugar, o bot indica o canal e onde desbloquear.
 Canais que saíram do plano (os antigos canais de cada jogo, 🔊 Indie Aleatório e #procurando-grupo) são apagados pelo `/setup`, com as mensagens; a lista fica em `CANAIS_REMOVIDOS` no config. Canais criados à mão nunca são apagados, só listados.
 Emojis da Taverna: 23 emojis próprios em `assets/emojis` (cerveja, d20, crítico e falha, moeda, level up, RIP, GG, F, hype, reações, caveira, coração gótico, morcego e 4 góticas). O `/setup` sobe os que faltam, até o limite do nível de impulso. Para mudar ou criar, edite `scripts/gerar-emojis.ts` e rode `node scripts/gerar-emojis.ts`.
+Cada comando só funciona no chat de texto dele (música em #pedidos-de-musica, RPG nas rolagens e fichas de cada mesa, atividades nos canais delas, o resto em #comandos-do-bot); em outro canal o bot avisa onde usar. O bot de música toca em qualquer call. A tabela fica em [`src/canaisDosComandos.ts`](src/canaisDosComandos.ts). Livres em qualquer canal: `/setup`, `/limpar`, `/castigo`, `/logs` e `/call`.
 Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode `/setup` de novo.
 
 ## Como colocar no ar

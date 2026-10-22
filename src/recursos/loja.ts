@@ -1,7 +1,6 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado } from '../lib/servidor.ts';
 import { ENCAIXES, equipar, ITENS, itemPorId, lerEquipados, type Encaixe, type IdItem } from '../lib/loja.ts';
 import type { Comando } from '../tipos.ts';
 import { carteira, gastarMoedas, moedas } from './economia.ts';
@@ -66,8 +65,6 @@ export const loja: Comando = {
     }
 
     if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
-    const fora = avisoCanalErrado(i, CANAIS.goticas);
-    if (fora) return i.reply(fora);
 
     if (sub === 'tirar') {
       const enc = i.options.getString('encaixe', true) as Encaixe;

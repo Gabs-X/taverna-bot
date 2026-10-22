@@ -18,15 +18,20 @@ export const ehMestre = (membro: GuildMember): boolean =>
   membro.roles.cache.some((r) => r.name === CARGOS.mestre.nome) || ehAdmin(membro.guild, membro.id);
 
 /**
- * Atividade com canal próprio: se o canal existe e o comando veio de outro lugar, devolve o aviso
- * (efêmero) mandando para lá. Sem o canal (servidor sem /setup), o comando funciona em qualquer canal.
+ * Comando com canal próprio: se veio de outro lugar, devolve o aviso (efêmero) dizendo onde usar.
+ * Se nenhum dos canais existe (servidor sem /setup), o comando funciona em qualquer canal.
  */
-export function avisoCanalErrado(i: ChatInputCommandInteraction, nomeCanal: string) {
-  const canal = canalTexto(i.guild!, nomeCanal);
-  if (!canal || canal.id === i.channelId) return undefined;
+export function avisoCanalErrado(i: ChatInputCommandInteraction, nomesCanais: readonly string[]) {
+  const canais = nomesCanais.map((n) => canalTexto(i.guild!, n)).filter((c): c is TextChannel => !!c);
+  if (!canais.length || canais.some((c) => c.id === i.channelId)) return undefined;
+  const lista = canais.length === 1 ? `${canais[0]}` : `${canais.slice(0, -1).join(', ')} ou ${canais.at(-1)}`;
+  // Canal trancado por cargo (atividade, mesa de RPG): explica onde desbloquear.
+  const membro = i.member as GuildMember | null;
+  const naoVe = !!membro && canais.every((c) => !c.permissionsFor(membro).has('ViewChannel'));
   const escolha = canalTexto(i.guild!, CANAIS.escolhaJogos);
+  const dica = naoVe && escolha ? `\nNão está vendo o canal? Desbloqueie em ${escolha}.` : '';
   return {
-    content: `👉 Isso é em ${canal}.${escolha ? ` Não está vendo o canal? Desbloqueie em ${escolha}.` : ''}`,
+    content: `👉 O \`/${i.commandName}\` só funciona em ${lista}. Manda lá!${dica}`,
     flags: MessageFlags.Ephemeral,
   } as const;
 }

@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado, emoji } from '../lib/servidor.ts';
+import { emoji } from '../lib/servidor.ts';
 import { skinsComSplash, urlIcone, urlSplash, versaoAtual } from '../lib/ddragon.ts';
 import type { Comando } from '../tipos.ts';
 
@@ -151,8 +151,6 @@ async function webhookDo(canal: TextChannel, botId: string) {
 const sortear = <T>(lista: readonly T[]) => lista[Math.floor(Math.random() * lista.length)];
 
 async function executarCampeao(c: Campeao, i: ChatInputCommandInteraction) {
-  const fora = avisoCanalErrado(i, CANAIS.campeoes);
-  if (fora) return i.reply(fora);
   const alvo = i.options.getUser('membro', true);
   const viaWebhook = i.channel?.type === ChannelType.GuildText;
   await i.deferReply(viaWebhook ? { flags: MessageFlags.Ephemeral } : {});
@@ -227,8 +225,6 @@ export const vitimas: Comando = {
     .setContexts(InteractionContextType.Guild)
     .addUserOption((o) => o.setName('membro').setDescription('Ver de quem cada um apanhou')),
   async executar(i) {
-    const fora = avisoCanalErrado(i, CANAIS.campeoes);
-    if (fora) return i.reply(fora);
     const g = i.guildId!;
     const membro = i.options.getUser('membro');
 

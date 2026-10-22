@@ -14,7 +14,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { avisoCanalErrado, emoji } from '../lib/servidor.ts';
+import { emoji } from '../lib/servidor.ts';
 import { campeoes, detalheCampeao, skinsComSplash, urlSplash, type Campeao } from '../lib/ddragon.ts';
 import { alternativas, esconderNome, limparHtml, svgRecorte } from '../lib/quiz.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
@@ -136,8 +136,6 @@ export const quiz: Comando = {
     .addSubcommand((s) => s.setName('ranking').setDescription('Quem mais acertou no quiz')),
 
   async executar(i) {
-    const fora = avisoCanalErrado(i, CANAIS.quiz);
-    if (fora) return i.reply(fora);
     if (i.options.getSubcommand() === 'ranking') {
       const top = db.prepare('SELECT user_id, acertos FROM quiz_pontos WHERE guild_id = ? ORDER BY acertos DESC LIMIT 10').all(i.guildId!) as { user_id: string; acertos: number }[];
       if (!top.length) return i.reply({ content: 'Ninguém acertou nada ainda. Comece com `/quiz iniciar`.', flags: MessageFlags.Ephemeral });

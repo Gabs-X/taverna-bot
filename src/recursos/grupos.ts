@@ -623,3 +623,7 @@ export const modalGrupo: HandlerModal = {
     return decidir(i, id, false, undefined, valor || undefined);
   },
 };
+
+/** O canal está dentro da categoria de algum subgrupo? (lá dentro o /grupo também funciona) */
+export const ehCanalDeGrupo = (guildId: string, categoriaId: string | null) =>
+  !!categoriaId && !!db.prepare('SELECT 1 FROM grupos WHERE guild_id = ? AND categoria_id = ?').get(guildId, categoriaId);

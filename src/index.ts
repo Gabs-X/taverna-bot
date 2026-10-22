@@ -1,4 +1,4 @@
-import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials, type Interaction } from 'discord.js';
+import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
@@ -9,7 +9,7 @@ import { botaoCargo } from './recursos/cargos.ts';
 import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoDuelo } from './recursos/goticaSocial.ts';
-import { botaoGrupo, grupo, modalGrupo } from './recursos/grupos.ts';
+import { botaoGrupo, ehCanalDeGrupo, grupo, modalGrupo } from './recursos/grupos.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
@@ -19,7 +19,8 @@ import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.t
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
 import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
-import { registrarCliente } from './lib/servidor.ts';
+import { canaisDoComando } from './canaisDosComandos.ts';
+import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
 import type { Comando, HandlerBotao, HandlerModal } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -36,6 +37,15 @@ const COMANDOS: Comando[] = [
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio];
 const MODAIS: HandlerModal[] = [modalGrupo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
+
+/** Aviso se o comando foi usado fora do canal dele (tabela em canaisDosComandos.ts). */
+function foraDoCanal(i: ChatInputCommandInteraction) {
+  const canais = canaisDoComando(i.commandName);
+  if (!canais || !i.inGuild()) return undefined;
+  const categoria = i.channel && 'parentId' in i.channel ? i.channel.parentId : null;
+  if (i.commandName === 'grupo' && ehCanalDeGrupo(i.guildId, categoria)) return undefined;
+  return avisoCanalErrado(i, canais);
+}
 
 const client = new Client({
   intents: [
@@ -69,6 +79,12 @@ client.on(Events.GuildCreate, (guild) => guild.commands.set(COMANDOS.map((cmd) =
 client.on(Events.InteractionCreate, async (i: Interaction) => {
   try {
     if (i.isChatInputCommand()) {
+      const fora = foraDoCanal(i);
+      if (fora) {
+        await i.reply(fora);
+        registrarInteracao(i, 'usado fora do canal do comando');
+        return;
+      }
       await porNome.get(i.commandName)?.executar(i);
     } else if (i.isAutocomplete()) {
       await porNome.get(i.commandName)?.autocompletar?.(i);
