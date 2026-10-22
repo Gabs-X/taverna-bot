@@ -24,6 +24,7 @@ import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 import { atualizarPainelGrupos } from './grupos.ts';
+import { aplicarPermissoesComandos } from './permissoesComandos.ts';
 
 const { ViewChannel, SendMessages, Connect, ReadMessageHistory } = PermissionFlagsBits;
 
@@ -303,6 +304,7 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
   }
 
   await postarMensagensFixas(guild, relatorio);
+  relatorio.push(await aplicarPermissoesComandos(guild).catch((e) => `⚠️ Permissões por cargo: ${(e as Error).message}`));
 
   // Canais antigos não são apagados aqui: só listados para você decidir.
   const temporarias = new Set(

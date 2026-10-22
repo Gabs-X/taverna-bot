@@ -301,7 +301,7 @@ const AJUDA: [string, string][] = [
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
   ['👥 Subgrupos', '`/grupo criar` (admin aprova) · `/grupo entrar | sair | lista` · dono: `canal` (pede canal novo) · `renomear` · `convidar` · `remover` · `privacidade` · `transferir` · `apagar`. Lista e botões em #subgrupos'],
   ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-suas-atividades'],
-  ['🛡️ Staff', '`/setup` monta o servidor (admin) · `/staff adicionar | remover | lista` (admin) · `/logs` o que o bot fez para cada pessoa · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
+  ['🛡️ Staff', '`/setup` monta o servidor (admin) · `/staff adicionar | remover | lista` (admin) · `/permissoes autorizar | aplicar | status` (admin: cada comando só para quem tem o cargo) · `/logs` o que o bot fez para cada pessoa · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];
 
 export const ajuda: Comando = {
