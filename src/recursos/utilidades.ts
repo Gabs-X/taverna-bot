@@ -297,7 +297,8 @@ const AJUDA: [string, string][] = [
   ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
   ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica duelo` por turnos · `/gotica visitar` · `/gotica renomear` · `/gotica ranking` · `/loja ver | comprar | equipar | tirar` (chapéus, óculos, bichinhos e fundos)'],
   ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
-  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/asheap` · `/avatar` · `/servidor`'],
+  ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar'],
+  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];
 

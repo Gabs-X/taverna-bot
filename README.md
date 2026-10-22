@@ -19,7 +19,8 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 📅 Agenda | `/lembrete` (30m, 2h, 3d…), `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |
 | 🦇 Gótica | No canal 🦇・goticas (criado pelo `/setup`): `/gotica adotar`: aparência e personalidade sorteadas, retrato desenhado pelo bot. `/gotica ver` com botões para alimentar, conversar, ouvir música, passear e dormir; ela sobe de nível e ganha acessórios. `/gotica customizar` escolhe penteado, cabelo, olhos, batom, pele e vestido desde o nível 1, `/gotica visual` sorteia a aparência de novo (e a personalidade, se quiser), `/gotica duelo @membro` (por turnos com botões: atacar, feitiço, defender; vale XP e moedas), `/gotica visitar @membro` (as duas ganham XP, retrato das duas juntas), `/gotica renomear`, `/gotica ranking`. `/loja`: compra com moedas chapéu de bruxa, véu, orelhas de gato, óculos de coração, estrelinhas, gatinho preto, corvo e 3 fundos (cemitério, lua de sangue, rosas) |
 | 💰 Moedas e níveis | Mensagens (1 por minuto) e tempo em call com mais gente dão XP e moedas. Cargos automáticos por nível (🍻 Bebum 5, 🎲 Frequentador 10, 🗡️ Veterano 20, 👑 Lenda 35). `/daily` com sequência, `/trabalhar`, `/carteira`, `/pix`, `/rank` (cartão em imagem), `/top` |
-| 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/asheap`, `/avatar`, `/servidor` |
+| 🏹 Campeões do LoL | `/asheap`, `/darius`, `/teemo`, `/yasuo`, `/blitz`, `/garen`, `/jinx`, `/thresh`: o campeão "manda a mensagem" (webhook com nome e foto dele) com splash de uma skin sorteada. `/vitimas` mostra o placar de quem mais apanha |
+| 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
 ## Estrutura que o `/setup` cria
