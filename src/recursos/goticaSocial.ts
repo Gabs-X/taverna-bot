@@ -23,7 +23,7 @@ import {
 import { humorDe, statusAgora } from '../lib/gotica.ts';
 import { juntarRetratos } from '../lib/goticaDupla.ts';
 import type { HandlerBotao } from '../tipos.ts';
-import { darMoedas, moedas } from './economia.ts';
+import { carteira, darMoedas, gastarMoedas, moedas } from './economia.ts';
 import { ajustarGotica, estadoDe, ler, retratoSvg, type Linha } from './gotica.ts';
 import { emoji } from '../lib/servidor.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
@@ -47,13 +47,14 @@ const subiuTexto = (nome: string, subiu: number[]) => (subiu.length ? `\n🎉 **
 
 // ---------- Duelo ----------
 
-type Ativo = { duelo: Duelo; mensagem: Message; timer?: NodeJS.Timeout; guildId: string };
+type Ativo = { duelo: Duelo; mensagem: Message; timer?: NodeJS.Timeout; guildId: string; aposta: number };
 const convites = new Map<string, NodeJS.Timeout>(); // id da mensagem → prazo do convite
 const ativos = new Map<string, Ativo>(); // id da mensagem → duelo
 export const duelosEmAndamento = () => ativos.size + convites.size;
 const ocupadas = new Set<string>(); // guild:user em duelo ou com convite aberto
 
-export async function executarDuelo(i: ChatInputCommandInteraction) {
+/** Duelo de góticas; com aposta (/gotica duelo aposta ou /desafiar jogo:duelo), quem vence leva as duas. */
+export async function executarDuelo(i: ChatInputCommandInteraction, aposta = i.options.getInteger('aposta') ?? 0) {
   const g = i.guildId!;
   const alvo = i.options.getUser('membro', true);
   if (alvo.id === i.user.id || alvo.bot) return i.reply({ content: 'Desafie a gótica de outra pessoa.', flags: MessageFlags.Ephemeral });
@@ -65,17 +66,18 @@ export async function executarDuelo(i: ChatInputCommandInteraction) {
     return i.reply({ content: 'Uma das duas já está num duelo (ou com convite aberto).', flags: MessageFlags.Ephemeral });
   }
   if (energiaDe(a) < ENERGIA_DUELO) return i.reply({ content: `A **${a.nome}** está cansada demais para duelar. Deixe ela dormir antes.`, flags: MessageFlags.Ephemeral });
+  if (aposta && carteira(g, i.user.id).moedas < aposta) return i.reply({ content: `Você não tem ${moedas(i.guild, aposta)} para apostar.`, flags: MessageFlags.Ephemeral });
 
   await i.deferReply();
   const embed = new EmbedBuilder()
     .setColor(0xf5b544)
     .setTitle(`⚔️ ${a.nome} desafiou ${b.nome} para um duelo!`)
-    .setDescription(`<@${a.user_id}> (nível ${a.nivel}) contra <@${b.user_id}> (nível ${b.nivel}).\nQuem vence leva XP e ${moedas(i.guild, 60)}. Cada duelo gasta ${ENERGIA_DUELO} de energia.`)
+    .setDescription(`<@${a.user_id}> (nível ${a.nivel}) contra <@${b.user_id}> (nível ${b.nivel}).\nQuem vence leva XP e ${moedas(i.guild, 60)}${aposta ? `, **mais a aposta: ${moedas(i.guild, aposta)} de cada um**` : ''}. Cada duelo gasta ${ENERGIA_DUELO} de energia.`)
     .setImage('attachment://duelo.png')
     .setFooter({ text: 'O convite vale por 2 minutos.' });
   const botoes = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`duelo:aceitar:${a.user_id}:${b.user_id}`).setLabel('Aceitar').setEmoji('⚔️').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`duelo:recusar:${a.user_id}:${b.user_id}`).setLabel('Fugir').setEmoji('🏃‍♀️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`duelo:aceitar:${a.user_id}:${b.user_id}:${aposta}`).setLabel('Aceitar').setEmoji('⚔️').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`duelo:recusar:${a.user_id}:${b.user_id}:${aposta}`).setLabel('Fugir').setEmoji('🏃‍♀️').setStyle(ButtonStyle.Secondary),
   );
   const msg = await i.editReply({
     content: `<@${b.user_id}>, sua gótica foi desafiada!`,
@@ -134,7 +136,7 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
   if (!ativo) return;
   ativos.delete(id);
   clearTimeout(ativo.timer);
-  const { duelo: d, mensagem, guildId: g } = ativo;
+  const { duelo: d, mensagem, guildId: g, aposta } = ativo;
   ocupadas.delete(`${g}:${d.a.id}`);
   ocupadas.delete(`${g}:${d.b.id}`);
 
@@ -144,7 +146,7 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
   if (!lv || !lp) return;
   const subiuV = ajustarGotica(lv, { xp: 30, humor: 15, energia: -ENERGIA_DUELO });
   const subiuP = ajustarGotica(lp, { xp: 10, humor: -10, energia: -ENERGIA_DUELO });
-  darMoedas(g, d[venceu].id, 60);
+  darMoedas(g, d[venceu].id, 60 + aposta * 2);
   contar(g, d[venceu].id, 'duelos_vencidos');
   contarSemana(g, d[venceu].id, 'duelos');
   await verificarConquistas(mensagem.guild!, d[venceu].id).catch(() => {});
@@ -159,6 +161,8 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
     .setDescription(
       [...d.log, motivo].filter(Boolean).join('\n') +
         `\n\n**${d[venceu].nome}** ganhou 30 XP e ${moedas(mensagem.guild, 60)} para <@${d[venceu].id}>. ${emoji(mensagem.guild, 'rip', '🪦')} **${d[perdeu].nome}** ganhou 10 XP pela coragem.` +
+        (aposta ? `
+💰 <@${d[venceu].id}> levou a aposta: **${moedas(mensagem.guild, aposta * 2)}**.` : '') +
         subiuTexto(d[venceu].nome, subiuV) +
         subiuTexto(d[perdeu].nome, subiuP),
     )
@@ -169,7 +173,8 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
 export const botaoDuelo: HandlerBotao = {
   prefixo: 'duelo',
   async executar(i, argumento) {
-    const [acao, desafiante, desafiada] = argumento.split(':');
+    const [acao, desafiante, desafiada, valor] = argumento.split(':');
+    const aposta = Number(valor) || 0;
     const g = i.guildId!;
 
     if (acao === 'aceitar' || acao === 'recusar') {
@@ -195,11 +200,19 @@ export const botaoDuelo: HandlerBotao = {
         return i.update({ content: `A **${a.nome}** ficou cansada antes de começar. Duelo cancelado.`, components: [] });
       }
 
+      if (aposta) {
+        if (!gastarMoedas(g, b.user_id, aposta)) return i.reply({ content: `Você não tem ${moedas(i.guild, aposta)} para cobrir a aposta.`, flags: MessageFlags.Ephemeral });
+        if (!gastarMoedas(g, a.user_id, aposta)) {
+          darMoedas(g, b.user_id, aposta);
+          liberar();
+          return i.update({ content: `💸 <@${a.user_id}> não tem mais as moedas da aposta. Duelo cancelado.`, components: [], allowedMentions: { parse: [] } });
+        }
+      }
       clearTimeout(prazo);
       convites.delete(i.message.id);
       const triste = (l: Linha) => humorDe(statusAgora(estadoDe(l), Date.now())) === 'triste';
       const duelo = novoDuelo(novaLutadora(a.user_id, a.nome, a.nivel, triste(a)), novaLutadora(b.user_id, b.nome, b.nivel, triste(b)));
-      ativos.set(i.message.id, { duelo, mensagem: i.message, guildId: g });
+      ativos.set(i.message.id, { duelo, mensagem: i.message, guildId: g, aposta });
       armarTurno(i.message.id);
       return i.update(telaDuelo(duelo));
     }

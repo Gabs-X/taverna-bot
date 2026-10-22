@@ -68,6 +68,10 @@ export function descreverBotao(customId: string, valorFormulario?: string): stri
       return `Sugestão: marcou a #${a} como ${{ aprovada: 'aprovada', recusada: 'recusada', feita: 'implementada' }[acao] ?? acao}`;
     case 'quiz':
       return `Quiz: chutou ${acao}`;
+    case 'desafio':
+      return acao === 'aceitar' ? 'Desafio: aceitou a aposta' : 'Desafio: recusou a aposta';
+    case 'quemdisse':
+      return `Quem disse: chutou a opção ${Number(acao) + 1}`;
     case 'tela':
       return 'Tela: parou de compartilhar';
     case 'grupo':

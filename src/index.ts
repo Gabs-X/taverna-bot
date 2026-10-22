@@ -21,6 +21,10 @@ import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { iniciarPermissoes, permissoes } from './recursos/permissoesComandos.ts';
 import { reiniciar } from './recursos/reiniciar.ts';
 import { status } from './recursos/status.ts';
+import { assaltar, botaoDesafio, desafiar, desafiosEmAndamento } from './recursos/apostas.ts';
+import { aoMudarVozLendaria } from './recursos/callLendaria.ts';
+import { iniciarManutencao } from './recursos/manutencao.ts';
+import { botaoQuemDisse, quemdisse } from './recursos/quemDisse.ts';
 import { setup } from './recursos/setup.ts';
 import { cassino } from './recursos/cassino.ts';
 import { conquistas } from './recursos/conquistas.ts';
@@ -47,9 +51,9 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio];
 const MODAIS: HandlerModal[] = [modalGrupo];
 const MENUS: MenuMensagem[] = [salvarCitacao];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
@@ -102,6 +106,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarResumo(c);
   iniciarJogosGratis(c);
   iniciarTelas(c);
+  iniciarManutencao(c);
   anunciarVersao(c).catch((e) => console.error('[novidades]', e));
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR} · v${VERSAO}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} v${VERSAO} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
@@ -142,6 +147,7 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
 
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).catch((e) => console.error('[calls]', e)));
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVozTela(antes, depois).catch((e) => console.error('[tela]', e)));
+client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVozLendaria(antes, depois).catch((e) => console.error('[call lendária]', e)));
 client.on(Events.PresenceUpdate, (antes, depois) => aoMudarPresenca(antes, depois).catch((e) => console.error('[jogando]', e)));
 client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
@@ -156,6 +162,7 @@ setInterval(() => {
     musicasTocando() && `${musicasTocando()} música(s) tocando`,
     duelosEmAndamento() && `${duelosEmAndamento()} duelo(s)`,
     quizzesEmAndamento() && `${quizzesEmAndamento()} quiz(zes)`,
+    desafiosEmAndamento() && `${desafiosEmAndamento()} desafio(s) com aposta`,
   ].filter(Boolean);
   try {
     writeFileSync(ARQUIVO_ESTADO, JSON.stringify({ em: Date.now(), ocupado }));

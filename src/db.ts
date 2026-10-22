@@ -354,6 +354,16 @@ const MIGRACOES: (() => void)[] = [
       )
     `);
   },
+  // 8 (22/10/2026): /assaltar (tempo de espera de quem assalta e proteção de quem foi roubado).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS assaltos (
+        guild_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        ultimo_assalto INTEGER NOT NULL DEFAULT 0, protegido_ate INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id)
+      )
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

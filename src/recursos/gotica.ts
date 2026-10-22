@@ -185,7 +185,8 @@ export const gotica: Comando = {
     })
     .addSubcommand((s) =>
       s.setName('duelo').setDescription('Desafia a gótica de alguém para um duelo por turnos')
-        .addUserOption((o) => o.setName('membro').setDescription('Dona da gótica desafiada').setRequired(true)),
+        .addUserOption((o) => o.setName('membro').setDescription('Dona da gótica desafiada').setRequired(true))
+        .addIntegerOption((o) => o.setName('aposta').setDescription('Moedas que cada uma coloca (quem vence leva tudo)').setMinValue(10)),
     )
     .addSubcommand((s) =>
       s.setName('visitar').setDescription('Sua gótica visita a de alguém (as duas ganham XP)')
