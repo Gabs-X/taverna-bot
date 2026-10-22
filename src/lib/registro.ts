@@ -68,6 +68,8 @@ export function descreverBotao(customId: string, valorFormulario?: string): stri
       return `Sugestão: marcou a #${a} como ${{ aprovada: 'aprovada', recusada: 'recusada', feita: 'implementada' }[acao] ?? acao}`;
     case 'quiz':
       return `Quiz: chutou ${acao}`;
+    case 'tela':
+      return 'Tela: parou de compartilhar';
     case 'grupo':
       if (acao === 'aceitar' || acao === 'negar') return `Subgrupo: ${ACOES_GRUPO[acao]} #${a} de <@${b}>`;
       return `Subgrupo: ${ACOES_GRUPO[acao] ?? acao} #${a}`;

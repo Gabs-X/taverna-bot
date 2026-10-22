@@ -34,7 +34,7 @@ import { NOME_SERVIDOR } from './config.ts';
 import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recursos/resenha.ts';
 import { aoMudarPresenca, elo, gratis, iniciarJogosGratis } from './recursos/jogosExternos.ts';
 import { anunciarVersao, VERSAO, versao } from './recursos/novidades.ts';
-import { tela } from './recursos/tela.ts';
+import { aoMudarVozTela, botaoTela, iniciarTelas, tela } from './recursos/tela.ts';
 import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -48,7 +48,7 @@ const COMANDOS: Comando[] = [
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela];
 const MODAIS: HandlerModal[] = [modalGrupo];
 const MENUS: MenuMensagem[] = [salvarCitacao];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
@@ -100,6 +100,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarPermissoes(c);
   iniciarResumo(c);
   iniciarJogosGratis(c);
+  iniciarTelas(c);
   anunciarVersao(c).catch((e) => console.error('[novidades]', e));
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR} · v${VERSAO}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} v${VERSAO} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
@@ -139,6 +140,7 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
 });
 
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).catch((e) => console.error('[calls]', e)));
+client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVozTela(antes, depois).catch((e) => console.error('[tela]', e)));
 client.on(Events.PresenceUpdate, (antes, depois) => aoMudarPresenca(antes, depois).catch((e) => console.error('[jogando]', e)));
 client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));

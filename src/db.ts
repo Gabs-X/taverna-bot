@@ -344,6 +344,16 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('CREATE TABLE IF NOT EXISTS bot_estado (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
   },
+
+  // 7 (22/10/2026): telas compartilhadas abertas (para avisar quando param).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS telas (
+        msg_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, canal_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        call_id TEXT, titulo TEXT NOT NULL DEFAULT '', inicio INTEGER NOT NULL
+      )
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

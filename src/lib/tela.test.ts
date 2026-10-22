@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { codigo, criarSala } from './tela.ts';
+import { codigo, criarSala, duracaoTexto } from './tela.ts';
 
 test('senha e sala só com letras e números (exigência do VDO.Ninja)', () => {
   for (let k = 0; k < 50; k++) {
@@ -23,4 +23,11 @@ test('quem compartilha vai direto para a tela, sem microfone; quem assiste usa a
   assert.equal(v.searchParams.get('password'), c.searchParams.get('password'));
   assert.ok(v.searchParams.has('noaudio'));
   assert.ok(!new URL(criarSala({ audio: true }).assistir).searchParams.has('noaudio'));
+});
+
+test('duração da tela em texto curto', () => {
+  assert.equal(duracaoTexto(30_000), 'menos de 1 min');
+  assert.equal(duracaoTexto(25 * 60_000), '25 min');
+  assert.equal(duracaoTexto(65 * 60_000), '1h05');
+  assert.equal(duracaoTexto(120 * 60_000 + 59_000), '2h00');
 });

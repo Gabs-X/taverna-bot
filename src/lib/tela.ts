@@ -20,3 +20,11 @@ export function criarSala({ audio = false, titulo = '' }: { audio?: boolean; tit
   const assistir = `https://vdo.ninja/?view=${id}&password=${senha}${audio ? '' : '&noaudio'}`;
   return { id, senha, compartilhar, assistir };
 }
+
+/** Quanto tempo a tela ficou aberta, para o aviso de encerrada ("menos de 1 min", "25 min", "1h05"). */
+export function duracaoTexto(ms: number) {
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return 'menos de 1 min';
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
+}
