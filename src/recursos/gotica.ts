@@ -9,7 +9,9 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from 'discord.js';
+import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
+import { canalTexto } from '../lib/servidor.ts';
 import {
   ACOES,
   aplicarAcao,
@@ -148,6 +150,11 @@ export const gotica: Comando = {
   async executar(i) {
     const g = i.guildId!;
     const sub = i.options.getSubcommand();
+    // Com o canal criado pelo /setup, as góticas ficam só lá para não lotar o resto do servidor.
+    const canal = canalTexto(i.guild!, CANAIS.goticas);
+    if (canal && canal.id !== i.channelId) {
+      return i.reply({ content: `🦇 As góticas ficam em ${canal}. Use o comando lá.`, flags: MessageFlags.Ephemeral });
+    }
 
     if (sub === 'adotar') {
       const existente = ler(g, i.user.id);
