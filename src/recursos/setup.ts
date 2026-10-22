@@ -14,7 +14,7 @@ import {
   type OverwriteResolvable,
   type TextChannel,
 } from 'discord.js';
-import { ATIVIDADES, CANAIS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoAtividade, nomeCargoJogo, type Acesso } from '../config.ts';
+import { ATIVIDADES, CANAIS, CANAIS_REMOVIDOS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoAtividade, nomeCargoJogo, type Acesso } from '../config.ts';
 import { db } from '../db.ts';
 import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
@@ -168,6 +168,18 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
 
   await garantirCargos(guild, relatorio);
   const doPlano = await garantirCanais(guild, relatorio);
+
+  for (const velho of CANAIS_REMOVIDOS) {
+    const tipo = velho.voz ? ChannelType.GuildVoice : ChannelType.GuildText;
+    const canal = guild.channels.cache.find((c) => c.type === tipo && c.name === velho.nome && !doPlano.has(c.id));
+    if (!canal) continue;
+    try {
+      await canal.delete('Saiu do plano do servidor (/setup)');
+      relatorio.push(`🗑️ ${velho.voz ? '🔊' : '#'} ${velho.nome} apagado`);
+    } catch {
+      relatorio.push(`⚠️ não consegui apagar ${velho.nome}`);
+    }
+  }
 
   const afk = guild.channels.cache.find((c) => c.type === ChannelType.GuildVoice && c.name === '💤 AFK');
   if (afk && guild.afkChannelId !== afk.id) await guild.setAFKChannel(afk.id);

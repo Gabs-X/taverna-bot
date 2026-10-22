@@ -160,6 +160,19 @@ export const PLANO: CategoriaPlano[] = [
   },
 ];
 
+// Canais que saíram do plano: o /setup apaga se encontrar (com as mensagens deles).
+// Canais criados à mão nunca entram aqui; esses o /setup só lista.
+export const CANAIS_REMOVIDOS: { nome: string; voz?: boolean }[] = [
+  { nome: '🎯・valorant' },
+  { nome: '💣・cs2' },
+  { nome: '🧙・league-of-legends' },
+  { nome: '⛏️・minecraft' },
+  { nome: '🪂・fortnite' },
+  { nome: '🎲・indie-aleatorio' },
+  { nome: '🔍・procurando-grupo' },
+  { nome: '🎲 Indie Aleatório', voz: true },
+];
+
 export const REGRAS = [
   'Respeito acima de tudo: zoeira sim, ofensa pessoal não.',
   'Nada de conteúdo ilegal, NSFW fora de lugar ou spam.',
