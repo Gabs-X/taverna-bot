@@ -8,6 +8,7 @@ import { botaoCargo } from './recursos/cargos.ts';
 import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { asheap, avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
+import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
 import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
@@ -24,7 +25,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, asheap, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));

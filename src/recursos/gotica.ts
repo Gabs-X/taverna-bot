@@ -32,9 +32,10 @@ import {
   type Estado,
 } from '../lib/gotica.ts';
 import { desenharGotica } from '../lib/goticaArte.ts';
+import { lerEquipados } from '../lib/loja.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 
-type Linha = {
+export type Linha = {
   guild_id: string;
   user_id: string;
   nome: string;
@@ -48,6 +49,7 @@ type Linha = {
   atualizado_em: number;
   ultimas: string;
   criada_em: number;
+  equipados: string;
 };
 
 const COR = { feliz: 0x9b59b6, neutra: 0x6c3483, triste: 0x34495e } as const;
@@ -62,10 +64,10 @@ const ROTULOS: Record<Parte, string> = {
 };
 const SEM_GOTICA ='Você ainda não tem uma gótica. Adote uma com `/gotica adotar`.';
 
-const ler = (g: string, u: string) =>
+export const ler = (g: string, u: string) =>
   db.prepare('SELECT * FROM goticas WHERE guild_id = ? AND user_id = ?').get(g, u) as Linha | undefined;
 
-const estadoDe = (l: Linha): Estado => ({
+export const estadoDe = (l: Linha): Estado => ({
   nivel: l.nivel,
   xp: l.xp,
   barriga: l.barriga,
@@ -83,10 +85,10 @@ function salvar(l: Linha, e: Estado) {
 }
 
 /** Embed com o retrato (PNG gerado na hora) e, para a dona, os botões de cuidar. */
-function cartao(l: Linha, e: Estado, extra?: string) {
+export function cartao(l: Linha, e: Estado, extra?: string) {
   const s = statusAgora(e, Date.now());
   const humor = humorDe(s);
-  const svg = desenharGotica(lerAparencia(l.aparencia), e.nivel, humor);
+  const svg = desenharGotica(lerAparencia(l.aparencia), e.nivel, humor, lerEquipados(l.equipados));
   const imagem = new AttachmentBuilder(new Resvg(svg).render().asPng(), { name: 'gotica.png' });
   const proximo = DESBLOQUEIOS.find((d) => d.nivel > e.nivel);
 

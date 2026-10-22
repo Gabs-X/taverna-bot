@@ -2,6 +2,8 @@
 // O volume vem de filtros: sombra interna (embaixo e à direita), luz (em cima e à esquerda),
 // luz de recorte lilás na borda direita e sombra projetada entre as camadas.
 import { temItem, type Aparencia, type Humor } from './gotica.ts';
+import { desenharItem } from './goticaItens.ts';
+import type { Equipados } from './loja.ts';
 
 // ---------- Cores ----------
 
@@ -396,11 +398,11 @@ function morcego() {
 
 // ---------- Montagem ----------
 
-/** Retrato da gótica em SVG 512×512. Os acessórios dependem do nível. */
-export function desenharGotica(a: Aparencia, nivel: number, humor: Humor) {
+/** Retrato da gótica em SVG 512×512. Os acessórios dependem do nível; os itens da loja, do que está equipado. */
+export function desenharGotica(a: Aparencia, nivel: number, humor: Humor, eq: Equipados = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   ${defs(a)}
-  ${cenario()}
+  ${eq.fundo ? desenharItem(eq.fundo) : cenario()}
   ${temItem(nivel, 'asas') ? asas() : ''}
   ${cabeloAtras(a)}
   ${pescoco()}
@@ -409,9 +411,12 @@ export function desenharGotica(a: Aparencia, nivel: number, humor: Humor) {
   <g filter="url(#proj)"><g filter="url(#volPele)"><path d="${ROSTO}" fill="url(#pele)"/></g></g>
   ${rosto(a, humor)}
   ${temItem(nivel, 'piercing') ? `<circle cx="271" cy="352" r="5" fill="none" stroke="url(#prata)" stroke-width="2.6"/><circle cx="268" cy="348" r="1.2" fill="#fff"/>` : ''}
+  ${desenharItem(eq.rosto)}
   ${cabeloFrente(a)}
   ${temItem(nivel, 'rosas') ? rosas() : ''}
+  ${desenharItem(eq.cabeca)}
   ${temItem(nivel, 'morcego') ? morcego() : ''}
+  ${desenharItem(eq.companheiro)}
   ${poeira()}
   <rect width="512" height="512" fill="url(#vinheta)"/>
 </svg>`;

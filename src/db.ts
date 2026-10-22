@@ -131,4 +131,15 @@ db.exec(`
     ultimo_trabalho INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (guild_id, user_id)
   );
+
+  -- Itens comprados na loja da gótica
+  CREATE TABLE IF NOT EXISTS gotica_itens (
+    guild_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    item     TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, item)
+  );
 `);
+
+const colunasGoticas = db.prepare("SELECT name FROM pragma_table_info('goticas')").all() as { name: string }[];
+if (!colunasGoticas.some((c) => c.name === 'equipados')) db.exec("ALTER TABLE goticas ADD COLUMN equipados TEXT NOT NULL DEFAULT '{}'");
