@@ -15,7 +15,8 @@ import {
   type CategoryChannel,
   type Guild,
   type GuildBasedChannel,
-  type OverwriteResolvable,
+  type OverwriteData,
+  PermissionsBitField,
   type TextChannel,
 } from 'discord.js';
 import { ATIVIDADES, CANAIS, CANAIS_REMOVIDOS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoAtividade, nomeCargoJogo, type Acesso } from '../config.ts';
@@ -24,7 +25,7 @@ import { canalPorNome, cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 import { atualizarPainelGrupos } from './grupos.ts';
-import { garantirComunidade, garantirIntegracao } from './integracao.ts';
+import { desligarFormularioDoDiscord, garantirComunidade, painelVerificacao, TITULO_VERIFICACAO } from './formulario.ts';
 import { aplicarPermissoesComandos } from './permissoesComandos.ts';
 
 const { ViewChannel, SendMessages, Connect, ReadMessageHistory } = PermissionFlagsBits;
@@ -41,32 +42,51 @@ const PERMISSOES_STAFF = [
   PermissionFlagsBits.ViewAuditLog,
 ];
 
-function permissoes(guild: Guild, acesso: Acesso | undefined): OverwriteResolvable[] | undefined {
-  if (!acesso || acesso.tipo === 'publico') return undefined;
+function permissoes(guild: Guild, acesso: Acesso = { tipo: 'publico' }): OverwriteData[] {
   const todos = guild.roles.everyone.id;
+  const base = cargoPorNome(guild, CARGOS.membro.nome)?.id;
   const admin = cargoPorNome(guild, CARGOS.admin.nome)?.id;
-  const comAdmin = (lista: OverwriteResolvable[]) =>
-    admin ? [...lista, { id: admin, allow: [ViewChannel, SendMessages, Connect] }] : lista;
+  const comAdmin = (lista: OverwriteData[]) =>
+    admin && !lista.some((o) => o.id === admin) ? [...lista, { id: admin, allow: [ViewChannel, SendMessages, Connect] }] : lista;
 
   switch (acesso.tipo) {
+    // Sem o cargo base (antes de responder o formulário) não se vê nada além de #verificacao.
+    case 'publico':
+      return comAdmin([{ id: todos, deny: [ViewChannel] }, ...(base ? [{ id: base, allow: [ViewChannel, Connect] }] : [])]);
     case 'leitura':
-      return comAdmin([{ id: todos, deny: [SendMessages] }]);
+      return comAdmin([{ id: todos, deny: [ViewChannel, SendMessages] }, ...(base ? [{ id: base, allow: [ViewChannel], deny: [SendMessages] }] : [])]);
+    case 'verificacao':
+      return comAdmin([{ id: todos, allow: [ViewChannel, ReadMessageHistory], deny: [SendMessages] }, ...(base ? [{ id: base, deny: [ViewChannel] }] : [])]);
     case 'staff': {
       // Só Staff e acima (Taverneiro e Dono têm Administrador, que já vê tudo).
       const staff = cargoPorNome(guild, CARGOS.staff.nome)?.id;
-      const lista: OverwriteResolvable[] = [{ id: todos, deny: [ViewChannel] }];
+      const lista: OverwriteData[] = [{ id: todos, deny: [ViewChannel] }];
       if (staff) lista.push({ id: staff, allow: [ViewChannel, SendMessages, ReadMessageHistory, Connect] });
       return comAdmin(lista);
     }
     case 'cargo': {
       const cargo = cargoPorNome(guild, acesso.cargo)?.id;
       const escrita = acesso.escrita ? cargoPorNome(guild, acesso.escrita)?.id : undefined;
-      const lista: OverwriteResolvable[] = [{ id: todos, deny: [ViewChannel] }];
+      const lista: OverwriteData[] = [{ id: todos, deny: [ViewChannel] }];
       if (cargo) lista.push({ id: cargo, allow: [ViewChannel, Connect], deny: escrita ? [SendMessages] : [] });
       if (escrita) lista.push({ id: escrita, allow: [ViewChannel, SendMessages, Connect] });
       return comAdmin(lista);
     }
   }
+}
+
+/** Aplica as regras de acesso no canal só se forem diferentes das atuais (cada mudança é uma chamada à API). */
+async function sincronizarAcesso(canal: GuildBasedChannel, regras: OverwriteData[]): Promise<boolean> {
+  if (!('permissionOverwrites' in canal)) return false;
+  const chave = (id: string, allow: bigint, deny: bigint) => `${id}:${allow}:${deny}`;
+  const desejado = regras
+    .map((o) => chave(String(o.id), PermissionsBitField.resolve(o.allow ?? 0n), PermissionsBitField.resolve(o.deny ?? 0n)))
+    .sort()
+    .join('|');
+  const atual = [...canal.permissionOverwrites.cache.values()].map((o) => chave(o.id, o.allow.bitfield, o.deny.bitfield)).sort().join('|');
+  if (atual === desejado) return false;
+  await canal.permissionOverwrites.set(regras);
+  return true;
 }
 
 async function garantirCargos(guild: Guild, relatorio: string[]) {
@@ -84,7 +104,14 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     ...ATIVIDADES.map((a) => ({ nome: nomeCargoAtividade(a), cor: a.cor, hoist: false, permissions: [] })),
   ];
   for (const c of desejados) {
-    const existente = cargoPorNome(guild, c.nome);
+    let existente = cargoPorNome(guild, c.nome);
+    // Cargo renomeado no config (ex.: 🤪 Maluco → 🪑 Freguês): renomeia o antigo em vez de criar outro.
+    const antigo = !existente && 'antigos' in c ? (c.antigos as readonly string[]).map((n) => cargoPorNome(guild, n)).find((r) => r) : undefined;
+    if (antigo) {
+      const nomeAntigo = antigo.name;
+      existente = await antigo.edit({ name: c.nome });
+      relatorio.push(`✏️ cargo ${nomeAntigo} → ${c.nome}`);
+    }
     if (existente) {
       // Quem deve aparecer separado na lista de membros (ex.: cargos de nível criados antes disso).
       if (c.hoist && !existente.hoist && existente.editable) {
@@ -98,7 +125,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
   await ordenarCargos(guild, relatorio);
 }
 
-// Ordem dos cargos (de cima para baixo), logo abaixo do cargo do bot. Os de nível ficam acima dos Malucos
+// Ordem dos cargos (de cima para baixo), logo abaixo do cargo do bot. Os de nível ficam acima dos Fregueses
 // e aparecem separados na lista de membros, destacando quem é mais ativo no servidor.
 const HIERARQUIA = [
   CARGOS.dono.nome,
@@ -113,7 +140,7 @@ const HIERARQUIA = [
 async function ordenarCargos(guild: Guild, relatorio: string[]) {
   const topoBot = guild.members.me?.roles.highest.position ?? 0;
   const principais = HIERARQUIA.map((n) => cargoPorNome(guild, n)).filter((c) => !!c);
-  // O resto (RPG, atividades, jogos...) vai para baixo dos Malucos, mantendo a ordem que já tinha entre si.
+  // O resto (RPG, atividades, jogos...) vai para baixo dos Fregueses, mantendo a ordem que já tinha entre si.
   const resto = [...guild.roles.cache.values()]
     .filter((c) => !c.managed && c.id !== guild.id && c.position < topoBot && !principais.includes(c))
     .sort((x, y) => y.position - x.position || x.name.localeCompare(y.name));
@@ -162,6 +189,14 @@ async function garantirEmojis(guild: Guild, relatorio: string[]) {
 
 async function garantirCanais(guild: Guild, relatorio: string[]) {
   const doPlano = new Set<string>();
+  let ajustados = 0;
+  const ajustar = async (canal: GuildBasedChannel, acesso: Acesso | undefined) => {
+    try {
+      if (await sincronizarAcesso(canal, permissoes(guild, acesso))) ajustados++;
+    } catch (e) {
+      relatorio.push(`⚠️ não consegui ajustar o acesso de ${canal.name} (${(e as Error).message})`);
+    }
+  };
 
   for (const cat of PLANO) {
     let categoria = canalPorNome<CategoryChannel>(guild, cat.nome, ChannelType.GuildCategory);
@@ -181,7 +216,7 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
       relatorio.push(`➕ categoria ${cat.nome}`);
     }
     doPlano.add(categoria.id);
-    if (cat.acesso?.tipo === 'staff') await categoria.permissionOverwrites.set(permissoes(guild, cat.acesso) ?? []).catch(() => {});
+    await ajustar(categoria, cat.acesso);
 
     for (const canal of cat.canais) {
       const tipo = canal.voz ? ChannelType.GuildVoice : ChannelType.GuildText;
@@ -202,21 +237,19 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
           permissionOverwrites: permissoes(guild, canal.acesso ?? cat.acesso),
         });
         relatorio.push(`➕ ${canal.voz ? '🔊' : '#'} ${canal.nome}`);
+        // Canal novo que é o primeiro da categoria no plano (ex.: #verificacao) vai para o topo dela.
+        if (canal === cat.canais[0] && 'setPosition' in existente) await existente.setPosition(0).catch(() => {});
       } else if (existente.parentId !== categoria.id && 'setParent' in existente) {
         await existente.setParent(categoria.id, { lockPermissions: false });
         // Mudou de categoria (ex.: #goticas foi para ATIVIDADES): aplica o acesso novo.
-        const regras = permissoes(guild, canal.acesso ?? cat.acesso);
-        if (regras) await existente.permissionOverwrites.set(regras);
-        else await existente.lockPermissions();
         relatorio.push(`🔀 ${canal.nome} → ${cat.nome}`);
       }
-      const acessoCanal = canal.acesso ?? cat.acesso;
-      if (acessoCanal?.tipo === 'staff' && 'permissionOverwrites' in existente) {
-        await existente.permissionOverwrites.set(permissoes(guild, acessoCanal) ?? []).catch(() => {});
-      }
+      // Sem regra própria, vale a da categoria.
+      await ajustar(existente, canal.acesso ?? cat.acesso);
       doPlano.add(existente.id);
     }
   }
+  if (ajustados) relatorio.push(`🔐 acesso ajustado em ${ajustados} canal(is)/categoria(s)`);
   return doPlano;
 }
 
@@ -227,6 +260,15 @@ async function mensagemDoBot(canal: TextChannel, titulo: string) {
 
 async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
   await atualizarPainelGrupos(guild);
+  const verificacao = canalTexto(guild, CANAIS.verificacao);
+  if (verificacao) {
+    const painel = await mensagemDoBot(verificacao, TITULO_VERIFICACAO);
+    if (painel) await painel.edit(painelVerificacao());
+    else {
+      await verificacao.send(painelVerificacao());
+      relatorio.push('📌 formulário de verificação postado');
+    }
+  }
   const regras = canalTexto(guild, CANAIS.regras);
   if (regras && !(await mensagemDoBot(regras, `📜 Regras da ${NOME_SERVIDOR}`))) {
     const embed = new EmbedBuilder()
@@ -284,17 +326,14 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
   const afk = canalPorNome(guild, '💤 AFK', ChannelType.GuildVoice);
   if (afk && guild.afkChannelId !== afk.id) await guild.setAFKChannel(afk.id);
 
-  // Quem já está no servidor vira Maluco; quem rodou o setup vira Taverneiro.
+  // Gente ganha o cargo base respondendo o formulário de #verificacao; os bots (ex.: bardos da música) ganham
+  // aqui, para enxergar as calls. Quem rodou o setup vira Taverneiro.
   const membro = cargoPorNome(guild, CARGOS.membro.nome);
   const admin = cargoPorNome(guild, CARGOS.admin.nome);
   const membros = await guild.members.fetch();
-  let novos = 0;
   for (const m of membros.values()) {
-    if (m.user.bot || !membro || m.roles.cache.has(membro.id)) continue;
-    await m.roles.add(membro).catch(() => {});
-    novos++;
+    if (m.user.bot && membro && !m.roles.cache.has(membro.id)) await m.roles.add(membro).catch(() => {});
   }
-  if (novos) relatorio.push(`🤪 cargo ${CARGOS.membro.nome} dado a ${novos} membro(s)`);
   if (admin) await membros.get(autorId)?.roles.add(admin).catch(() => {});
   // O dono do servidor ganha o cargo de Dono.
   const cargoDono = cargoPorNome(guild, CARGOS.dono.nome);
@@ -305,7 +344,7 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
 
   await postarMensagensFixas(guild, relatorio);
   await garantirComunidade(guild, relatorio).catch((e) => relatorio.push(`⚠️ Comunidade: ${(e as Error).message}`));
-  await garantirIntegracao(guild).then((r) => r && relatorio.push(r)).catch((e) => relatorio.push(`⚠️ Formulário de entrada: ${(e as Error).message}`));
+  await desligarFormularioDoDiscord(guild, relatorio).catch((e) => relatorio.push(`⚠️ Formulário do Discord: ${(e as Error).message}`));
   relatorio.push(await aplicarPermissoesComandos(guild).catch((e) => `⚠️ Permissões por cargo: ${(e as Error).message}`));
 
   // Canais antigos não são apagados aqui: só listados para você decidir.

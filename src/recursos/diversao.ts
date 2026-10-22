@@ -57,7 +57,7 @@ const RESPOSTAS_8BALL = [
   'Com certeza.', 'Pode apostar.', 'Sem dúvida nenhuma.', 'Os dados dizem que sim.', 'Rolou 20 natural: sim!',
   'Provavelmente.', 'Tudo indica que sim.', 'Pergunta de novo depois da próxima partida.', 'Melhor não te contar agora.',
   'Nem o Mestre sabe essa.', 'Concentra e pergunta de novo.', 'Não conta com isso.', 'Minhas fontes dizem que não.',
-  'Rolou 1 natural: não.', 'Só se o time inteiro colaborar (ou seja, não).', 'Nem a pau, maluco.',
+  'Rolou 1 natural: não.', 'Só se o time inteiro colaborar (ou seja, não).', 'Nem a pau, freguês.',
 ];
 
 export const bola8: Comando = {
@@ -113,7 +113,7 @@ export const servidor: Comando = {
       .setTitle(`${emoji(guild, 'taverna_cerveja', '🍺')} ${guild.name}`)
       .setThumbnail(guild.iconURL({ size: 256 }))
       .addFields(
-        { name: '👥 Membros', value: `${humanos.size} malucos · ${membros.size - humanos.size} bots`, inline: true },
+        { name: '👥 Membros', value: `${humanos.size} pessoas · ${membros.size - humanos.size} bots`, inline: true },
         { name: '🟢 Agora', value: `${online} online · ${naCall} em call`, inline: true },
         { name: '👑 Dono', value: dono ? `${dono}` : '—', inline: true },
         {

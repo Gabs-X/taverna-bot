@@ -3,6 +3,7 @@ import type {
   ButtonInteraction,
   ChatInputCommandInteraction,
   ModalSubmitInteraction,
+  StringSelectMenuInteraction,
   MessageContextMenuCommandInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
   RESTPostAPIContextMenuApplicationCommandsJSONBody,
@@ -24,6 +25,12 @@ export type HandlerBotao = {
 export type HandlerModal = {
   prefixo: string;
   executar(i: ModalSubmitInteraction, argumento: string): Promise<unknown>;
+};
+
+// Menus de seleção (lista suspensa) também são roteados pelo prefixo do customId.
+export type HandlerSelecao = {
+  prefixo: string;
+  executar(i: StringSelectMenuInteraction, argumento: string): Promise<unknown>;
 };
 
 // Menus do botão direito numa mensagem (Apps → "Salvar citação").

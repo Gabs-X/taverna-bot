@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { ActivityType, ApplicationFlagsBitField, Client, Events, GatewayIntentBits, MessageFlags, Partials, REST, Routes, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
-import { aoMudarMembro, botaoAniversario, modalAniversario } from './recursos/integracao.ts';
+import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, selecaoFormulario } from './recursos/formulario.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
@@ -41,7 +41,7 @@ import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recur
 import { aoMudarPresenca, elo, gratis, iniciarJogosGratis } from './recursos/jogosExternos.ts';
 import { anunciarVersao, VERSAO, versao } from './recursos/novidades.ts';
 import { aoMudarVozTela, botaoTela, iniciarTelas, tela } from './recursos/tela.ts';
-import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
+import type { Comando, HandlerBotao, HandlerModal, HandlerSelecao, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -54,7 +54,8 @@ const COMANDOS: Comando[] = [
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario, botaoFormulario];
+const SELECOES: HandlerSelecao[] = [selecaoFormulario];
 const MODAIS: HandlerModal[] = [modalGrupo, modalAniversario];
 const MENUS: MenuMensagem[] = [salvarCitacao];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
@@ -133,6 +134,9 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
     } else if (i.isButton()) {
       const [prefixo, ...resto] = i.customId.split(':');
       await BOTOES.find((b) => b.prefixo === prefixo)?.executar(i, resto.join(':'));
+    } else if (i.isStringSelectMenu()) {
+      const [prefixo, ...resto] = i.customId.split(':');
+      await SELECOES.find((s) => s.prefixo === prefixo)?.executar(i, resto.join(':'));
     } else if (i.isModalSubmit()) {
       const [prefixo, ...resto] = i.customId.split(':');
       await MODAIS.find((m) => m.prefixo === prefixo)?.executar(i, resto.join(':'));

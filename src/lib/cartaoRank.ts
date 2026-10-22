@@ -16,7 +16,7 @@ const escapar = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 export const semEmoji = (s: string) => s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}]/gu, '').replace(/\s+/g, ' ').trim();
 
 export function desenharCartaoRank(d: DadosRank) {
-  const nome = escapar(semEmoji(d.nome).slice(0, 22) || 'Maluco');
+  const nome = escapar(semEmoji(d.nome).slice(0, 22) || 'Freguês');
   const fracao = Math.max(0, Math.min(1, d.xp / d.xpProximo));
   const larguraBarra = 560;
   const fonte = `font-family="Segoe UI, Inter, DejaVu Sans, Arial, sans-serif"`;

@@ -4,25 +4,25 @@ import { canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import { registrar } from './registro.ts';
 
 const FRASES = [
-  'mais um maluco chegou na taverna!',
-  'a loucura coletiva acaba de aumentar.',
+  'mais um freguês chegou na taverna!',
+  'a taverna acaba de ficar mais cheia.',
   'puxa uma cadeira e pede uma cerveja (virtual).',
   'rolou iniciativa e entrou primeiro.',
 ];
 
 export async function aoEntrar(membro: GuildMember) {
-  // Bot (ex.: um bardo de música novo): só registra, sem cargo nem boas-vindas.
+  // Bot (ex.: um bardo de música novo): ganha o cargo base para enxergar as calls, sem boas-vindas.
   if (membro.user.bot) {
+    const cargo = cargoPorNome(membro.guild, CARGOS.membro.nome);
+    if (cargo) await membro.roles.add(cargo).catch(() => {});
     registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: '🤖 bot entrou no servidor' });
     return;
   }
-  const cargo = cargoPorNome(membro.guild, CARGOS.membro.nome);
-  if (cargo) await membro.roles.add(cargo).catch(() => {});
-  registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: `📥 entrou no servidor${cargo ? ` e ganhou o cargo ${cargo.name}` : ''}` });
+  // Gente: só vê #verificacao até responder o formulário (formulario.ts), que dá o cargo base.
+  registrar({ guild: membro.guild, userId: membro.id, tipo: 'servidor', acao: '📥 entrou no servidor' });
 
   const canal = canalTexto(membro.guild, CANAIS.boasVindas);
-  const escolha = canalTexto(membro.guild, CANAIS.escolhaJogos);
-  const regras = canalTexto(membro.guild, CANAIS.regras);
+  const verificacao = canalTexto(membro.guild, CANAIS.verificacao);
   if (!canal) return;
 
   const frase = FRASES[Math.floor(Math.random() * FRASES.length)];
@@ -31,9 +31,8 @@ export async function aoEntrar(membro: GuildMember) {
     .setAuthor({ name: membro.user.username, iconURL: membro.displayAvatarURL() })
     .setTitle(`${emoji(membro.guild, 'taverna_cerveja', '🍺')} Bem-vindo(a) à ${NOME_SERVIDOR}!`)
     .setDescription(
-      `${emoji(membro.guild, 'maluco', '🤪')} ${membro}, ${frase}\n\n` +
-        `${regras ? `📜 Leia as ${regras}\n` : ''}` +
-        `${escolha ? `🎮 Escolha seus jogos em ${escolha}\n` : ''}` +
+      `👋 ${membro}, ${frase}\n\n` +
+        `${verificacao ? `✅ Responda o formulário em ${verificacao} para liberar o servidor\n` : ''}` +
         `${emoji(membro.guild, 'call', '🔊')} Para jogar, entre em **${CANAIS.criarCall}**`,
     )
     .setThumbnail(membro.displayAvatarURL({ size: 256 }))

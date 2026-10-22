@@ -10,7 +10,7 @@ export const CARGOS = {
   mestre: { nome: '🐉 Mestre', cor: 0x8e44ad },
   aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b }, // mesa de D&D 3.5
   daggerheart: { nome: '🌗 Daggerheart', cor: 0x2e86c1 }, // mesa de Daggerheart
-  membro: { nome: '🤪 Maluco', cor: 0x2ecc71 },
+  membro: { nome: '🪑 Freguês', cor: 0x2ecc71, antigos: ['🤪 Maluco'] }, // cargo base: libera os canais (ganho no formulário de #verificacao)
   aniversario: { nome: '🎂 Parabéns', cor: 0xff6b9d }, // marcou no formulário de entrada que quer parabéns
 } as const;
 
@@ -37,6 +37,7 @@ export const JOGOS: Jogo[] = [
 export const nomeCargoJogo = (j: Jogo) => `${j.emoji} ${j.nome}`;
 
 export const CANAIS = {
+  verificacao: '✅・verificacao',
   regras: '📜・regras',
   boasVindas: '👋・boas-vindas',
   escolhaJogos: '🎮・escolha-suas-atividades',
@@ -83,14 +84,15 @@ export const ATIVIDADES: Atividade[] = [
 
 export const nomeCargoAtividade = (a: Atividade) => `${a.emoji} ${a.nome}`;
 
-// Quem pode ver/escrever em cada canal.
-// publico: todos veem e escrevem · leitura: todos veem, só admin escreve
-// cargo: só quem tem o cargo vê · staff: só admin vê
+// Quem pode ver/escrever em cada canal. "Fregueses" = quem tem o cargo base (respondeu o formulário).
+// publico (padrão): fregueses veem e escrevem · leitura: fregueses veem, só admin escreve
+// cargo: só quem tem o cargo vê · staff: só admin vê · verificacao: só quem ainda não é freguês vê (sem escrever)
 export type Acesso =
   | { tipo: 'publico' }
   | { tipo: 'leitura' }
   | { tipo: 'cargo'; cargo: string; escrita?: string }
-  | { tipo: 'staff' };
+  | { tipo: 'staff' }
+  | { tipo: 'verificacao' };
 
 // `antigos` (canal ou categoria): nomes anteriores; o /setup renomeia em vez de criar outro.
 export type CanalPlano = { nome: string; voz?: boolean; topico?: string; acesso?: Acesso; limite?: number; antigos?: string[] };
@@ -105,6 +107,7 @@ export const PLANO: CategoriaPlano[] = [
   {
     nome: '📜 ENTRADA',
     canais: [
+      { nome: CANAIS.verificacao, acesso: { tipo: 'verificacao' }, topico: 'Responda o formulário para liberar o servidor.' },
       { nome: CANAIS.regras, acesso: { tipo: 'leitura' }, topico: 'Leia antes de causar.' },
       { nome: CANAIS.novidades, acesso: { tipo: 'leitura' }, topico: 'Versões novas do Taverneiro e o que mudou em cada uma.' },
       { nome: CANAIS.boasVindas, acesso: { tipo: 'leitura' } },
@@ -114,7 +117,7 @@ export const PLANO: CategoriaPlano[] = [
   {
     nome: '💬 RESENHA',
     canais: [
-      { nome: CANAIS.geral, topico: 'Papo de maluco liberado.' },
+      { nome: CANAIS.geral, topico: 'Papo de taverna liberado.' },
       { nome: '😂・memes' },
       { nome: '🎬・clipes-e-prints', topico: 'Jogadas absurdas, fails e prints.' },
       { nome: CANAIS.comandos, topico: 'Use os comandos do bot aqui para não poluir o geral.' },
@@ -213,5 +216,5 @@ export const REGRAS = [
   'Cada assunto no seu canal: comandos em #comandos-do-bot, atividades nos canais delas.',
   `Precisa de uma call? Entre em "${CANAIS.criarCall}" e ela é sua até esvaziar.`,
   'Na mesa de RPG, o Mestre tem a palavra final.',
-  'Divirta-se. Somos todos malucos aqui.',
+  'Divirta-se. A casa é sua.',
 ];
