@@ -289,7 +289,7 @@ export const castigo: Comando = {
 
 const AJUDA: [string, string][] = [
   ['🎵 Música', '`/tocar` nome ou link · `/radio` toca e segue com músicas associadas, sem repetir · `/musica pular | pausar | parar | fila | tocando | volume | loop | embaralhar` · `/jam` divulga sua Jam do Spotify'],
-  ['🔊 Calls', 'Entre em **➕ Calls** e ganhe uma call sua · `/call nome | limite | trancar | destrancar | dono`'],
+  ['🔊 Calls', 'Entre em **➕ Calls** e ganhe uma call sua · `/tela` compartilha a tela por link (titulo, audio) · `/call nome | limite | trancar | destrancar | dono`'],
   ['🎮 Jogos', '`/lfg` chama a galera · `/times` divide a call · `/sortear` decide o indie da noite · `/enquete` votação'],
   ['🐉 D&D 3.5', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | resistencia | ataque | estabilizar` · `/iniciativa entrar | npc | proximo | ver | limpar`'],
   ['🌗 Daggerheart', '`/dh rolar` (dualidade, com traço e experiência) · `/dh dano` · `/dh marcar` PV, Estresse, Esperança, Armadura · `/dh medo` · `/dh ficha criar | ver | editar | experiencias`'],

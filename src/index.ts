@@ -34,6 +34,7 @@ import { NOME_SERVIDOR } from './config.ts';
 import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recursos/resenha.ts';
 import { aoMudarPresenca, elo, gratis, iniciarJogosGratis } from './recursos/jogosExternos.ts';
 import { anunciarVersao, VERSAO, versao } from './recursos/novidades.ts';
+import { tela } from './recursos/tela.ts';
 import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -45,7 +46,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao];
 const MODAIS: HandlerModal[] = [modalGrupo];
