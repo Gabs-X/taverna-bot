@@ -393,7 +393,7 @@ export const botaoRadio: HandlerBotao = {
   prefixo: 'radio',
   async executar(i, acao) {
     const fila = player.nodes.get<Metadados>(i.guildId!);
-    if (!fila?.metadata.radio) return i.update({ components: [] });
+    if (!fila) return i.update({ content: '⏹️ Não tem nada tocando.', embeds: [], components: [] });
     const canalMembro = (i.member as GuildMember).voice.channelId;
     if (fila.channel && canalMembro !== fila.channel.id) {
       return i.reply({ content: `Entre em <#${fila.channel.id}> para controlar o rádio.`, flags: MessageFlags.Ephemeral });
@@ -408,9 +408,9 @@ export const botaoRadio: HandlerBotao = {
       fila.node.setPaused(!fila.node.isPaused());
       return i.update(painelRadio(fila));
     }
-    // desligar: tira as músicas que o rádio escolheu; as pedidas com /tocar continuam.
+    // desligar: o mesmo que /musica parar (para, limpa a fila e sai da call).
     delete fila.metadata.radio;
-    for (const t of fila.tracks.toArray()) if (!t.requestedBy) fila.removeTrack(t);
-    return i.update({ content: `⏹️ Rádio desligado por ${i.user}. ${fila.tracks.size ? 'A fila normal continua.' : 'Esta é a última música.'}`, components: [], allowedMentions: { parse: [] } });
+    fila.delete();
+    return i.update({ content: `⏹️ Rádio desligado por ${i.user}. Parei a música e saí da call.`, components: [], allowedMentions: { parse: [] } });
   },
 };
