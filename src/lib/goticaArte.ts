@@ -421,3 +421,17 @@ export function desenharGotica(a: Aparencia, nivel: number, humor: Humor, eq: Eq
   <rect width="512" height="512" fill="url(#vinheta)"/>
 </svg>`;
 }
+
+/** Só a cabeça, sem fundo, recortada para emoji (o resto da imagem fica transparente). */
+export function desenharCabecaGotica(a: Aparencia, humor: Humor, eq: Pick<Equipados, 'cabeca' | 'rosto'> = {}) {
+  const topo = eq.cabeca === 'chapeu-bruxa' ? 0 : 50;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="86 ${topo} 340 340" width="512" height="512">
+  ${defs(a)}
+  ${cabeloAtras(a)}
+  <g filter="url(#proj)"><g filter="url(#volPele)"><path d="${ROSTO}" fill="url(#pele)"/></g></g>
+  ${rosto(a, humor)}
+  ${desenharItem(eq.rosto)}
+  ${cabeloFrente(a)}
+  ${desenharItem(eq.cabeca)}
+</svg>`;
+}

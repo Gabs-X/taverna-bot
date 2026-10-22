@@ -1,3 +1,6 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -62,6 +65,33 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     await guild.roles.create({ name: c.nome, colors: { primaryColor: c.cor }, hoist: c.hoist, permissions: c.permissions, mentionable: true });
     relatorio.push(`➕ cargo ${c.nome}`);
   }
+}
+
+// Emojis da Taverna (gerados por scripts/gerar-emojis.ts): sobe os que ainda não existem, até o limite do nível de impulso.
+const PASTA_EMOJIS = fileURLToPath(new URL('../../assets/emojis/', import.meta.url));
+const LIMITE_EMOJIS = [50, 100, 150, 250];
+
+async function garantirEmojis(guild: Guild, relatorio: string[]) {
+  if (!existsSync(PASTA_EMOJIS)) return;
+  const emojis = await guild.emojis.fetch();
+  let livres = LIMITE_EMOJIS[guild.premiumTier] - emojis.filter((e) => !e.animated).size;
+  const novos: string[] = [];
+  for (const arquivo of readdirSync(PASTA_EMOJIS).filter((f) => f.endsWith('.png')).sort()) {
+    const nome = arquivo.replace(/.png$/, '');
+    if (emojis.some((e) => e.name === nome)) continue;
+    if (livres <= 0) {
+      relatorio.push(`⚠️ sem espaço para mais emojis (limite do nível ${guild.premiumTier}); faltou :${nome}: e os seguintes`);
+      break;
+    }
+    try {
+      const e = await guild.emojis.create({ attachment: join(PASTA_EMOJIS, arquivo), name: nome, reason: 'Emojis da Taverna (/setup)' });
+      novos.push(`${e}`);
+      livres--;
+    } catch (erro) {
+      relatorio.push(`⚠️ não consegui criar :${nome}: (${(erro as Error).message})`);
+    }
+  }
+  if (novos.length) relatorio.push(`😀 ${novos.length} emoji(s) novo(s): ${novos.join(' ')}`);
 }
 
 async function garantirCanais(guild: Guild, relatorio: string[]) {
@@ -168,6 +198,7 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
 
   await garantirCargos(guild, relatorio);
   const doPlano = await garantirCanais(guild, relatorio);
+  await garantirEmojis(guild, relatorio);
 
   for (const velho of CANAIS_REMOVIDOS) {
     const tipo = velho.voz ? ChannelType.GuildVoice : ChannelType.GuildText;

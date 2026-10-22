@@ -42,6 +42,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ Aventureiro (D&D) · 🌗 Daggerheart · 🤪 Maluco (todo mundo) · um por jogo (para os chamados do /lfg) · um por atividade (🦇 Góticas, 🧠 Quiz, 🏹 Campeões, 💰 Economia, ⭐ Level up) · por nível (🍻 Bebum a 👑 Lenda).
 Os comandos de cada atividade só funcionam no canal dela; usados em outro lugar, o bot indica o canal e onde desbloquear.
 Canais que saíram do plano (os antigos canais de cada jogo, 🔊 Indie Aleatório e #procurando-grupo) são apagados pelo `/setup`, com as mensagens; a lista fica em `CANAIS_REMOVIDOS` no config. Canais criados à mão nunca são apagados, só listados.
+Emojis da Taverna: 23 emojis próprios em `assets/emojis` (cerveja, d20, crítico e falha, moeda, level up, RIP, GG, F, hype, reações, caveira, coração gótico, morcego e 4 góticas). O `/setup` sobe os que faltam, até o limite do nível de impulso. Para mudar ou criar, edite `scripts/gerar-emojis.ts` e rode `node scripts/gerar-emojis.ts`.
 Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode `/setup` de novo.
 
 ## Como colocar no ar
