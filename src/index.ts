@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { ActivityType, ApplicationFlagsBitField, Client, Events, GatewayIntentBits, MessageFlags, Partials, REST, Routes, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
+import { aoMudarMembro, botaoAniversario, modalAniversario } from './recursos/integracao.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
@@ -53,8 +54,8 @@ const COMANDOS: Comando[] = [
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio];
-const MODAIS: HandlerModal[] = [modalGrupo];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario];
+const MODAIS: HandlerModal[] = [modalGrupo, modalAniversario];
 const MENUS: MenuMensagem[] = [salvarCitacao];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
@@ -154,6 +155,7 @@ client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.err
 client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));
 client.on(Events.GuildMemberAdd, (m) => aoEntrar(m).catch((e) => console.error('[boas-vindas]', e)));
+client.on(Events.GuildMemberUpdate, (antes, depois) => aoMudarMembro(antes, depois).catch((e) => console.error('[aniversário]', e)));
 client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error('[saída]', e)));
 
 // Conta ao supervisor o que está em andamento (só na memória): ele adia o reinício até acabar.

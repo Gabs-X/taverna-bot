@@ -24,6 +24,7 @@ import { canalPorNome, cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 import { atualizarPainelGrupos } from './grupos.ts';
+import { garantirComunidade, garantirIntegracao } from './integracao.ts';
 import { aplicarPermissoesComandos } from './permissoesComandos.ts';
 
 const { ViewChannel, SendMessages, Connect, ReadMessageHistory } = PermissionFlagsBits;
@@ -77,6 +78,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.aventureiro, hoist: false, permissions: [] },
     { ...CARGOS.daggerheart, hoist: false, permissions: [] },
     { ...CARGOS.membro, hoist: true, permissions: [] },
+    { ...CARGOS.aniversario, hoist: false, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
     ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: true, permissions: [] })),
     ...ATIVIDADES.map((a) => ({ nome: nomeCargoAtividade(a), cor: a.cor, hoist: false, permissions: [] })),
@@ -302,6 +304,8 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
   }
 
   await postarMensagensFixas(guild, relatorio);
+  await garantirComunidade(guild, relatorio).catch((e) => relatorio.push(`⚠️ Comunidade: ${(e as Error).message}`));
+  await garantirIntegracao(guild).then((r) => r && relatorio.push(r)).catch((e) => relatorio.push(`⚠️ Formulário de entrada: ${(e as Error).message}`));
   relatorio.push(await aplicarPermissoesComandos(guild).catch((e) => `⚠️ Permissões por cargo: ${(e as Error).message}`));
 
   // Canais antigos não são apagados aqui: só listados para você decidir.

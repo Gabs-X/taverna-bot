@@ -251,6 +251,19 @@ function diasAte(dia: number, mes: number) {
 
 const formatarData = (dia: number, mes: number) => `${dia} de ${MESES[mes - 1]}`;
 
+/** Salva (ou troca) o aniversário e devolve a resposta para a pessoa. Usado pelo /aniversario e pelo formulário do privado. */
+export function salvarAniversario(guildId: string, userId: string, dia: number, mes: number): string {
+  if (!dataValida(dia, mes)) return `${dia}/${mes} não existe 🤔`;
+  // Se já passou do horário de hoje, não avisa de novo neste ano.
+  const hoje = partesBrasilia(new Date());
+  const jaAvisado = hoje.dia === dia && hoje.mes === mes && hoje.hora >= HORA_PARABENS ? hoje.ano : 0;
+  db.prepare(
+    `INSERT INTO aniversarios (guild_id, user_id, dia, mes, ultimo_ano_avisado) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (guild_id, user_id) DO UPDATE SET dia = excluded.dia, mes = excluded.mes, ultimo_ano_avisado = excluded.ultimo_ano_avisado`,
+  ).run(guildId, userId, dia, mes, jaAvisado);
+  return `🎂 Anotado: **${formatarData(dia, mes)}**. No dia eu chamo a galera para te dar parabéns!`;
+}
+
 export const aniversario: Comando = {
   data: new SlashCommandBuilder()
     .setName('aniversario')
@@ -285,15 +298,7 @@ export const aniversario: Comando = {
     if (sub === 'definir') {
       const dia = i.options.getInteger('dia', true);
       const mes = i.options.getInteger('mes', true);
-      if (!dataValida(dia, mes)) return i.reply({ content: `${dia}/${mes} não existe 🤔`, flags: MessageFlags.Ephemeral });
-      // Se já passou do horário de hoje, não avisa de novo neste ano.
-      const hoje = partesBrasilia(new Date());
-      const jaAvisado = hoje.dia === dia && hoje.mes === mes && hoje.hora >= HORA_PARABENS ? hoje.ano : 0;
-      db.prepare(
-        `INSERT INTO aniversarios (guild_id, user_id, dia, mes, ultimo_ano_avisado) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT (guild_id, user_id) DO UPDATE SET dia = excluded.dia, mes = excluded.mes, ultimo_ano_avisado = excluded.ultimo_ano_avisado`,
-      ).run(guild, i.user.id, dia, mes, jaAvisado);
-      return i.reply({ content: `🎂 Anotado: **${formatarData(dia, mes)}**. No dia eu chamo a galera para te dar parabéns!`, flags: MessageFlags.Ephemeral });
+      return i.reply({ content: salvarAniversario(guild, i.user.id, dia, mes), flags: MessageFlags.Ephemeral });
     }
 
     if (sub === 'remover') {

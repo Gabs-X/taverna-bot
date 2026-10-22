@@ -34,6 +34,7 @@ import {
 } from '../lib/grupos.ts';
 import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao, HandlerModal } from '../tipos.ts';
+import { garantirIntegracao } from './integracao.ts';
 
 // Subgrupos: qualquer um pede, o admin aprova; cada grupo ganha cargo, categoria, texto e voz.
 // O dono pode pedir canais extras (também com aprovação), convidar, remover, transferir e apagar.
@@ -143,6 +144,8 @@ async function apagarEstrutura(guild: Guild, gr: Grupo) {
 const TITULO_PAINEL = '👥 Subgrupos da Taverna';
 
 export async function atualizarPainelGrupos(guild: Guild) {
+  // Os subgrupos abertos também são uma pergunta do formulário de entrada.
+  garantirIntegracao(guild).catch((e) => console.error('[formulário de entrada]', e));
   const canal = canalTexto(guild, CANAIS.subgrupos);
   if (!canal) return;
   const antigas = await canal.messages.fetch({ limit: 50 });

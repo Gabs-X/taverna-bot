@@ -11,6 +11,7 @@ export const CARGOS = {
   aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b }, // mesa de D&D 3.5
   daggerheart: { nome: '🌗 Daggerheart', cor: 0x2e86c1 }, // mesa de Daggerheart
   membro: { nome: '🤪 Maluco', cor: 0x2ecc71 },
+  aniversario: { nome: '🎂 Parabéns', cor: 0xff6b9d }, // marcou no formulário de entrada que quer parabéns
 } as const;
 
 // Cargos ganhos por nível de atividade (mensagens e tempo em call). Fica só o mais alto.
@@ -30,6 +31,7 @@ export const JOGOS: Jogo[] = [
   { id: 'minecraft', nome: 'Minecraft', emoji: '⛏️', cor: 0x62b47a },
   { id: 'fortnite', nome: 'Fortnite', emoji: '🪂', cor: 0x9d4dbb },
   { id: 'indie', nome: 'Indie Aleatório', emoji: '🎲', cor: 0xf5c542 },
+  { id: 'cobblemon', nome: 'Cobblemon', emoji: '🐾', cor: 0xe3350d }, // libera a categoria do Farbound
 ];
 
 export const nomeCargoJogo = (j: Jogo) => `${j.emoji} ${j.nome}`;
@@ -64,6 +66,8 @@ export const CANAIS = {
   rolagensDh: '🎲・rolagens-dh',
   fichasDh: '📖・fichas-dh',
   mesaDh: '🌗 Mesa de Daggerheart',
+  avisosFarbound: '📢・avisos-farbound',
+  farbound: '💬・farbound',
 } as const;
 
 // Atividades do bot: cada uma tem um canal que só aparece para quem desbloquear no painel de #escolha-suas-atividades.
@@ -92,6 +96,8 @@ export type Acesso =
 export type CanalPlano = { nome: string; voz?: boolean; topico?: string; acesso?: Acesso; limite?: number; antigos?: string[] };
 export type CategoriaPlano = { nome: string; antigos?: string[]; acesso?: Acesso; canais: CanalPlano[] };
 
+const cargoCobblemon = nomeCargoJogo(JOGOS.find((j) => j.id === 'cobblemon')!);
+const cobblemon: Acesso = { tipo: 'cargo', cargo: cargoCobblemon };
 const rpg: Acesso = { tipo: 'cargo', cargo: CARGOS.aventureiro.nome };
 const dh: Acesso = { tipo: 'cargo', cargo: CARGOS.daggerheart.nome };
 
@@ -132,6 +138,17 @@ export const PLANO: CategoriaPlano[] = [
       // Um canal só: quem entra ganha uma call própria, que some quando esvazia.
       { nome: CANAIS.criarCall, voz: true, antigos: ['➕ Criar call'] },
       { nome: CANAIS.jogosGratis, acesso: { tipo: 'leitura' }, topico: 'Jogos de graça na Epic, Steam e GOG: o bot avisa sozinho quando aparece um novo.' },
+    ],
+  },
+  {
+    // Servidor de Cobblemon (Minecraft) de um amigo: aparece para quem tem o cargo de jogo Cobblemon.
+    nome: '🐾 FARBOUND · COBBLEMON',
+    acesso: cobblemon,
+    canais: [
+      { nome: CANAIS.avisosFarbound, acesso: { tipo: 'cargo', cargo: cargoCobblemon, escrita: CARGOS.staff.nome }, topico: 'Novidades, temporadas e eventos do Farbound.' },
+      { nome: CANAIS.farbound, acesso: cobblemon, topico: 'Servidor brasileiro de Cobblemon com mods exclusivos, temporadas com pioneiros e nenhum pay-to-win.' },
+      { nome: '📸・prints-farbound', acesso: cobblemon, topico: 'Capturas, shinies, bases e times.' },
+      { nome: '🐾 Farbound', voz: true, acesso: cobblemon },
     ],
   },
   {
