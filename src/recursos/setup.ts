@@ -10,6 +10,7 @@ import {
   InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
+  Routes,
   SlashCommandBuilder,
   type CategoryChannel,
   type Guild,
@@ -94,11 +95,16 @@ async function ordenarCargos(guild: Guild, relatorio: string[]) {
   if (!dono || !admin || !staff) return;
   if (dono.position < topoBot && dono.position > admin.position && admin.position > staff.position) return;
   try {
-    await guild.roles.setPositions([
-      { role: dono.id, position: topoBot - 1 },
-      { role: admin.id, position: topoBot - 2 },
-      { role: staff.id, position: topoBot - 3 },
-    ]);
+    // Chamada direta à API: o setPositions do discord.js falha quando vários cargos têm a mesma posição
+    // (comum depois de criar muitos cargos de uma vez).
+    await guild.client.rest.patch(Routes.guildRoles(guild.id), {
+      body: [
+        { id: dono.id, position: topoBot - 1 },
+        { id: admin.id, position: topoBot - 2 },
+        { id: staff.id, position: topoBot - 3 },
+      ],
+      reason: 'Hierarquia da Taverna (/setup)',
+    });
     relatorio.push(`↕️ cargos em ordem: ${dono.name} > ${admin.name} > ${staff.name}`);
   } catch {
     relatorio.push('⚠️ Não consegui ordenar os cargos. Em Configurações do servidor > Cargos, arraste o cargo do bot para o topo e rode /setup de novo.');
