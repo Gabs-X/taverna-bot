@@ -18,7 +18,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 🎮 Jogos | Botões de cargo por jogo (libera o canal), `/lfg` chama quem joga, `/times` divide a call, `/sortear` decide o indie da noite, `/enquete` abre uma votação |
 | 📅 Agenda | `/lembrete` (30m, 2h, 3d…), `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |
 | 🦇 Gótica | No canal 🦇・goticas (criado pelo `/setup`): `/gotica adotar`: aparência e personalidade sorteadas, retrato desenhado pelo bot. `/gotica ver` com botões para alimentar, conversar, ouvir música, passear e dormir; ela sobe de nível e ganha acessórios. `/gotica customizar` escolhe penteado, cabelo, olhos, batom, pele e vestido desde o nível 1, `/gotica visual` sorteia a aparência de novo (e a personalidade, se quiser), `/gotica duelo @membro` (por turnos com botões: atacar, feitiço, defender; vale XP e moedas), `/gotica visitar @membro` (as duas ganham XP, retrato das duas juntas), `/gotica renomear`, `/gotica ranking`. `/loja`: compra com moedas chapéu de bruxa, véu, orelhas de gato, óculos de coração, estrelinhas, gatinho preto, corvo e 3 fundos (cemitério, lua de sangue, rosas) |
-| 💰 Moedas e níveis | Mensagens (1 por minuto) e tempo em call com mais gente dão XP e moedas. Cargos automáticos por nível (🍻 Bebum 5, 🎲 Frequentador 10, 🗡️ Veterano 20, 👑 Lenda 35). `/daily` com sequência, `/trabalhar`, `/carteira`, `/pix`, `/rank` (cartão em imagem), `/top` |
+| 💰 Moedas e níveis | Mensagens (1 por minuto) e tempo em call com mais gente dão XP e moedas. Avisos de nível no #level-up. Cargos automáticos por nível (🍻 Bebum 5, 🎲 Frequentador 10, 🗡️ Veterano 20, 👑 Lenda 35). `/daily` com sequência, `/trabalhar`, `/carteira`, `/pix`, `/rank` (cartão em imagem), `/top` |
 | 🏹 Campeões do LoL | `/asheap`, `/darius`, `/teemo`, `/yasuo`, `/blitz`, `/garen`, `/jinx`, `/thresh`: o campeão "manda a mensagem" (webhook com nome e foto dele) com splash de uma skin sorteada. `/vitimas` mostra o placar de quem mais apanha. `/quiz iniciar`: rodadas com pedaço de splash ou descrição de habilidade, 4 botões, quem acertar primeiro ganha moedas; `/quiz ranking` |
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/avatar`, `/servidor` |
 | 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
@@ -27,7 +27,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 
 ```
 📜 ENTRADA       #regras · #boas-vindas · #escolha-seus-jogos
-💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · #goticas · 🔊 Resenha · 🔊 AFK
+💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · #level-up · #goticas · 🔊 Resenha · 🔊 AFK
 🎵 MÚSICA        #pedidos-de-musica · 🔊 Rádio da Taverna
 🎮 JOGATINA      🔊 ➕ Criar call · 🔊 🎲 Indie Aleatório · #procurando-grupo
                  #valorant · #cs2 · #league-of-legends · #minecraft · #fortnite · #indie-aleatorio  (cada um só para quem tem o cargo)

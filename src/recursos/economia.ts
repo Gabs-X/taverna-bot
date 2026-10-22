@@ -85,8 +85,10 @@ async function ganharAtividade(membro: GuildMember, xp: number, moedas: number, 
   const cargoNovo = await atualizarCargoNivel(membro, r.nivel);
   const bonus = r.nivel * 20;
   darMoedas(membro.guild.id, membro.id, bonus);
-  if (aviso && 'send' in aviso) {
-    await aviso.send({
+  // Com o canal de level up criado pelo /setup, todo aviso vai para lá.
+  const destino = canalTexto(membro.guild, CANAIS.levelUp) ?? aviso;
+  if (destino && 'send' in destino) {
+    await destino.send({
       content: `⭐ ${membro} subiu para o **nível ${r.nivel}**! Ganhou ${formatarMoedas(bonus)}.${cargoNovo ? ` E agora é **${cargoNovo}**!` : ''}`,
       allowedMentions: { users: [membro.id] },
     }).catch(() => {});
