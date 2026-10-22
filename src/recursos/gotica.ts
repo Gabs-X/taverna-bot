@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { canalTexto } from '../lib/servidor.ts';
+import { avisoCanalErrado } from '../lib/servidor.ts';
 import {
   ACOES,
   aplicarAcao,
@@ -195,10 +195,8 @@ export const gotica: Comando = {
     const g = i.guildId!;
     const sub = i.options.getSubcommand();
     // Com o canal criado pelo /setup, as góticas ficam só lá para não lotar o resto do servidor.
-    const canal = canalTexto(i.guild!, CANAIS.goticas);
-    if (canal && canal.id !== i.channelId) {
-      return i.reply({ content: `🦇 As góticas ficam em ${canal}. Use o comando lá.`, flags: MessageFlags.Ephemeral });
-    }
+    const fora = avisoCanalErrado(i, CANAIS.goticas);
+    if (fora) return i.reply(fora);
 
     if (sub === 'duelo') return executarDuelo(i);
     if (sub === 'visitar') return executarVisita(i);

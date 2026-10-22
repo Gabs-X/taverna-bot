@@ -25,7 +25,7 @@ import {
   trabalhar as sortearTrabalho,
   xpDoNivel,
 } from '../lib/economia.ts';
-import { canalTexto, cargoPorNome } from '../lib/servidor.ts';
+import { avisoCanalErrado, canalTexto, cargoPorNome } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 
 export type Carteira = {
@@ -140,6 +140,8 @@ const posicao = (g: string, u: string) => {
 export const daily: Comando = {
   data: new SlashCommandBuilder().setName('daily').setDescription('Pega suas moedas do dia (dias seguidos rendem mais)').setContexts(InteractionContextType.Guild),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     const c = carteira(i.guildId!, i.user.id);
     const r = calcularDaily(c.ultimo_daily, c.sequencia, Date.now());
     if (!r.ok) return i.reply({ content: `⏳ Você já pegou o daily. O próximo libera ${tempo(r.liberaEm)}.`, flags: MessageFlags.Ephemeral });
@@ -155,6 +157,8 @@ export const daily: Comando = {
 export const trabalhar: Comando = {
   data: new SlashCommandBuilder().setName('trabalhar').setDescription('Faz um bico na taverna (uma vez por hora)').setContexts(InteractionContextType.Guild),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     const c = carteira(i.guildId!, i.user.id);
     const r = sortearTrabalho(c.ultimo_trabalho, Date.now());
     if (!r.ok) return i.reply({ content: `😮‍💨 Você ainda está cansado. Volte ${tempo(r.liberaEm)}.`, flags: MessageFlags.Ephemeral });
@@ -170,6 +174,8 @@ export const carteiraCmd: Comando = {
     .setContexts(InteractionContextType.Guild)
     .addUserOption((o) => o.setName('membro').setDescription('De quem (padrão: você)')),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     const u = i.options.getUser('membro') ?? i.user;
     const c = carteira(i.guildId!, u.id);
     const embed = new EmbedBuilder()
@@ -195,6 +201,8 @@ export const pix: Comando = {
     .addUserOption((o) => o.setName('membro').setDescription('Para quem').setRequired(true))
     .addIntegerOption((o) => o.setName('valor').setDescription('Quantas moedas').setRequired(true).setMinValue(1)),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     const para = i.options.getUser('membro', true);
     const valor = i.options.getInteger('valor', true);
     if (para.bot || para.id === i.user.id) return i.reply({ content: 'Pix só para outra pessoa (bots não têm carteira).', flags: MessageFlags.Ephemeral });
@@ -223,6 +231,8 @@ export const rank: Comando = {
     .setContexts(InteractionContextType.Guild)
     .addUserOption((o) => o.setName('membro').setDescription('De quem (padrão: você)')),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     await i.deferReply();
     const u = i.options.getUser('membro') ?? i.user;
     const membro = await i.guild!.members.fetch(u.id).catch(() => null);
@@ -255,6 +265,8 @@ export const top: Comando = {
       ),
     ),
   async executar(i) {
+    const fora = avisoCanalErrado(i, CANAIS.economia);
+    if (fora) return i.reply(fora);
     const por = i.options.getString('por') ?? 'nivel';
     const ordem = { nivel: 'nivel DESC, xp DESC', moedas: 'moedas DESC', call: 'minutos_call DESC' }[por];
     const linhas = db.prepare(`SELECT * FROM carteira WHERE guild_id = ? ORDER BY ${ordem} LIMIT 10`).all(i.guildId!) as Carteira[];

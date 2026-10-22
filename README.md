@@ -27,16 +27,18 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 
 ```
 📜 ENTRADA       #regras · #boas-vindas · #escolha-seus-jogos
-💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · #level-up · #goticas · 🔊 Resenha · 🔊 AFK
+💬 RESENHA       #geral · #memes · #clipes-e-prints · #comandos-do-bot · 🔊 Resenha · 🔊 AFK
 🎵 MÚSICA        #pedidos-de-musica · 🔊 Rádio da Taverna
 🎮 JOGATINA      🔊 ➕ Criar call · 🔊 🎲 Indie Aleatório · #procurando-grupo
                  #valorant · #cs2 · #league-of-legends · #minecraft · #fortnite · #indie-aleatorio  (cada um só para quem tem o cargo)
+🎉 ATIVIDADES    #goticas · #quiz · #campeoes · #economia · #level-up  (cada um só para quem desbloquear no painel)
 🐉 RPG · D&D 3.5     #avisos-da-mesa · #mesa-de-jogo · #rolagens · #fichas · #off-rpg · 🔊 Mesa de RPG  (só ⚔️ Aventureiro)
 🌗 RPG · Daggerheart #avisos-dh · #mesa-dh · #rolagens-dh · #fichas-dh · 🔊 Mesa de Daggerheart  (só 🌗 Daggerheart)
 🛡️ STAFF         #logs
 ```
 
-Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ Aventureiro (D&D) · 🌗 Daggerheart · 🤪 Maluco (todo mundo) · um por jogo.
+Cargos: 🍺 Taverneiro (admin) · 🐉 Mestre (narra qualquer mesa) · ⚔️ Aventureiro (D&D) · 🌗 Daggerheart · 🤪 Maluco (todo mundo) · um por jogo · um por atividade (🦇 Góticas, 🧠 Quiz, 🏹 Campeões, 💰 Economia, ⭐ Level up) · por nível (🍻 Bebum a 👑 Lenda).
+Os comandos de cada atividade só funcionam no canal dela; usados em outro lugar, o bot indica o canal e onde desbloquear.
 Para mudar nomes, jogos ou canais, edite [`src/config.ts`](src/config.ts) e rode `/setup` de novo.
 
 ## Como colocar no ar

@@ -41,6 +41,9 @@ export const CANAIS = {
   musica: '🎵・pedidos-de-musica',
   goticas: '🦇・goticas',
   levelUp: '⭐・level-up',
+  quiz: '🧠・quiz',
+  campeoes: '🏹・campeoes',
+  economia: '💰・economia',
   logs: '🛡️・logs',
   criarCall: '➕ Criar call',
   avisosRpg: '📢・avisos-da-mesa',
@@ -48,6 +51,19 @@ export const CANAIS = {
   avisosDh: '📢・avisos-dh',
   mesaDh: '🌗 Mesa de Daggerheart',
 } as const;
+
+// Atividades do bot: cada uma tem um canal que só aparece para quem desbloquear no painel de #escolha-seus-jogos.
+export type Atividade = { id: string; nome: string; emoji: string; cor: number; canal: string; topico: string; somenteLeitura?: boolean };
+
+export const ATIVIDADES: Atividade[] = [
+  { id: 'goticas', nome: 'Góticas', emoji: '🦇', cor: 0x9b59b6, canal: CANAIS.goticas, topico: 'Adote, cuide e exiba sua gótica: /gotica, /loja.' },
+  { id: 'quiz', nome: 'Quiz', emoji: '🧠', cor: 0xf5b544, canal: CANAIS.quiz, topico: 'Adivinhe o campeão: /quiz iniciar, /quiz ranking.' },
+  { id: 'campeoes', nome: 'Campeões', emoji: '🏹', cor: 0x5bc0eb, canal: CANAIS.campeoes, topico: 'Chame /asheap, /darius, /teemo, /yasuo, /blitz, /garen, /jinx, /thresh. Placar: /vitimas.' },
+  { id: 'economia', nome: 'Economia', emoji: '💰', cor: 0xf1c40f, canal: CANAIS.economia, topico: '/daily, /trabalhar, /carteira, /pix, /rank e /top.' },
+  { id: 'levelup', nome: 'Level up', emoji: '⭐', cor: 0xf39c12, canal: CANAIS.levelUp, topico: 'Quem subiu de nível conversando e em call.', somenteLeitura: true },
+];
+
+export const nomeCargoAtividade = (a: Atividade) => `${a.emoji} ${a.nome}`;
 
 // Quem pode ver/escrever em cada canal.
 // publico: todos veem e escrevem · leitura: todos veem, só admin escreve
@@ -81,8 +97,6 @@ export const PLANO: CategoriaPlano[] = [
       { nome: '😂・memes' },
       { nome: '🎬・clipes-e-prints', topico: 'Jogadas absurdas, fails e prints.' },
       { nome: CANAIS.comandos, topico: 'Use os comandos do bot aqui para não poluir o geral.' },
-      { nome: CANAIS.levelUp, acesso: { tipo: 'leitura' }, topico: 'Quem subiu de nível conversando e em call. Veja o seu com /rank.' },
-      { nome: CANAIS.goticas, topico: 'Adote, cuide e exiba sua gótica: /gotica adotar, /gotica ver, /gotica customizar, /gotica ranking.' },
       { nome: '🍻 Resenha', voz: true },
       { nome: '💤 AFK', voz: true },
     ],
@@ -106,6 +120,15 @@ export const PLANO: CategoriaPlano[] = [
       })),
       { nome: '🔍・procurando-grupo', topico: 'Use /lfg para chamar gente para jogar.' },
     ],
+  },
+  {
+    nome: '🎉 ATIVIDADES',
+    canais: ATIVIDADES.map((a): CanalPlano => ({
+      nome: a.canal,
+      topico: a.topico,
+      // Somente leitura: quem tem o cargo vê, só o bot (admin) escreve.
+      acesso: { tipo: 'cargo', cargo: nomeCargoAtividade(a), escrita: a.somenteLeitura ? CARGOS.admin.nome : undefined },
+    })),
   },
   {
     nome: '🐉 RPG · D&D 3.5',

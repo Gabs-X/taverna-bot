@@ -2,7 +2,7 @@ import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
 import { formatarMoedas } from '../lib/economia.ts';
-import { canalTexto } from '../lib/servidor.ts';
+import { avisoCanalErrado } from '../lib/servidor.ts';
 import { ENCAIXES, equipar, ITENS, itemPorId, lerEquipados, type Encaixe, type IdItem } from '../lib/loja.ts';
 import type { Comando } from '../tipos.ts';
 import { carteira, gastarMoedas } from './economia.ts';
@@ -67,10 +67,8 @@ export const loja: Comando = {
     }
 
     if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
-    const canal = canalTexto(i.guild!, CANAIS.goticas);
-    if (canal && canal.id !== i.channelId) {
-      return i.reply({ content: `🦇 As góticas se arrumam em ${canal}. Use o comando lá.`, flags: MessageFlags.Ephemeral });
-    }
+    const fora = avisoCanalErrado(i, CANAIS.goticas);
+    if (fora) return i.reply(fora);
 
     if (sub === 'tirar') {
       const enc = i.options.getString('encaixe', true) as Encaixe;

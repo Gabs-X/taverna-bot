@@ -299,6 +299,7 @@ const AJUDA: [string, string][] = [
   ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
   ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor`'],
+  ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-seus-jogos'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];
 

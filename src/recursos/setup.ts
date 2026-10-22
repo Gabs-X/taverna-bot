@@ -14,11 +14,11 @@ import {
   type OverwriteResolvable,
   type TextChannel,
 } from 'discord.js';
-import { CANAIS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoJogo, type Acesso } from '../config.ts';
+import { ATIVIDADES, CANAIS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoAtividade, nomeCargoJogo, type Acesso } from '../config.ts';
 import { db } from '../db.ts';
 import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
-import { painelDeCargos } from './cargos.ts';
+import { painelDeAtividades, painelDeCargos } from './cargos.ts';
 
 const { ViewChannel, SendMessages, Connect } = PermissionFlagsBits;
 
@@ -54,6 +54,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.membro, hoist: true, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
     ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: false, permissions: [] })),
+    ...ATIVIDADES.map((a) => ({ nome: nomeCargoAtividade(a), cor: a.cor, hoist: false, permissions: [] })),
   ];
   for (const c of desejados) {
     if (cargoPorNome(guild, c.nome)) continue;
@@ -102,6 +103,11 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
         relatorio.push(`➕ ${canal.voz ? '🔊' : '#'} ${canal.nome}`);
       } else if (existente.parentId !== categoria.id && 'setParent' in existente) {
         await existente.setParent(categoria.id, { lockPermissions: false });
+        // Mudou de categoria (ex.: #goticas foi para ATIVIDADES): aplica o acesso novo.
+        const regras = permissoes(guild, canal.acesso ?? cat.acesso);
+        if (regras) await existente.permissionOverwrites.set(regras);
+        else await existente.lockPermissions();
+        relatorio.push(`🔀 ${canal.nome} → ${cat.nome}`);
       }
       doPlano.add(existente.id);
     }
@@ -134,6 +140,12 @@ async function postarMensagensFixas(guild: Guild, relatorio: string[]) {
     else {
       await escolha.send(painelDeCargos());
       relatorio.push('📌 painel de jogos postado');
+    }
+    const atividades = await mensagemDoBot(escolha, '🎉 Desbloqueie as atividades');
+    if (atividades) await atividades.edit(painelDeAtividades());
+    else {
+      await escolha.send(painelDeAtividades());
+      relatorio.push('📌 painel de atividades postado');
     }
   }
 }
