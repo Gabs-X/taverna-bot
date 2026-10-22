@@ -296,6 +296,7 @@ const AJUDA: [string, string][] = [
   ['📅 Sessões', '`/sessao marcar mesa:D&D|Daggerheart` vira evento do Discord · `/sessao proximas`'],
   ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
   ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica renomear` · `/gotica ranking`'],
+  ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/asheap` · `/avatar` · `/servidor`'],
   ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];

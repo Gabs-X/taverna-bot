@@ -14,7 +14,7 @@ import {
   type OverwriteResolvable,
   type TextChannel,
 } from 'discord.js';
-import { CANAIS, CARGOS, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoJogo, type Acesso } from '../config.ts';
+import { CANAIS, CARGOS, CARGOS_NIVEL, JOGOS, NOME_SERVIDOR, PLANO, REGRAS, nomeCargoJogo, type Acesso } from '../config.ts';
 import { db } from '../db.ts';
 import { cargoPorNome, canalTexto } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
@@ -53,6 +53,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.daggerheart, hoist: false, permissions: [] },
     { ...CARGOS.membro, hoist: true, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
+    ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: false, permissions: [] })),
   ];
   for (const c of desejados) {
     if (cargoPorNome(guild, c.nome)) continue;

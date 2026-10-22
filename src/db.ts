@@ -115,4 +115,20 @@ db.exec(`
     criada_em INTEGER NOT NULL,
     PRIMARY KEY (guild_id, user_id)
   );
+
+  -- Moedas da Taverna e nível por atividade
+  CREATE TABLE IF NOT EXISTS carteira (
+    guild_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    moedas   INTEGER NOT NULL DEFAULT 0,
+    nivel    INTEGER NOT NULL DEFAULT 0,
+    xp       INTEGER NOT NULL DEFAULT 0,
+    mensagens INTEGER NOT NULL DEFAULT 0,
+    minutos_call INTEGER NOT NULL DEFAULT 0,
+    ultima_msg INTEGER NOT NULL DEFAULT 0,
+    ultimo_daily INTEGER NOT NULL DEFAULT 0,
+    sequencia INTEGER NOT NULL DEFAULT 0,
+    ultimo_trabalho INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id)
+  );
 `);

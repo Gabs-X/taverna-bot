@@ -10,6 +10,14 @@ export const CARGOS = {
   membro: { nome: '🤪 Maluco', cor: 0x2ecc71 },
 } as const;
 
+// Cargos ganhos por nível de atividade (mensagens e tempo em call). Fica só o mais alto.
+export const CARGOS_NIVEL = [
+  { nivel: 5, nome: '🍻 Bebum', cor: 0xd35400 },
+  { nivel: 10, nome: '🎲 Frequentador', cor: 0x16a085 },
+  { nivel: 20, nome: '🗡️ Veterano da Taverna', cor: 0x2980b9 },
+  { nivel: 35, nome: '👑 Lenda da Taverna', cor: 0xf1c40f },
+] as const;
+
 export type Jogo = { id: string; nome: string; emoji: string; cor: number; canal: string };
 
 export const JOGOS: Jogo[] = [

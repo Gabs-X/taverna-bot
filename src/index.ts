@@ -5,6 +5,7 @@ import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { botaoCargo } from './recursos/cargos.ts';
+import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { asheap, avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
@@ -23,6 +24,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, asheap, gotica, avatar, servidor, limpar, castigo, ajuda,
+  daily, trabalhar, carteiraCmd, pix, rank, top,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
@@ -33,6 +35,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers, // privilegiada: boas-vindas e cargo automático
     GatewayIntentBits.GuildPresences, // privilegiada: nomear a call com o jogo
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages, // não privilegiada: XP por mensagem (o texto não é lido)
   ],
   partials: [Partials.GuildMember],
 });
@@ -45,6 +48,7 @@ client.once(Events.ClientReady, async (c) => {
   await iniciarMusica(c);
   await limparCallsOrfas(c);
   iniciarAgenda(c);
+  iniciarAtividade(c);
   c.user.setActivity('/ajuda · Taverna dos Malucos', { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
@@ -70,6 +74,7 @@ client.on(Events.InteractionCreate, async (i: Interaction) => {
 });
 
 client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).catch((e) => console.error('[calls]', e)));
+client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));
 client.on(Events.GuildMemberAdd, (m) => aoEntrar(m).catch((e) => console.error('[boas-vindas]', e)));
 client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error('[saída]', e)));
 
