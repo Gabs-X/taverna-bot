@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-js';
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -27,6 +26,7 @@ import type { HandlerBotao } from '../tipos.ts';
 import { darMoedas, moedas } from './economia.ts';
 import { ajustarGotica, estadoDe, ler, retratoSvg, type Linha } from './gotica.ts';
 import { emoji } from '../lib/servidor.ts';
+import { renderizarPng } from '../lib/renderizar.ts';
 
 const ENERGIA_DUELO = 20;
 const PRAZO_CONVITE = 2 * 60_000;
@@ -39,9 +39,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS gotica_visitas (
   PRIMARY KEY (guild_id, visitante, anfitria)
 )`);
 
-function imagemDupla(a: Linha, b: Linha, simbolo: 'duelo' | 'visita', humores?: ['feliz' | 'triste', 'feliz' | 'triste']) {
+async function imagemDupla(a: Linha, b: Linha, simbolo: 'duelo' | 'visita', humores?: ['feliz' | 'triste', 'feliz' | 'triste']) {
   const svg = juntarRetratos(retratoSvg(a, humores?.[0]), retratoSvg(b, humores?.[1]), simbolo);
-  return new AttachmentBuilder(new Resvg(svg).render().asPng(), { name: `${simbolo}.png` });
+  return new AttachmentBuilder(await renderizarPng(svg), { name: `${simbolo}.png` });
 }
 
 const energiaDe = (l: Linha) => statusAgora(estadoDe(l), Date.now()).energia;
@@ -82,7 +82,7 @@ export async function executarDuelo(i: ChatInputCommandInteraction) {
   const msg = await i.editReply({
     content: `<@${b.user_id}>, sua gótica foi desafiada!`,
     embeds: [embed],
-    files: [imagemDupla(a, b, 'duelo')],
+    files: [await imagemDupla(a, b, 'duelo')],
     components: [botoes],
     allowedMentions: { users: [b.user_id] },
   });
@@ -162,7 +162,7 @@ async function encerrar(id: string, venceu: 'a' | 'b', motivo: string) {
         subiuTexto(d[perdeu].nome, subiuP),
     )
     .setImage('attachment://duelo.png');
-  await mensagem.edit({ content: '', embeds: [embed], files: [imagemDupla(la, lb, 'duelo', humores)], attachments: [], components: [], allowedMentions: { parse: [] } });
+  await mensagem.edit({ content: '', embeds: [embed], files: [await imagemDupla(la, lb, 'duelo', humores)], attachments: [], components: [], allowedMentions: { parse: [] } });
 }
 
 export const botaoDuelo: HandlerBotao = {
@@ -260,7 +260,7 @@ export async function executarVisita(i: ChatInputCommandInteraction) {
   return i.editReply({
     content: `<@${b.user_id}>, sua gótica recebeu visita!`,
     embeds: [embed],
-    files: [imagemDupla(ler(g, a.user_id)!, ler(g, b.user_id)!, 'visita', ['feliz', 'feliz'])],
+    files: [await imagemDupla(ler(g, a.user_id)!, ler(g, b.user_id)!, 'visita', ['feliz', 'feliz'])],
     allowedMentions: { users: [b.user_id] },
   });
 }

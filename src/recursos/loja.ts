@@ -89,7 +89,7 @@ export const loja: Comando = {
       delete eq[enc];
       salvarEquipados(g, u, eq);
       await i.deferReply();
-      return i.editReply(cartao({ ...l, equipados: JSON.stringify(eq) }, estadoDe(l), `👗 **${l.nome}** tirou o item de ${ENCAIXES[enc].toLowerCase()}.\n`));
+      return i.editReply(await cartao({ ...l, equipados: JSON.stringify(eq) }, estadoDe(l), `👗 **${l.nome}** tirou o item de ${ENCAIXES[enc].toLowerCase()}.\n`));
     }
 
     const id = i.options.getString('item', true) as IdItem;
@@ -112,6 +112,6 @@ export const loja: Comando = {
     const eq = equipar(lerEquipados(l.equipados), id);
     salvarEquipados(g, u, eq);
     await i.deferReply();
-    return i.editReply(cartao({ ...l, equipados: JSON.stringify(eq) }, estadoDe(l), `${aviso}\n`));
+    return i.editReply(await cartao({ ...l, equipados: JSON.stringify(eq) }, estadoDe(l), `${aviso}\n`));
   },
 };

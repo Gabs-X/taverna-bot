@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-js';
 import {
   AttachmentBuilder,
   ChannelType,
@@ -29,6 +28,7 @@ import { xpComBonus } from '../lib/lojaTaverna.ts';
 import { canalTexto, cargoPorNome, emoji } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
+import { renderizarPng } from '../lib/renderizar.ts';
 
 export type Carteira = {
   guild_id: string;
@@ -245,7 +245,7 @@ export const rank: Comando = {
       moedas: c.moedas,
       cor: membro?.displayHexColor && membro.displayHexColor !== '#000000' ? membro.displayHexColor : '#19c2ae',
     });
-    const png = new Resvg(svg, { font: { loadSystemFonts: true, defaultFontFamily: 'Segoe UI' } }).render().asPng();
+    const png = await renderizarPng(svg, { fontes: true });
     return i.editReply({ files: [new AttachmentBuilder(png, { name: 'rank.png' })] });
   },
 };

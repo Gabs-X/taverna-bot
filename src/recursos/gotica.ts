@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-js';
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -36,6 +35,7 @@ import { desenharGotica } from '../lib/goticaArte.ts';
 import { lerEquipados } from '../lib/loja.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { executarDuelo, executarVisita } from './goticaSocial.ts';
+import { renderizarPng } from '../lib/renderizar.ts';
 
 export type Linha = {
   guild_id: string;
@@ -120,11 +120,11 @@ export function ajustarGotica(l: Linha, mudanca: { xp: number; humor?: number; e
 }
 
 /** Embed com o retrato (PNG gerado na hora) e, para a dona, os botões de cuidar. */
-export function cartao(l: Linha, e: Estado, extra?: string) {
+export async function cartao(l: Linha, e: Estado, extra?: string) {
   const s = statusAgora(e, Date.now());
   const humor = humorDe(s);
   const svg = desenharGotica(lerAparencia(l.aparencia), e.nivel, humor, lerEquipados(l.equipados));
-  const imagem = new AttachmentBuilder(new Resvg(svg).render().asPng(), { name: 'gotica.png' });
+  const imagem = new AttachmentBuilder(await renderizarPng(svg), { name: 'gotica.png' });
   const proximo = DESBLOQUEIOS.find((d) => d.nivel > e.nivel);
 
   const embed = new EmbedBuilder()
@@ -211,7 +211,7 @@ export const gotica: Comando = {
       const l = ler(g, i.user.id)!;
       // Gerar a imagem leva ~0,5 s: responde "pensando" antes para não estourar os 3 s do Discord.
       await i.deferReply();
-      return i.editReply(cartao(l, estadoDe(l), `${emoji(i.guild, 'gotica_feliz', '🖤')} **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
+      return i.editReply(await cartao(l, estadoDe(l), `${emoji(i.guild, 'gotica_feliz', '🖤')} **Essa é a sua gótica, ${l.nome}!** Ela é ${personalidade} e gosta de ${gostoDe(personalidade)}. Cuide dela pelos botões abaixo para ela subir de nível e ganhar acessórios.\n`));
     }
 
     if (sub === 'ver') {
@@ -219,7 +219,7 @@ export const gotica: Comando = {
       const l = ler(g, dono.id);
       if (!l) return i.reply({ content: dono.id === i.user.id ? SEM_GOTICA : `${dono.username} ainda não adotou uma gótica.`, flags: MessageFlags.Ephemeral });
       await i.deferReply();
-      return i.editReply(cartao(l, estadoDe(l)));
+      return i.editReply(await cartao(l, estadoDe(l)));
     }
 
     if (sub === 'visual') {
@@ -236,7 +236,7 @@ export const gotica: Comando = {
       const nova = { ...l, aparencia, personalidade };
       const mudouJeito = personalidade !== l.personalidade ? ` E voltou ${personalidade}, agora gosta de ${gostoDe(personalidade)}.` : '';
       await i.deferReply();
-      return i.editReply(cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
+      return i.editReply(await cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
     }
 
     if (sub === 'customizar') {
@@ -258,7 +258,7 @@ export const gotica: Comando = {
       db.prepare('UPDATE goticas SET aparencia = ? WHERE guild_id = ? AND user_id = ?').run(json, g, i.user.id);
       const nova = { ...l, aparencia: json };
       await i.deferReply();
-      return i.editReply(cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
+      return i.editReply(await cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
     }
 
     if (sub === 'renomear') {
@@ -304,6 +304,6 @@ export const botaoGotica: HandlerBotao = {
       linhas.push(`${emoji(i.guild, 'level_up', '🎉')} **Subiu para o nível ${n}!**${ganhou ? ` Ganhou ${ganhou.texto}.` : ''}`);
     }
     await i.deferUpdate();
-    return i.editReply({ ...cartao(l, r.estado, linhas.join('\n') + '\n'), attachments: [] });
+    return i.editReply({ ...(await cartao(l, r.estado, linhas.join('\n') + '\n')), attachments: [] });
   },
 };

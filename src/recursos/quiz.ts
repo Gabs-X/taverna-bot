@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-js';
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -19,6 +18,7 @@ import { campeoes, detalheCampeao, skinsComSplash, urlSplash, type Campeao } fro
 import { alternativas, esconderNome, limparHtml, svgRecorte } from '../lib/quiz.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { darMoedas, moedas } from './economia.ts';
+import { renderizarPng } from '../lib/renderizar.ts';
 
 db.exec(`CREATE TABLE IF NOT EXISTS quiz_pontos (
   guild_id TEXT NOT NULL, user_id TEXT NOT NULL, acertos INTEGER NOT NULL DEFAULT 0,
@@ -50,7 +50,7 @@ async function montarPergunta(modo: Exclude<Modo, 'misto'>, certa: Campeao) {
     const skin = sortear(await skinsComSplash(certa.id));
     const r = await fetch(urlSplash(certa.id, skin.num), { signal: AbortSignal.timeout(8_000) });
     const dataUri = `data:image/jpeg;base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`;
-    const png = new Resvg(svgRecorte(dataUri)).render().asPng();
+    const png = await renderizarPng(svgRecorte(dataUri));
     return {
       embed: new EmbedBuilder().setTitle('🔍 De quem é essa splash?').setImage('attachment://quiz.png'),
       arquivo: new AttachmentBuilder(png, { name: 'quiz.png' }),
