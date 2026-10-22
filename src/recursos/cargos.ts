@@ -22,7 +22,7 @@ export function painelDeCargos() {
     .setColor(0xf5c542)
     .setTitle('🎮 Escolha seus jogos')
     .setDescription(
-      'Clique nos jogos que você joga para liberar o canal de cada um e receber os chamados do `/lfg`.\n' +
+      'Clique nos jogos que você joga para receber os chamados do `/lfg`.\n' +
         'Clique de novo para tirar. **D&D 3.5** e **Daggerheart** liberam a categoria de cada mesa de RPG.',
     );
 

@@ -91,6 +91,11 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
     for (const canal of cat.canais) {
       const tipo = canal.voz ? ChannelType.GuildVoice : ChannelType.GuildText;
       let existente = guild.channels.cache.find((c) => c.type === tipo && c.name === canal.nome);
+      const anterior = existente ? undefined : guild.channels.cache.find((c) => c.type === tipo && (canal.antigos ?? []).includes(c.name));
+      if (anterior) {
+        existente = await anterior.setName(canal.nome);
+        relatorio.push(`✏️ ${anterior.name} → ${canal.nome}`);
+      }
       if (!existente) {
         existente = await guild.channels.create({
           name: canal.nome,
@@ -188,8 +193,11 @@ export async function montarServidor(guild: Guild, autorId: string, renomear: bo
       (r) => r.canal_id,
     ),
   );
+  // Canais dos subgrupos também não entram na lista (são criados pelo /grupo).
+  const dosGrupos = new Set((db.prepare('SELECT categoria_id FROM grupos WHERE guild_id = ?').all(guild.id) as { categoria_id: string }[]).map((r) => r.categoria_id));
   const fora = guild.channels.cache.filter(
-    (c: GuildBasedChannel) => !doPlano.has(c.id) && !temporarias.has(c.id) && c.type !== ChannelType.GuildCategory,
+    (c: GuildBasedChannel) =>
+      !doPlano.has(c.id) && !temporarias.has(c.id) && c.type !== ChannelType.GuildCategory && !(c.parentId && dosGrupos.has(c.parentId)),
   );
 
   return [

@@ -18,19 +18,18 @@ export const CARGOS_NIVEL = [
   { nivel: 35, nome: '👑 Lenda da Taverna', cor: 0xf1c40f },
 ] as const;
 
-export type Jogo = { id: string; nome: string; emoji: string; cor: number; canal: string };
+export type Jogo = { id: string; nome: string; emoji: string; cor: number };
 
 export const JOGOS: Jogo[] = [
-  { id: 'valorant', nome: 'Valorant', emoji: '🎯', cor: 0xff4655, canal: 'valorant' },
-  { id: 'cs2', nome: 'CS2', emoji: '💣', cor: 0xf0a020, canal: 'cs2' },
-  { id: 'lol', nome: 'League of Legends', emoji: '🧙', cor: 0x0ac8b9, canal: 'league-of-legends' },
-  { id: 'minecraft', nome: 'Minecraft', emoji: '⛏️', cor: 0x62b47a, canal: 'minecraft' },
-  { id: 'fortnite', nome: 'Fortnite', emoji: '🪂', cor: 0x9d4dbb, canal: 'fortnite' },
-  { id: 'indie', nome: 'Indie Aleatório', emoji: '🎲', cor: 0xf5c542, canal: 'indie-aleatorio' },
+  { id: 'valorant', nome: 'Valorant', emoji: '🎯', cor: 0xff4655 },
+  { id: 'cs2', nome: 'CS2', emoji: '💣', cor: 0xf0a020 },
+  { id: 'lol', nome: 'League of Legends', emoji: '🧙', cor: 0x0ac8b9 },
+  { id: 'minecraft', nome: 'Minecraft', emoji: '⛏️', cor: 0x62b47a },
+  { id: 'fortnite', nome: 'Fortnite', emoji: '🪂', cor: 0x9d4dbb },
+  { id: 'indie', nome: 'Indie Aleatório', emoji: '🎲', cor: 0xf5c542 },
 ];
 
 export const nomeCargoJogo = (j: Jogo) => `${j.emoji} ${j.nome}`;
-export const nomeCanalJogo = (j: Jogo) => `${j.emoji}・${j.canal}`;
 
 export const CANAIS = {
   regras: '📜・regras',
@@ -47,7 +46,7 @@ export const CANAIS = {
   logs: '🛡️・logs',
   aprovacoes: '📥・aprovacoes',
   subgrupos: '👥・subgrupos',
-  criarCall: '➕ Criar call',
+  criarCall: '➕ Calls',
   avisosRpg: '📢・avisos-da-mesa',
   mesaRpg: '🐉 Mesa de RPG',
   avisosDh: '📢・avisos-dh',
@@ -76,8 +75,8 @@ export type Acesso =
   | { tipo: 'cargo'; cargo: string; escrita?: string }
   | { tipo: 'staff' };
 
-export type CanalPlano = { nome: string; voz?: boolean; topico?: string; acesso?: Acesso; limite?: number };
-// `antigos`: nomes anteriores da categoria; o /setup renomeia em vez de criar outra.
+// `antigos` (canal ou categoria): nomes anteriores; o /setup renomeia em vez de criar outro.
+export type CanalPlano = { nome: string; voz?: boolean; topico?: string; acesso?: Acesso; limite?: number; antigos?: string[] };
 export type CategoriaPlano = { nome: string; antigos?: string[]; acesso?: Acesso; canais: CanalPlano[] };
 
 const rpg: Acesso = { tipo: 'cargo', cargo: CARGOS.aventureiro.nome };
@@ -89,7 +88,7 @@ export const PLANO: CategoriaPlano[] = [
     canais: [
       { nome: CANAIS.regras, acesso: { tipo: 'leitura' }, topico: 'Leia antes de causar.' },
       { nome: CANAIS.boasVindas, acesso: { tipo: 'leitura' } },
-      { nome: CANAIS.escolhaJogos, acesso: { tipo: 'leitura' }, topico: 'Clique nos botões para ver os canais dos seus jogos.' },
+      { nome: CANAIS.escolhaJogos, acesso: { tipo: 'leitura' }, topico: 'Escolha seus jogos (chamados do /lfg) e desbloqueie as atividades do bot.' },
     ],
   },
   {
@@ -114,14 +113,8 @@ export const PLANO: CategoriaPlano[] = [
   {
     nome: '🎮 JOGATINA',
     canais: [
-      { nome: CANAIS.criarCall, voz: true },
-      { nome: '🎲 Indie Aleatório', voz: true },
-      ...JOGOS.map((j): CanalPlano => ({
-        nome: nomeCanalJogo(j),
-        acesso: { tipo: 'cargo', cargo: nomeCargoJogo(j) },
-        topico: `Tudo sobre ${j.nome}. Chame a galera com /lfg.`,
-      })),
-      { nome: '🔍・procurando-grupo', topico: 'Use /lfg para chamar gente para jogar.' },
+      // Um canal só: quem entra ganha uma call própria, que some quando esvazia.
+      { nome: CANAIS.criarCall, voz: true, antigos: ['➕ Criar call'] },
     ],
   },
   {
@@ -170,8 +163,8 @@ export const PLANO: CategoriaPlano[] = [
 export const REGRAS = [
   'Respeito acima de tudo: zoeira sim, ofensa pessoal não.',
   'Nada de conteúdo ilegal, NSFW fora de lugar ou spam.',
-  'Cada assunto no seu canal: jogos nos canais dos jogos, comandos em #comandos-do-bot.',
-  'Precisa de uma call? Entre em "➕ Criar call" e ela é sua até esvaziar.',
+  'Cada assunto no seu canal: comandos em #comandos-do-bot, atividades nos canais delas.',
+  `Precisa de uma call? Entre em "${CANAIS.criarCall}" e ela é sua até esvaziar.`,
   'Na mesa de RPG, o Mestre tem a palavra final.',
   'Divirta-se. Somos todos malucos aqui.',
 ];

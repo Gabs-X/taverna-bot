@@ -24,7 +24,7 @@ function nomeDaCall(membro: GuildMember) {
 }
 
 export async function aoMudarVoz(antes: VoiceState, depois: VoiceState) {
-  // Entrou no "➕ Criar call": cria a call dele e move.
+  // Entrou no "➕ Calls": cria a call dele e move.
   if (depois.channel && depois.channel.name === CANAIS.criarCall && depois.member) {
     const membro = depois.member;
     const call = await depois.guild.channels.create({
@@ -64,7 +64,7 @@ export async function limparCallsOrfas(client: Client) {
 export const call: Comando = {
   data: new SlashCommandBuilder()
     .setName('call')
-    .setDescription('Controla a sua call temporária (criada pelo "➕ Criar call").')
+    .setDescription('Controla a sua call temporária (criada pelo "➕ Calls").')
     .setContexts(InteractionContextType.Guild)
     .addSubcommand((s) =>
       s

@@ -11,7 +11,7 @@ import {
   type GuildMember,
   type Message,
 } from 'discord.js';
-import { JOGOS, nomeCargoJogo } from '../config.ts';
+import { CANAIS, JOGOS, nomeCargoJogo } from '../config.ts';
 import { cargoPorNome } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 
@@ -59,7 +59,7 @@ export const lfg: Comando = {
       .setTitle(`${jogo.emoji} Bora de ${jogo.nome}?`)
       .setDescription(`${i.user} está chamando!${recado ? `\n> ${recado}` : ''}`)
       .addFields({ name: `Confirmados (0/${vagas})`, value: '_ninguém ainda_' })
-      .setFooter({ text: 'Entre em "➕ Criar call" quando fechar o grupo.' });
+      .setFooter({ text: `Entre em "${CANAIS.criarCall}" quando fechar o grupo.` });
 
     return i.reply({
       content: cargo ? `${cargo}` : undefined,
@@ -289,7 +289,7 @@ export const castigo: Comando = {
 
 const AJUDA: [string, string][] = [
   ['🎵 Música', '`/tocar` nome ou link · `/musica pular | pausar | parar | fila | tocando | volume | loop | embaralhar` · `/jam` divulga sua Jam do Spotify'],
-  ['🔊 Calls', 'Entre em **➕ Criar call** e ganhe uma call sua · `/call nome | limite | trancar | destrancar | dono`'],
+  ['🔊 Calls', 'Entre em **➕ Calls** e ganhe uma call sua · `/call nome | limite | trancar | destrancar | dono`'],
   ['🎮 Jogos', '`/lfg` chama a galera · `/times` divide a call · `/sortear` decide o indie da noite · `/enquete` votação'],
   ['🐉 D&D 3.5', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | resistencia | ataque | estabilizar` · `/iniciativa entrar | npc | proximo | ver | limpar`'],
   ['🌗 Daggerheart', '`/dh rolar` (dualidade, com traço e experiência) · `/dh dano` · `/dh marcar` PV, Estresse, Esperança, Armadura · `/dh medo` · `/dh ficha criar | ver | editar | experiencias`'],
