@@ -339,6 +339,11 @@ const MIGRACOES: (() => void)[] = [
       );
     `);
   },
+
+  // 6 (22/10/2026): estado do bot (última versão anunciada no Discord e no WhatsApp).
+  () => {
+    db.exec('CREATE TABLE IF NOT EXISTS bot_estado (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

@@ -52,6 +52,7 @@ export const CANAIS = {
   sugestoes: '💡・sugestoes',
   hallFama: '🏆・hall-da-fama',
   jogosGratis: '🆓・jogos-gratis',
+  novidades: '🆕・novidades',
   criarCall: '➕ Calls',
   avisosRpg: '📢・avisos-da-mesa',
   mesaRpgTexto: '🗺️・mesa-de-jogo',
@@ -99,6 +100,7 @@ export const PLANO: CategoriaPlano[] = [
     nome: '📜 ENTRADA',
     canais: [
       { nome: CANAIS.regras, acesso: { tipo: 'leitura' }, topico: 'Leia antes de causar.' },
+      { nome: CANAIS.novidades, acesso: { tipo: 'leitura' }, topico: 'Versões novas do Taverneiro e o que mudou em cada uma.' },
       { nome: CANAIS.boasVindas, acesso: { tipo: 'leitura' } },
       { nome: CANAIS.escolhaJogos, antigos: ['🎮・escolha-seus-jogos'], acesso: { tipo: 'leitura' }, topico: 'Escolha seus jogos (chamados do /lfg) e desbloqueie as atividades do bot.' },
     ],

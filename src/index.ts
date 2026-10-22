@@ -33,6 +33,7 @@ import { avisoCanalErrado, registrarCliente } from './lib/servidor.ts';
 import { NOME_SERVIDOR } from './config.ts';
 import { aoReagir, citacao, iniciarResumo, resumo, salvarCitacao } from './recursos/resenha.ts';
 import { aoMudarPresenca, elo, gratis, iniciarJogosGratis } from './recursos/jogosExternos.ts';
+import { anunciarVersao, VERSAO, versao } from './recursos/novidades.ts';
 import type { Comando, HandlerBotao, HandlerModal, MenuMensagem } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -44,7 +45,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao];
 const MODAIS: HandlerModal[] = [modalGrupo];
@@ -98,8 +99,9 @@ client.once(Events.ClientReady, async (c) => {
   iniciarPermissoes(c);
   iniciarResumo(c);
   iniciarJogosGratis(c);
-  c.user.setActivity(`/ajuda · ${NOME_SERVIDOR}`, { type: ActivityType.Custom });
-  console.log(`🍺 ${c.user.tag} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
+  anunciarVersao(c).catch((e) => console.error('[novidades]', e));
+  c.user.setActivity(`/ajuda · ${NOME_SERVIDOR} · v${VERSAO}`, { type: ActivityType.Custom });
+  console.log(`🍺 ${c.user.tag} v${VERSAO} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
 });
 
 client.on(Events.GuildCreate, (guild) => guild.commands.set(COMANDOS.map((cmd) => cmd.data.toJSON())));
