@@ -118,6 +118,10 @@ export const gotica: Comando = {
       s.setName('renomear').setDescription('Muda o nome da sua gótica')
         .addStringOption((o) => o.setName('nome').setDescription('Novo nome').setRequired(true).setMaxLength(32)),
     )
+    .addSubcommand((s) =>
+      s.setName('visual').setDescription('Sorteia de novo a aparência dela (nome, nível e XP continuam)')
+        .addBooleanOption((o) => o.setName('personalidade').setDescription('Sortear a personalidade também')),
+    )
     .addSubcommand((s) => s.setName('ranking').setDescription('As góticas mais bem cuidadas do servidor')),
 
   async executar(i) {
@@ -142,6 +146,22 @@ export const gotica: Comando = {
       const l = ler(g, dono.id);
       if (!l) return i.reply({ content: dono.id === i.user.id ? SEM_GOTICA : `${dono.username} ainda não adotou uma gótica.`, flags: MessageFlags.Ephemeral });
       return i.reply(cartao(l, estadoDe(l)));
+    }
+
+    if (sub === 'visual') {
+      const l = ler(g, i.user.id);
+      if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
+      // Sorteia até sair diferente da atual, pra o botão nunca "não fazer nada".
+      let aparencia = JSON.stringify(sortearAparencia());
+      while (aparencia === l.aparencia) aparencia = JSON.stringify(sortearAparencia());
+      let personalidade = l.personalidade;
+      if (i.options.getBoolean('personalidade')) {
+        while (personalidade === l.personalidade) personalidade = sortearPersonalidade();
+      }
+      db.prepare('UPDATE goticas SET aparencia = ?, personalidade = ? WHERE guild_id = ? AND user_id = ?').run(aparencia, personalidade, g, i.user.id);
+      const nova = { ...l, aparencia, personalidade };
+      const mudouJeito = personalidade !== l.personalidade ? ` E voltou ${personalidade}, agora gosta de ${gostoDe(personalidade)}.` : '';
+      return i.reply(cartao(nova, estadoDe(nova), `💄 **${l.nome}** passou a madrugada no espelho e voltou com um visual novo!${mudouJeito}\n`));
     }
 
     if (sub === 'renomear') {
