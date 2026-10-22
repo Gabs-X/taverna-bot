@@ -3,6 +3,7 @@ import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
+import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { botaoCargo } from './recursos/cargos.ts';
 import { avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
@@ -21,9 +22,9 @@ if (!token) {
 
 const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
-  lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, avatar, servidor, limpar, castigo, ajuda,
+  lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const client = new Client({

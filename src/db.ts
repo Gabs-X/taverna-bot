@@ -97,4 +97,22 @@ db.exec(`
     ultimo_ano_avisado INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (guild_id, user_id)
   );
+
+  -- Gótica de estimação (uma por pessoa em cada servidor)
+  CREATE TABLE IF NOT EXISTS goticas (
+    guild_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    nome     TEXT NOT NULL,
+    aparencia TEXT NOT NULL,
+    personalidade TEXT NOT NULL,
+    nivel    INTEGER NOT NULL DEFAULT 1,
+    xp       INTEGER NOT NULL DEFAULT 0,
+    barriga  REAL NOT NULL,
+    humor    REAL NOT NULL,
+    energia  REAL NOT NULL,
+    atualizado_em INTEGER NOT NULL,
+    ultimas  TEXT NOT NULL DEFAULT '{}',
+    criada_em INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+  );
 `);
