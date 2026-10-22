@@ -142,7 +142,8 @@ export const sessao: Comando = {
 
 // ---------- /lembrete ----------
 
-type Lembrete = { id: number; guild_id: string; canal_id: string; user_id: string; quando: number; texto: string };
+// no_canal: 0 = avisa no privado (padrão); 1 = avisa no canal onde foi criado.
+type Lembrete = { id: number; guild_id: string; canal_id: string; user_id: string; quando: number; texto: string; no_canal: number };
 const MAX_LEMBRETES = 10;
 const MAX_ESPERA = 30 * 86_400_000;
 
@@ -154,9 +155,10 @@ export const lembrete: Comando = {
     .addSubcommand((s) =>
       s
         .setName('criar')
-        .setDescription('Cria um lembrete neste canal')
+        .setDescription('Cria um lembrete (o bot te avisa no privado)')
         .addStringOption((o) => o.setName('tempo').setDescription('Daqui a quanto tempo. Ex.: 30m, 2h, 1h30m, 3d').setRequired(true).setMaxLength(20))
-        .addStringOption((o) => o.setName('texto').setDescription('Do que lembrar').setRequired(true).setMaxLength(300)),
+        .addStringOption((o) => o.setName('texto').setDescription('Do que lembrar').setRequired(true).setMaxLength(300))
+        .addBooleanOption((o) => o.setName('aqui').setDescription('Avisar neste canal, para todos verem (padrão: no seu privado)')),
     )
     .addSubcommand((s) => s.setName('lista').setDescription('Mostra os seus lembretes ativos'))
     .addSubcommand((s) =>
@@ -175,7 +177,7 @@ export const lembrete: Comando = {
         .prepare('SELECT * FROM lembretes WHERE guild_id = ? AND user_id = ? ORDER BY quando')
         .all(guild, i.user.id) as Lembrete[];
       if (!meus.length) return i.reply({ content: 'Você não tem lembretes ativos.', flags: MessageFlags.Ephemeral });
-      const linhas = meus.map((l) => `**#${l.id}** · ${tsRelativo(l.quando)} em <#${l.canal_id}>\n> ${l.texto}`);
+      const linhas = meus.map((l) => `**#${l.id}** · ${tsRelativo(l.quando)} ${l.no_canal ? `em <#${l.canal_id}>` : 'no seu privado'}\n> ${l.texto}`);
       return i.reply({ content: `⏰ **Seus lembretes**\n\n${linhas.join('\n')}`.slice(0, 1900), flags: MessageFlags.Ephemeral });
     }
 
@@ -195,10 +197,12 @@ export const lembrete: Comando = {
 
     const quando = Date.now() + espera;
     const texto = i.options.getString('texto', true);
+    const aqui = i.options.getBoolean('aqui') ?? false;
     const { lastInsertRowid } = db
-      .prepare('INSERT INTO lembretes (guild_id, canal_id, user_id, quando, texto) VALUES (?, ?, ?, ?, ?)')
-      .run(guild, i.channelId, i.user.id, quando, texto);
-    return i.reply({ content: `⏰ Combinado! Te lembro ${tsRelativo(quando)} (lembrete #${lastInsertRowid}).`, flags: MessageFlags.Ephemeral });
+      .prepare('INSERT INTO lembretes (guild_id, canal_id, user_id, quando, texto, no_canal) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(guild, i.channelId, i.user.id, quando, texto, aqui ? 1 : 0);
+    const onde = aqui ? 'aqui neste canal' : 'no seu privado (se a sua DM estiver fechada, aviso aqui)';
+    return i.reply({ content: `⏰ Combinado! Te lembro ${tsRelativo(quando)}, ${onde}. (lembrete #${lastInsertRowid})`, flags: MessageFlags.Ephemeral });
   },
 };
 
@@ -207,17 +211,27 @@ async function entregarLembretes(client: Client) {
   for (const l of vencidos) {
     // Apaga antes de enviar: se o canal sumiu, o lembrete não fica tentando para sempre.
     db.prepare('DELETE FROM lembretes WHERE id = ?').run(l.id);
-    const mensagem = { content: `⏰ <@${l.user_id}>, lembrete: **${l.texto}**`, allowedMentions: { users: [l.user_id] } };
-    const canal = await client.channels.fetch(l.canal_id).catch(() => null);
-    if (canal?.isSendable()) {
-      await canal.send(mensagem).catch(() => {});
-    } else {
-      const usuario = await client.users.fetch(l.user_id).catch(() => null);
-      await usuario?.send(mensagem).catch(() => {});
-    }
     const guild = client.guilds.cache.get(l.guild_id);
+    const noCanal = { content: `⏰ <@${l.user_id}>, lembrete: **${l.texto}**`, allowedMentions: { users: [l.user_id] } };
+    const noPrivado = `⏰ Lembrete${guild ? ` (${guild.name})` : ''}: **${l.texto}**`;
+
+    const enviarNoPrivado = async () => {
+      const usuario = await client.users.fetch(l.user_id).catch(() => null);
+      return !!(await usuario?.send(noPrivado).catch(() => null));
+    };
+    const enviarNoCanal = async () => {
+      const canal = await client.channels.fetch(l.canal_id).catch(() => null);
+      return canal?.isSendable() ? !!(await canal.send(noCanal).catch(() => null)) : false;
+    };
+
+    // Padrão: privado, e o canal só se a DM estiver fechada. Com aqui:true, o contrário.
+    let onde: 'privado' | 'canal' | undefined;
+    if (l.no_canal) onde = (await enviarNoCanal()) ? 'canal' : (await enviarNoPrivado()) ? 'privado' : undefined;
+    else onde = (await enviarNoPrivado()) ? 'privado' : (await enviarNoCanal()) ? 'canal' : undefined;
+
     if (guild) {
-      registrar({ guild, userId: l.user_id, tipo: 'auto', acao: `⏰ recebeu o lembrete "${l.texto.slice(0, 80)}"${canal?.isSendable() ? '' : ' por mensagem privada'}`, canalId: canal?.isSendable() ? l.canal_id : undefined });
+      const como = onde === 'privado' ? ' no privado' : onde === 'canal' ? (l.no_canal ? '' : ' no canal (DM fechada)') : ' · não consegui entregar';
+      registrar({ guild, userId: l.user_id, tipo: 'auto', acao: `⏰ recebeu o lembrete "${l.texto.slice(0, 80)}"${como}`, canalId: onde === 'canal' ? l.canal_id : undefined, ok: !!onde });
     }
   }
 }

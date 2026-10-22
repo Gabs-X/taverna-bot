@@ -143,3 +143,6 @@ db.exec(`
 
 const colunasGoticas = db.prepare("SELECT name FROM pragma_table_info('goticas')").all() as { name: string }[];
 if (!colunasGoticas.some((c) => c.name === 'equipados')) db.exec("ALTER TABLE goticas ADD COLUMN equipados TEXT NOT NULL DEFAULT '{}'");
+
+const colunasLembretes = db.prepare("SELECT name FROM pragma_table_info('lembretes')").all() as { name: string }[];
+if (colunasLembretes.length && !colunasLembretes.some((c) => c.name === 'no_canal')) db.exec('ALTER TABLE lembretes ADD COLUMN no_canal INTEGER NOT NULL DEFAULT 1');

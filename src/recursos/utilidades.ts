@@ -294,7 +294,7 @@ const AJUDA: [string, string][] = [
   ['🐉 D&D 3.5', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | resistencia | ataque | estabilizar` · `/iniciativa entrar | npc | proximo | ver | limpar`'],
   ['🌗 Daggerheart', '`/dh rolar` (dualidade, com traço e experiência) · `/dh dano` · `/dh marcar` PV, Estresse, Esperança, Armadura · `/dh medo` · `/dh ficha criar | ver | editar | experiencias`'],
   ['📅 Sessões', '`/sessao marcar mesa:D&D|Daggerheart` vira evento do Discord · `/sessao proximas`'],
-  ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
+  ['📅 Agenda', '`/lembrete criar | lista | apagar` (aviso no seu privado) · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
   ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica duelo` por turnos · `/gotica visitar` · `/gotica renomear` · `/gotica ranking` · `/loja ver | comprar | equipar | tirar` (chapéus, óculos, bichinhos e fundos)'],
   ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
   ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
