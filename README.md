@@ -19,7 +19,7 @@ Página com todos os comandos: pasta [`site/`](site/) (deploy na Vercel, veja ab
 | 📅 Agenda | `/lembrete` (30m, 2h, 3d…), `/aniversario` com parabéns automático no #geral às 9h. Fica salvo no SQLite e sobrevive a reinícios |
 | 🦇 Gótica | No canal 🦇・goticas (criado pelo `/setup`): `/gotica adotar`: aparência e personalidade sorteadas, retrato desenhado pelo bot. `/gotica ver` com botões para alimentar, conversar, ouvir música, passear e dormir; ela sobe de nível e ganha acessórios. `/gotica customizar` escolhe penteado, cabelo, olhos, batom, pele e vestido desde o nível 1, `/gotica visual` sorteia a aparência de novo (e a personalidade, se quiser), `/gotica renomear`, `/gotica ranking` |
 | 🎉 Diversão | `/moeda`, `/8ball`, `/cafe`, `/asheap`, `/avatar`, `/servidor` |
-| 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar`, `/castigo` |
+| 🛡️ Admin | Boas-vindas com cargo automático, log de entrada/saída, `/limpar` (inclusive mensagens do bot e com mais de 14 dias; filtro por bots, pessoas ou membro; `tudo:true` recria o canal vazio), `/castigo` |
 
 ## Estrutura que o `/setup` cria
 

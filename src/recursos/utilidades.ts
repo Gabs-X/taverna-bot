@@ -7,7 +7,9 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  TextChannel,
   type GuildMember,
+  type Message,
 } from 'discord.js';
 import { JOGOS, nomeCargoJogo } from '../config.ts';
 import { cargoPorNome } from '../lib/servidor.ts';
@@ -151,16 +153,115 @@ export const sortear: Comando = {
 export const limpar: Comando = {
   data: new SlashCommandBuilder()
     .setName('limpar')
-    .setDescription('Apaga as últimas mensagens do canal')
+    .setDescription('Apaga mensagens do canal (de todo mundo, inclusive do bot) ou o canal inteiro')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setContexts(InteractionContextType.Guild)
-    .addIntegerOption((o) => o.setName('quantidade').setDescription('1 a 100').setRequired(true).setMinValue(1).setMaxValue(100)),
+    .addIntegerOption((o) => o.setName('quantidade').setDescription('1 a 100 (padrão: 100)').setMinValue(1).setMaxValue(100))
+    .addBooleanOption((o) => o.setName('tudo').setDescription('Apaga TODAS as mensagens do canal (recria o canal; pede confirmação)'))
+    .addStringOption((o) =>
+      o.setName('de').setDescription('De quem apagar (padrão: todo mundo, inclusive bots)').addChoices(
+        { name: 'Todo mundo (inclusive bots)', value: 'todos' },
+        { name: 'Só bots', value: 'bots' },
+        { name: 'Só pessoas', value: 'pessoas' },
+      ),
+    )
+    .addUserOption((o) => o.setName('membro').setDescription('Apagar só as mensagens desta pessoa (ou bot)')),
 
   async executar(i) {
-    if (!i.channel || !('bulkDelete' in i.channel)) return i.reply({ content: 'Não dá para limpar aqui.', flags: MessageFlags.Ephemeral });
-    // Mensagens com mais de 14 dias não podem ser apagadas em lote (limite do Discord).
-    const apagadas = await i.channel.bulkDelete(i.options.getInteger('quantidade', true), true);
-    return i.reply({ content: `🧹 Apaguei ${apagadas.size} mensagem(ns).`, flags: MessageFlags.Ephemeral });
+    const canal = i.channel;
+    if (!canal || !('bulkDelete' in canal)) return i.reply({ content: 'Não dá para limpar aqui.', flags: MessageFlags.Ephemeral });
+
+    if (i.options.getBoolean('tudo')) {
+      if (!(canal instanceof TextChannel)) return i.reply({ content: 'Limpar tudo só funciona em canal de texto comum.', flags: MessageFlags.Ephemeral });
+      if (!(i.member as GuildMember).permissions.has(PermissionFlagsBits.ManageChannels)) {
+        return i.reply({ content: 'Limpar tudo recria o canal: precisa da permissão **Gerenciar canais**.', flags: MessageFlags.Ephemeral });
+      }
+      const botoes = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`limpartudo:confirmar:${i.user.id}`).setLabel('Apagar tudo').setEmoji('🧨').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`limpartudo:cancelar:${i.user.id}`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary),
+      );
+      return i.reply({
+        content: `⚠️ Isso apaga **todas** as mensagens de ${canal}, inclusive as fixadas, e não dá para desfazer. O canal é recriado igual (nome, tópico, permissões e posição). Confirmar?`,
+        components: [botoes],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    await i.deferReply({ flags: MessageFlags.Ephemeral });
+    const quantidade = i.options.getInteger('quantidade') ?? 100;
+    const de = i.options.getString('de') ?? 'todos';
+    const membro = i.options.getUser('membro');
+
+    // Busca em páginas até achar `quantidade` mensagens que passam no filtro (no máximo 500 olhadas).
+    const alvo: Message[] = [];
+    let antes: string | undefined;
+    for (let pagina = 0; pagina < 5 && alvo.length < quantidade; pagina++) {
+      const lote = await canal.messages.fetch({ limit: 100, before: antes });
+      if (!lote.size) break;
+      for (const m of lote.values()) {
+        if (m.pinned) continue;
+        if (membro && m.author.id !== membro.id) continue;
+        if (de === 'bots' && !m.author.bot) continue;
+        if (de === 'pessoas' && m.author.bot) continue;
+        alvo.push(m);
+        if (alvo.length === quantidade) break;
+      }
+      antes = lote.last()!.id;
+    }
+
+    // Até 14 dias o Discord apaga em lote; as mais velhas só uma a uma.
+    const limite = Date.now() - 14 * 24 * 3_600_000 + 60_000;
+    const recentes = alvo.filter((m) => m.createdTimestamp > limite);
+    const antigas = alvo.filter((m) => m.createdTimestamp <= limite);
+    let apagadas = 0;
+    let falhas = 0;
+    try {
+      if (recentes.length === 1) await recentes[0].delete();
+      else if (recentes.length) await canal.bulkDelete(recentes);
+      apagadas += recentes.length;
+    } catch {
+      falhas += recentes.length;
+    }
+    for (const m of antigas) {
+      try {
+        await m.delete();
+        apagadas++;
+      } catch {
+        falhas++;
+      }
+    }
+
+    const partes = [`🧹 Apaguei ${apagadas} mensagem(ns).`];
+    if (antigas.length) partes.push(`${antigas.length} tinham mais de 14 dias e foram apagadas uma a uma.`);
+    if (falhas) partes.push(`⚠️ ${falhas} não deu para apagar: confira se o bot tem a permissão **Gerenciar mensagens** neste canal.`);
+    if (alvo.length < quantidade) partes.push(`Só achei ${alvo.length} que batiam com o filtro nas últimas 500 mensagens (fixadas não contam).`);
+    return i.editReply(partes.join('\n'));
+  },
+};
+
+export const botaoLimparTudo: HandlerBotao = {
+  prefixo: 'limpartudo',
+  async executar(i, argumento) {
+    const [acao, donoId] = argumento.split(':');
+    if (i.user.id !== donoId) return i.reply({ content: 'Esse botão não é seu.', flags: MessageFlags.Ephemeral });
+    if (acao === 'cancelar') return i.update({ content: '👍 Cancelado. Nada foi apagado.', components: [] });
+
+    const canal = i.channel;
+    if (!(canal instanceof TextChannel)) return i.update({ content: 'Esse canal não pode ser recriado.', components: [] });
+    if (Date.now() - i.message.createdTimestamp > 2 * 60_000) {
+      return i.update({ content: '⌛ A confirmação expirou. Rode `/limpar tudo:true` de novo.', components: [] });
+    }
+    await i.update({ content: '🧨 Limpando...', components: [] });
+
+    try {
+      // Clonar copia nome, tópico, categoria, permissões, slowmode e NSFW; a posição é ajustada em seguida.
+      const novo = await canal.clone({ reason: `/limpar tudo por ${i.user.tag}` });
+      await novo.setPosition(canal.position);
+      await canal.delete(`/limpar tudo por ${i.user.tag}`);
+      await novo.send({ content: `🧹 Canal limpo por ${i.user}.`, allowedMentions: { parse: [] } });
+    } catch {
+      return i.editReply({ content: '⚠️ Não consegui recriar o canal. O bot precisa da permissão **Gerenciar canais**.' }).catch(() => null);
+    }
   },
 };
 
@@ -196,7 +297,7 @@ const AJUDA: [string, string][] = [
   ['📅 Agenda', '`/lembrete criar | lista | apagar` · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
   ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica renomear` · `/gotica ranking`'],
   ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/asheap` · `/avatar` · `/servidor`'],
-  ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` · `/castigo`'],
+  ['🛡️ Admin', '`/setup` monta o servidor · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo`'],
 ];
 
 export const ajuda: Comando = {

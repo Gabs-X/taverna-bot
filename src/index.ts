@@ -11,7 +11,7 @@ import { botaoJam, jam } from './recursos/jam.ts';
 import { iniciarMusica, musica, tocar } from './recursos/musica.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { setup } from './recursos/setup.ts';
-import { ajuda, botaoLfg, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
+import { ajuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
 import type { Comando, HandlerBotao } from './tipos.ts';
 
 const token = process.env.DISCORD_TOKEN;
@@ -24,7 +24,7 @@ const COMANDOS: Comando[] = [
   setup, tocar, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, asheap, gotica, avatar, servidor, limpar, castigo, ajuda,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const client = new Client({
