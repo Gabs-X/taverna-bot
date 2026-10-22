@@ -14,6 +14,8 @@ const LOG = join(DADOS, 'bot.log');
 const TRAVA = join(DADOS, 'supervisor.pid');
 const MAX_LOG = 5 * 1024 * 1024;
 const ESPERA_ALTERACAO = 1500;
+const ESTADO = join(DADOS, 'estado.json');
+const ESPERA_MAXIMA_OCUPADO = 30 * 60_000; // depois disso reinicia mesmo ocupado
 
 const arg = process.argv.indexOf('--entrada');
 const ENTRADA = arg > 0 ? process.argv[arg + 1] : 'src/index.ts';
@@ -101,6 +103,35 @@ function reiniciar(motivo) {
 
 // ---------- Alterações nos arquivos ----------
 
+/** O que o bot disse que está em andamento (música, duelo, quiz). Estado velho (bot travado) não conta. */
+function ocupado() {
+  try {
+    const e = JSON.parse(readFileSync(ESTADO, 'utf8'));
+    return Date.now() - e.em < 20_000 ? e.ocupado : [];
+  } catch {
+    return [];
+  }
+}
+
+let adiadoDesde = 0;
+let timerAdiado = null;
+/** Reinício por arquivo alterado: espera a música, o duelo ou o quiz acabar (até 30 min). */
+function reiniciarQuandoLivre(motivo) {
+  clearTimeout(timerAdiado);
+  const agora = ocupado();
+  if (agora.length && (!adiadoDesde || Date.now() - adiadoDesde < ESPERA_MAXIMA_OCUPADO)) {
+    if (!adiadoDesde) {
+      adiadoDesde = Date.now();
+      log(`⏸️ ${motivo}, mas o bot está ocupado (${agora.join(', ')}). Reinicio quando terminar.`);
+    }
+    timerAdiado = setTimeout(() => reiniciarQuandoLivre(motivo), 10_000);
+    return;
+  }
+  if (adiadoDesde && agora.length) log('⏰ Esperei 30 min e o bot continua ocupado: reiniciando assim mesmo.');
+  adiadoDesde = 0;
+  reiniciar(motivo);
+}
+
 let timerAlteracao = null;
 const alterados = new Set();
 function aoAlterar(arquivo) {
@@ -111,7 +142,7 @@ function aoAlterar(arquivo) {
   timerAlteracao = setTimeout(() => {
     const lista = [...alterados].slice(0, 5).join(', ') + (alterados.size > 5 ? ` e mais ${alterados.size - 5}` : '');
     alterados.clear();
-    reiniciar(`Arquivo alterado (${lista})`);
+    reiniciarQuandoLivre(`Arquivo alterado (${lista})`);
   }, ESPERA_ALTERACAO);
 }
 

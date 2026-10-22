@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, Partials, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
@@ -8,13 +9,13 @@ import { comandosCampeoes, vitimas } from './recursos/campeoes.ts';
 import { botaoCargo } from './recursos/cargos.ts';
 import { aoMensagem, carteiraCmd, daily, iniciarAtividade, pix, rank, top, trabalhar } from './recursos/economia.ts';
 import { avatar, bola8, cafe, enquete, moeda, servidor } from './recursos/diversao.ts';
-import { botaoDuelo } from './recursos/goticaSocial.ts';
+import { botaoDuelo, duelosEmAndamento } from './recursos/goticaSocial.ts';
 import { botaoGrupo, ehCanalDeGrupo, grupo, modalGrupo } from './recursos/grupos.ts';
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
-import { botaoRadio, iniciarMusica, musica, radio, tocar } from './recursos/musica.ts';
-import { botaoQuiz, quiz } from './recursos/quiz.ts';
+import { botaoRadio, iniciarMusica, musica, musicasTocando, radio, tocar } from './recursos/musica.ts';
+import { botaoQuiz, quiz, quizzesEmAndamento } from './recursos/quiz.ts';
 import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
 import { iniciarPermissoes, permissoes } from './recursos/permissoesComandos.ts';
@@ -114,6 +115,21 @@ client.on(Events.VoiceStateUpdate, (antes, depois) => aoMudarVoz(antes, depois).
 client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));
 client.on(Events.GuildMemberAdd, (m) => aoEntrar(m).catch((e) => console.error('[boas-vindas]', e)));
 client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error('[saída]', e)));
+
+// Conta ao supervisor o que está em andamento (só na memória): ele adia o reinício até acabar.
+const ARQUIVO_ESTADO = 'dados/estado.json';
+setInterval(() => {
+  const ocupado = [
+    musicasTocando() && `${musicasTocando()} música(s) tocando`,
+    duelosEmAndamento() && `${duelosEmAndamento()} duelo(s)`,
+    quizzesEmAndamento() && `${quizzesEmAndamento()} quiz(zes)`,
+  ].filter(Boolean);
+  try {
+    writeFileSync(ARQUIVO_ESTADO, JSON.stringify({ em: Date.now(), ocupado }));
+  } catch {
+    // sem pasta de dados ainda
+  }
+}, 5_000).unref();
 
 process.on('unhandledRejection', (e) => console.error('[não tratado]', e));
 

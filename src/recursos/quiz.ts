@@ -42,6 +42,7 @@ type Rodada = {
 };
 
 const quizzes = new Set<string>(); // canais com quiz rolando
+export const quizzesEmAndamento = () => quizzes.size;
 const rodadas = new Map<string, Rodada>(); // id da mensagem → rodada
 
 async function montarPergunta(modo: Exclude<Modo, 'misto'>, certa: Campeao) {

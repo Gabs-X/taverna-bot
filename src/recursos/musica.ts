@@ -24,6 +24,8 @@ type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; bu
 type Metadados = { canal: SendableChannels; radio?: Radio };
 
 let player: Player;
+/** Calls com música tocando agora (o supervisor espera acabar antes de reiniciar). */
+export const musicasTocando = () => (player ? player.nodes.cache.filter((f) => f.isPlaying()).size : 0);
 
 // O discord-player usa os tipos CJS do discord.js e o bot os ESM: é o mesmo objeto em
 // tempo de execução, mas o TypeScript enxerga duas classes. Converte só nesta fronteira.

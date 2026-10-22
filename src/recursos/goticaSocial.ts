@@ -52,6 +52,7 @@ const subiuTexto = (nome: string, subiu: number[]) => (subiu.length ? `\n🎉 **
 type Ativo = { duelo: Duelo; mensagem: Message; timer?: NodeJS.Timeout; guildId: string };
 const convites = new Map<string, NodeJS.Timeout>(); // id da mensagem → prazo do convite
 const ativos = new Map<string, Ativo>(); // id da mensagem → duelo
+export const duelosEmAndamento = () => ativos.size + convites.size;
 const ocupadas = new Set<string>(); // guild:user em duelo ou com convite aberto
 
 export async function executarDuelo(i: ChatInputCommandInteraction) {
