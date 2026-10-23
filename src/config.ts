@@ -11,6 +11,7 @@ export const CARGOS = {
   aventureiro: { nome: '⚔️ Aventureiro', cor: 0xc0392b }, // mesa de D&D 3.5
   daggerheart: { nome: '🌗 Daggerheart', cor: 0x2e86c1 }, // mesa de Daggerheart
   membro: { nome: '🪑 Freguês', cor: 0x2ecc71, antigos: ['🤪 Maluco'] }, // cargo base: libera os canais (ganho no formulário de #verificacao)
+  honra: { nome: '🏅 Caneca de Honra', cor: 0xd4a017, antigos: ['💎 Cadeira Cativa'] }, // homenagem da staff ao pessoal mais amigo e presente (/caneca)
   aniversario: { nome: '🎂 Parabéns', cor: 0xff6b9d }, // marcou no formulário de entrada que quer parabéns
 } as const;
 

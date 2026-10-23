@@ -98,6 +98,7 @@ async function garantirCargos(guild: Guild, relatorio: string[]) {
     { ...CARGOS.aventureiro, hoist: false, permissions: [] },
     { ...CARGOS.daggerheart, hoist: false, permissions: [] },
     { ...CARGOS.membro, hoist: true, permissions: [] },
+    { ...CARGOS.honra, hoist: true, permissions: [] },
     { ...CARGOS.aniversario, hoist: false, permissions: [] },
     ...JOGOS.map((j) => ({ nome: nomeCargoJogo(j), cor: j.cor, hoist: false, permissions: [] })),
     ...CARGOS_NIVEL.map((c) => ({ nome: c.nome, cor: c.cor, hoist: true, permissions: [] })),
@@ -131,6 +132,7 @@ const HIERARQUIA = [
   CARGOS.dono.nome,
   CARGOS.admin.nome,
   CARGOS.staff.nome,
+  CARGOS.honra.nome,
   ...[...CARGOS_NIVEL].reverse().map((c) => c.nome),
   CARGOS.mestre.nome,
   CARGOS.membro.nome,
@@ -156,7 +158,19 @@ async function ordenarCargos(guild: Guild, relatorio: string[]) {
     });
     relatorio.push(`↕️ cargos em ordem: ${cargos.map((c) => c.name).join(' > ')}`);
   } catch {
-    relatorio.push('⚠️ Não consegui ordenar os cargos. Em Configurações do servidor > Cargos, arraste o cargo do bot para o topo e rode /setup de novo.');
+    // Em bloco o Discord às vezes recusa (ex.: com o cargo de Server Booster no meio). Um a um, de cima para
+    // baixo, só os da HIERARQUIA: cada cargo vai para logo abaixo do anterior.
+    try {
+      let teto = topoBot;
+      for (const c of principais) {
+        const atual = guild.roles.cache.get(c.id)!;
+        if (atual.position >= teto || atual.position < teto - 2) await atual.setPosition(teto - 1, { reason: 'Hierarquia da Taverna (/setup)' });
+        teto = guild.roles.cache.get(c.id)!.position;
+      }
+      relatorio.push(`↕️ cargos principais em ordem: ${principais.map((c) => c.name).join(' > ')}`);
+    } catch {
+      relatorio.push('⚠️ Não consegui ordenar os cargos. Em Configurações do servidor > Cargos, arraste o cargo do bot para o topo e rode /setup de novo.');
+    }
   }
 }
 

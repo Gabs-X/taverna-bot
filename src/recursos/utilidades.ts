@@ -7,13 +7,15 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
   TextChannel,
+  type Guild,
   type GuildMember,
   type Message,
 } from 'discord.js';
 import { CANAIS, JOGOS, nomeCargoJogo } from '../config.ts';
 import { cargoPorNome, emoji } from '../lib/servidor.ts';
-import type { Comando, HandlerBotao } from '../tipos.ts';
+import type { Comando, HandlerBotao, HandlerSelecao } from '../tipos.ts';
 
 const embaralhar = <T>(lista: T[]) => {
   const copia = [...lista];
@@ -287,35 +289,216 @@ export const castigo: Comando = {
 
 // ---------- /ajuda ----------
 
-const AJUDA: [string, string][] = [
-  ['🎵 Música', '`/tocar` nome ou link · `/radio` toca e segue com músicas associadas, sem repetir · `/musica pular | pausar | parar | fila | tocando | volume | loop | embaralhar` · `/jam` divulga sua Jam do Spotify'],
-  ['🔊 Calls', 'Entre em **➕ Calls** e ganhe uma call sua · `/tela` compartilha a tela (com som) por link · `/call nome | limite | trancar | destrancar | dono`'],
-  ['🎮 Jogos', '`/lfg` chama a galera · `/times` divide a call · `/sortear` decide o indie da noite · `/enquete` votação'],
-  ['🐉 D&D 3.5', '`/rolar 1d20+5` · `/ficha criar | ver | pv | editar | pericias` · `/teste pericia | atributo | resistencia | ataque | estabilizar` · `/iniciativa entrar | npc | proximo | ver | limpar`'],
-  ['🌗 Daggerheart', '`/dh rolar` (dualidade, com traço e experiência) · `/dh dano` · `/dh marcar` PV, Estresse, Esperança, Armadura · `/dh medo` · `/dh ficha criar | ver | editar | experiencias`'],
-  ['🧙 Mestre', '`/gerar npc | taverna | loot | nome` · `/ambiente` trilha da mesa em loop (taverna, combate, floresta, masmorra, cidade, chuva, mistério, viagem)'],
-  ['📅 Sessões', '`/sessao marcar mesa:D&D|Daggerheart` vira evento do Discord · `/sessao proximas`'],
-  ['📅 Agenda', '`/lembrete criar | lista | apagar` (aviso no seu privado) · `/aniversario definir | ver | lista | remover` (parabéns no #geral às 9h)'],
-  ['🦇 Gótica', 'No canal #goticas: `/gotica adotar` nome · `/gotica ver` (com botões para cuidar) · `/gotica customizar` escolhe o visual · `/gotica visual` sorteia um novo · `/gotica duelo` por turnos · `/gotica visitar` · `/gotica renomear` · `/gotica ranking` · `/loja gotica ver | comprar | equipar | tirar` (chapéus, óculos, bichinhos e fundos)'],
-  ['💰 Taverna', '`/daily` · `/trabalhar` · `/carteira` · `/pix` · `/rank` cartão de nível · `/loja taverna` cor do nome e XP em dobro · `/top` nível, moedas ou call. Mensagens e tempo em call dão XP, moedas e cargos'],
-  ['🏹 Campeões', '`/asheap` · `/darius` · `/teemo` · `/yasuo` · `/blitz` · `/garen` · `/jinx` · `/thresh` (o campeão fala no chat e desce a lenha em alguém) · `/vitimas` placar · `/quiz iniciar | ranking` adivinhe o campeão'],
-  ['💬 Resenha', 'Reaja com ⭐: 3 estrelas e a mensagem vai para #hall-da-fama · botão direito → Apps → **Salvar citação** · `/citacao` sorteia uma · resumo da semana no #geral todo domingo às 20h'],
-  ['💡 Sugestões', '`/sugestao ideia:` manda uma ideia para o bot; a galera vota em #sugestoes e a staff aprova'],
-  ['🎰 Jogos', '`/cassino moeda | slots | roleta | limite` (com limite por dia) · `/desafiar @membro aposta` (cara ou coroa, dado ou duelo de góticas valendo moedas) · `/assaltar @membro` (40% de chance; pego, paga multa) · `/quemdisse` (acerte quem falou a citação) · `/palavra chutar | ver | ranking` (palavra do dia) · `/conquistas`'],
-  ['🧙 LoL e jogos', '`/elo vincular | ver | buscar` (elo, maestrias e partidas pela Riot) · `/gratis` jogos de graça (aviso automático em #jogos-gratis) · o bot avisa quando 2+ pessoas abrem o mesmo jogo'],
-  ['🎉 Diversão', '`/moeda` · `/8ball` · `/cafe` · `/avatar` · `/servidor` · `/status` como o bot está'],
-  ['👥 Subgrupos', '`/grupo criar` (admin aprova) · `/grupo entrar | sair | lista` · dono: `canal` (pede canal novo) · `renomear` · `convidar` · `remover` · `privacidade` · `transferir` · `apagar`. Lista e botões em #subgrupos'],
-  ['🎉 Atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio: desbloqueie no painel de #escolha-suas-atividades'],
-  ['🛡️ Staff', '`/setup` monta o servidor (admin) · `/staff adicionar | remover | lista` (admin) · `/reiniciar` (admin) · `/permissoes autorizar | aplicar | status` (admin: cada comando só para quem tem o cargo) · `/logs` o que o bot fez para cada pessoa · `/limpar` quantidade, de bots/pessoas/membro, ou `tudo` (recria o canal) · `/castigo` · `/apostas ver | definir` (máximo por aposta e limite diário do cassino)'],
+// Cada tópico vira uma página; o menu troca de página sem poluir o chat (tudo só para quem pediu).
+type Topico = { id: string; emoji: string; nome: string; resumo: string; texto: string; linhas: [string, string][] };
+
+const TOPICOS: Topico[] = [
+  {
+    id: 'comeco',
+    emoji: '🚪',
+    nome: 'Primeiros passos',
+    resumo: 'Formulário, cargos e onde fica cada coisa',
+    texto: 'Novo por aqui? Começa por estes.',
+    linhas: [
+      ['#✅・verificacao', 'Responda o formulário (jogos, atividades, subgrupos e parabéns) para liberar o servidor. Clique de novo quando quiser trocar as escolhas.'],
+      ['#🎮・escolha-suas-atividades', 'Botões para ligar e desligar jogos e atividades a qualquer hora.'],
+      ['Canais das atividades', 'Góticas, Quiz, Campeões, Economia e Level up têm canal próprio, que só aparece para quem desbloquear.'],
+      ['Comandos no lugar certo', 'Cada comando tem seu canal. Se usar no lugar errado, o bot avisa onde é.'],
+      ['/ajuda', 'Esta ajuda. Escolha um tópico no menu.'],
+    ],
+  },
+  {
+    id: 'musica',
+    emoji: '🎵',
+    nome: 'Música e calls',
+    resumo: 'Tocar música, rádio, calls próprias e compartilhar tela',
+    texto: 'Quem toca são os bardos (Claudinho e Durgan): cada um numa call ao mesmo tempo.',
+    linhas: [
+      ['/tocar', 'Toca uma música pelo nome ou link (YouTube, Spotify…) na sua call.'],
+      ['/radio', 'Começa por uma música e segue sozinho com músicas parecidas, sem repetir.'],
+      ['/musica', 'Controla a música da sua call: pular, pausar, parar, fila, tocando, volume, loop e embaralhar.'],
+      ['/jam', 'Divulga a sua Jam do Spotify para a galera entrar.'],
+      ['➕ Calls', 'Entre nesse canal de voz e ganhe uma call só sua, que some quando esvazia.'],
+      ['/call', 'Manda na sua call: nome, limite de pessoas, trancar, destrancar e passar a dona.'],
+      ['/tela', 'Compartilha sua tela (com som) por um link. No chat sai o botão Assistir.'],
+    ],
+  },
+  {
+    id: 'jogos',
+    emoji: '🎮',
+    nome: 'Jogatina e grupos',
+    resumo: 'Chamar a galera, dividir times, LoL e subgrupos',
+    texto: 'Para juntar a galera e organizar a jogatina.',
+    linhas: [
+      ['/lfg', 'Chama quem joga aquele jogo (quem marcou o jogo no formulário).'],
+      ['/times', 'Divide quem está na call em times.'],
+      ['/sortear', 'Sorteia algo da lista (o indie da noite, quem começa…).'],
+      ['/enquete', 'Abre uma votação.'],
+      ['/elo', 'LoL: vincula sua conta e mostra elo, maestrias e partidas (vincular, ver, buscar).'],
+      ['/gratis', 'Jogos de graça na Epic, Steam e GOG. Os novos também são avisados em #jogos-gratis.'],
+      ['/grupo', 'Subgrupos: criar (a staff aprova), entrar, sair, lista. O dono pede canais, renomeia, convida, remove, transfere e apaga.'],
+      ['Aviso automático', 'Quando 2 ou mais pessoas abrem o mesmo jogo, o bot avisa.'],
+    ],
+  },
+  {
+    id: 'rpg',
+    emoji: '🐉',
+    nome: 'RPG',
+    resumo: 'D&D 3.5, Daggerheart e ferramentas do Mestre',
+    texto: 'Os canais das mesas aparecem para quem marcou D&D 3.5 ou Daggerheart.',
+    linhas: [
+      ['/rolar', 'Rola dados, por exemplo `1d20+5`.'],
+      ['/ficha', 'D&D: cria e vê a ficha, mexe nos PV, edita e vê as perícias.'],
+      ['/teste', 'D&D: testes de perícia, atributo, resistência, ataque e estabilizar.'],
+      ['/iniciativa', 'D&D: entra na iniciativa, adiciona NPCs, passa o turno e mostra a ordem.'],
+      ['/dh', 'Daggerheart: rola dualidade (com traço e experiência), dano, marca PV, Estresse, Esperança e Armadura, medo e ficha.'],
+      ['/sessao', 'Marca a próxima sessão da mesa como evento do Discord e mostra as próximas.'],
+      ['/gerar', 'Mestre: gera NPC, taverna, loot do 3.5 ou nome por raça.'],
+      ['/ambiente', 'Mestre: trilha em loop na call da mesa (taverna, combate, floresta, masmorra, cidade, chuva, mistério, viagem).'],
+    ],
+  },
+  {
+    id: 'gotica',
+    emoji: '🦇',
+    nome: 'Góticas',
+    resumo: 'Adotar, cuidar, evoluir e duelar',
+    texto: 'Tudo no canal #goticas (desbloqueie a atividade Góticas).',
+    linhas: [
+      ['/gotica adotar', 'Adota a sua gótica, com aparência e personalidade sorteadas.'],
+      ['/gotica ver', 'Mostra a gótica com botões para alimentar, conversar, ouvir música, passear e dormir.'],
+      ['/gotica customizar', 'Escolhe penteado, cabelo, olhos, batom, pele e vestido. `/gotica visual` sorteia um visual novo.'],
+      ['Evolução', 'Asas no nível 10, aura no 15, coroa no 20 e lua de sangue no 30.'],
+      ['/gotica duelo', 'Duelo por turnos com outra gótica, valendo XP e moedas (e uma aposta, se quiser).'],
+      ['/gotica visitar', 'Visita a gótica de alguém: as duas ganham XP.'],
+      ['/gotica ranking', 'As góticas mais fortes do servidor. `/gotica renomear` troca o nome.'],
+      ['/loja gotica', 'Chapéus, óculos, bichinhos e fundos para sua gótica.'],
+    ],
+  },
+  {
+    id: 'economia',
+    emoji: '💰',
+    nome: 'Moedas e níveis',
+    resumo: 'Daily, trabalho, loja, ranking e conquistas',
+    texto: 'Conversar e ficar em call dá XP e moedas. Subir de nível dá cargos (Bebum, Frequentador, Veterano e Lenda).',
+    linhas: [
+      ['/daily', 'Moedas do dia. Dias seguidos rendem mais.'],
+      ['/trabalhar', 'Faz um bico na taverna e ganha moedas (uma vez por hora).'],
+      ['/carteira', 'Mostra suas moedas.'],
+      ['/pix', 'Manda moedas para alguém.'],
+      ['/rank', 'Seu cartão de nível.'],
+      ['/top', 'Ranking por nível, moedas ou tempo em call.'],
+      ['/loja taverna', 'Compra cor do nome e XP em dobro.'],
+      ['/conquistas', 'As conquistas que você já desbloqueou.'],
+    ],
+  },
+  {
+    id: 'apostas',
+    emoji: '🎰',
+    nome: 'Apostas e minigames',
+    resumo: 'Cassino, desafios, assalto, quiz e palavra do dia',
+    texto: 'Para gastar (ou multiplicar) as moedas.',
+    linhas: [
+      ['/cassino', 'Moeda, slots e roleta. `/cassino limite` mostra quanto ainda dá para apostar hoje.'],
+      ['/desafiar', 'Desafia alguém valendo moedas: cara ou coroa, dado ou duelo de góticas. Quem ganha leva as duas apostas.'],
+      ['/assaltar', 'Tenta roubar moedas de alguém (40% de chance). Se for pego, paga multa para a vítima.'],
+      ['/quemdisse', 'Uma frase salva da galera: acerte quem falou e ganhe moedas.'],
+      ['/palavra', 'Palavra do dia: chutar, ver e ranking.'],
+      ['/quiz', 'Adivinhe o campeão do LoL (iniciar e ranking).'],
+      ['Campeões', '`/asheap`, `/darius`, `/teemo`, `/yasuo`, `/blitz`, `/garen`, `/jinx` e `/thresh` falam no chat e descem a lenha em alguém. `/vitimas` mostra o placar.'],
+    ],
+  },
+  {
+    id: 'resenha',
+    emoji: '💬',
+    nome: 'Resenha e agenda',
+    resumo: 'Hall da fama, citações, lembretes e aniversários',
+    texto: 'O que a galera falou e o que vem por aí.',
+    linhas: [
+      ['⭐ Hall da fama', 'Reaja com ⭐: com 3 estrelas, a mensagem vai para #hall-da-fama.'],
+      ['Salvar citação', 'Botão direito numa mensagem → Apps → **Salvar citação**. `/citacao` sorteia uma.'],
+      ['Resumo da semana', 'Todo domingo às 20h sai no #geral o resumo da semana da Taverna.'],
+      ['/lembrete', 'Cria, lista e apaga lembretes (o aviso chega no seu privado).'],
+      ['/aniversario', 'Salva seu aniversário: no dia, o bot chama a galera no #geral às 9h.'],
+      ['/sugestao', 'Manda uma ideia para o bot. A galera vota em #sugestoes e a staff aprova.'],
+      ['Call lendária', 'Com 5 ou mais pessoas na mesma call, o bot chama todo mundo no #geral.'],
+    ],
+  },
+  {
+    id: 'diversao',
+    emoji: '🎉',
+    nome: 'Diversão',
+    resumo: 'Comandos rápidos para zoar e conferir',
+    texto: 'Coisas rápidas, no #comandos-do-bot.',
+    linhas: [
+      ['/moeda', 'Cara ou coroa.'],
+      ['/8ball', 'Pergunte e a bola mágica responde.'],
+      ['/cafe', 'O taverneiro passa um café para você (ou para alguém).'],
+      ['/avatar', 'Mostra a foto de alguém em tamanho grande.'],
+      ['/servidor', 'Informações do servidor.'],
+      ['/status', 'Como o bot está: ping, tempo no ar, música e memória.'],
+      ['/versao', 'O que mudou na última versão do bot.'],
+    ],
+  },
+  {
+    id: 'staff',
+    emoji: '🛡️',
+    nome: 'Staff',
+    resumo: 'Moderação, configurações e homenagens',
+    texto: 'Só para a staff e os admins.',
+    linhas: [
+      ['/limpar', 'Apaga mensagens: uma quantidade, só de bots, de pessoas ou de alguém, ou `tudo` (recria o canal).'],
+      ['/castigo', 'Deixa alguém de castigo (sem falar) por alguns minutos.'],
+      ['/logs', 'Tudo o que o bot fez para cada pessoa.'],
+      ['/resumo', 'Prévia do resumo da semana que sai domingo às 20h.'],
+      ['/apostas', 'Máximo por aposta e limite diário do cassino.'],
+      ['/caneca', '🏅 Caneca de Honra: homenagem para quem é muito amigo e presente, com anúncio no #geral (dar, tirar, lista).'],
+      ['/staff', 'Admin: dá e tira o cargo de Staff e mostra quem é.'],
+      ['/setup', 'Admin: monta ou completa o servidor (cargos, canais e painéis).'],
+      ['/permissoes', 'Admin: faz cada comando aparecer só para quem tem o cargo dele.'],
+      ['/reiniciar', 'Admin: reinicia o bot.'],
+    ],
+  },
 ];
 
+function paginaAjuda(guild: Guild | null, id?: string) {
+  const topico = TOPICOS.find((t) => t.id === id);
+  const embed = new EmbedBuilder().setColor(0xe67e22);
+  if (!topico) {
+    embed
+      .setTitle(`${emoji(guild, 'taverna_cerveja', '🍺')} Ajuda do Taverneiro`)
+      .setDescription('Escolha um tópico no menu abaixo para ver os comandos e o que cada um faz.\n\n' + TOPICOS.map((t) => `${t.emoji} **${t.nome}**: ${t.resumo}`).join('\n'))
+      .setFooter({ text: 'Só você vê esta mensagem' });
+  } else {
+    embed
+      .setTitle(`${topico.emoji} ${topico.nome}`)
+      .setDescription(`${topico.texto}\n\n` + topico.linhas.map(([nome, texto]) => `**${nome.startsWith('/') ? `\`${nome}\`` : nome}**\n${texto}`).join('\n\n'))
+      .setFooter({ text: 'Troque de tópico no menu abaixo' });
+  }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('ajuda:topico')
+    .setPlaceholder('📚 Escolha um tópico')
+    .addOptions(TOPICOS.map((t) => ({ label: t.nome, value: t.id, emoji: t.emoji, description: t.resumo.slice(0, 100), default: t.id === id })));
+  return { embeds: [embed], components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)] };
+}
+
 export const ajuda: Comando = {
-  data: new SlashCommandBuilder().setName('ajuda').setDescription('Lista tudo que o bot faz'),
+  data: new SlashCommandBuilder()
+    .setName('ajuda')
+    .setDescription('O que o bot faz, separado por tópicos')
+    .addStringOption((o) =>
+      o
+        .setName('topico')
+        .setDescription('Ir direto para um tópico')
+        .addChoices(...TOPICOS.map((t) => ({ name: `${t.emoji} ${t.nome}`, value: t.id }))),
+    ),
   async executar(i) {
-    const embed = new EmbedBuilder()
-      .setColor(0xe67e22)
-      .setTitle(`${emoji(i.guild, 'taverna_cerveja', '🍺')} Taverneiro · comandos`)
-      .addFields(AJUDA.map(([name, value]) => ({ name, value })));
-    return i.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    return i.reply({ ...paginaAjuda(i.guild, i.options.getString('topico') ?? undefined), flags: MessageFlags.Ephemeral });
+  },
+};
+
+export const selecaoAjuda: HandlerSelecao = {
+  prefixo: 'ajuda',
+  async executar(i) {
+    return i.update(paginaAjuda(i.guild, i.values[0]));
   },
 };
