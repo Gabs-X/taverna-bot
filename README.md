@@ -48,7 +48,7 @@ O bot segue versões (v1.0.0, v1.1.0...). Para lançar uma nova, com tudo já em
 npm run lancar -- minor   # funções novas (patch = correções, major = mudança grande)
 ```
 
-O script escreve no [CHANGELOG.md](CHANGELOG.md) os commits desde a última versão, sobe o número, faz o commit "Versão vX.Y.Z", marca a tag e envia ao GitHub. O servidor na nuvem baixa a versão nova em até 2 minutos, reinicia o Taverneiro e anuncia no #novidades. `/versao` mostra a versão atual e o que mudou.
+O script escreve no [CHANGELOG.md](CHANGELOG.md) as novidades (de preferência escritas para a galera num arquivo, com `-- minor --notas novidades.txt`: só o que mudou para os membros, sem coisas desfeitas no caminho nem novidades da staff; sem o arquivo, usa os títulos dos commits), sobe o número, faz o commit "Versão vX.Y.Z", marca a tag e envia ao GitHub. O servidor na nuvem baixa a versão nova em até 2 minutos, reinicia o Taverneiro e anuncia no #novidades. `/versao` mostra a versão atual e o que mudou.
 
 ## Onde roda
 

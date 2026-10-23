@@ -3,8 +3,13 @@
 //   npm run lancar -- minor   (funções novas: 1.2.3 → 1.3.0)
 //   npm run lancar -- major   (mudança grande: 1.2.3 → 2.0.0)
 // Opcional: --sem-enviar (não manda para o GitHub).
+//          --notas arquivo.txt (as novidades, uma por linha: é o texto que a galera lê no #novidades)
 //
-// Escreve no CHANGELOG.md os commits desde a última versão, sobe o número no package.json, faz o commit
+// As novidades são para os membros do servidor: só o que mudou para eles, sem coisas que foram feitas e
+// desfeitas no caminho nem novidades só da staff. Por isso o melhor é escrevê-las num arquivo e passar com
+// --notas; sem ele, o script usa os títulos dos commits desde a última versão.
+//
+// Escreve no CHANGELOG.md as novidades, sobe o número no package.json, faz o commit
 // "Versão vX.Y.Z" (sem coautoria), marca a tag e envia. O servidor na nuvem baixa a versão nova e o Taverneiro,
 // ao reiniciar com ela, anuncia no #novidades do Discord.
 import { execFileSync } from 'node:child_process';
@@ -33,11 +38,24 @@ try {
 } catch {
   // primeira versão: pega o histórico todo
 }
-const commits = git('log', '--no-merges', '--format=%s', ...(ultimaTag ? [`${ultimaTag}..HEAD`] : []))
+const novosCommits = git('log', '--no-merges', '--format=%s', ...(ultimaTag ? [`${ultimaTag}..HEAD`] : []))
   .split('\n')
   .map((l) => l.trim())
   .filter((l) => l && !/^Versão v\d/.test(l));
-if (!commits.length) sair(`Nada novo desde ${ultimaTag}.`);
+if (!novosCommits.length) sair(`Nada novo desde ${ultimaTag}.`);
+
+// Novidades escritas à mão (--notas): uma por linha, com ou sem "- " na frente. Ficam invertidas aqui porque a
+// lista dos commits vem da mais nova para a mais velha e é desvirada logo abaixo.
+const iNotas = process.argv.indexOf('--notas');
+const commits =
+  iNotas > 0
+    ? readFileSync(resolve(process.argv[iNotas + 1] ?? sair('Diga o arquivo: --notas novidades.txt')), 'utf8')
+        .split(/\r?\n/)
+        .map((l) => l.replace(/^\s*[-•*]\s*/, '').trim())
+        .filter(Boolean)
+        .reverse()
+    : novosCommits;
+if (!commits.length) sair('O arquivo de novidades está vazio.');
 
 const data = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 const secao = `## v${nova} (${data})\n\n${commits.reverse().map((c) => `- ${c}`).join('\n')}\n`;
@@ -59,7 +77,7 @@ if (existsSync(trava)) {
 git('add', 'CHANGELOG.md', 'package.json', 'package-lock.json');
 git('commit', '-m', `Versão v${nova}`);
 git('tag', '-a', `v${nova}`, '-m', `Versão v${nova}\n\n${commits.map((c) => `- ${c}`).join('\n')}`);
-console.log(`✅ Versão v${nova} criada (${commits.length} mudança(s) desde ${ultimaTag || 'o começo'}).`);
+console.log(`✅ Versão v${nova} criada (${commits.length} novidade(s) desde ${ultimaTag || 'o começo'}).`);
 
 if (enviar) {
   git('push');
