@@ -4,6 +4,7 @@ import { canaisDoComando } from './canaisDosComandos.ts';
 import { CARGOS } from './config.ts';
 import { avisoCanalErrado, ehMestre, ehStaff, registrarCliente, temCargo } from './lib/servidor.ts';
 import { ambiente, botaoRadio, iniciarMusica, musica, musicasTocando, radio, rockandstone, tocar } from './recursos/musica.ts';
+import { iniciarVigiaNuvem } from './recursos/vigiaNuvem.ts';
 import type { Comando, HandlerBotao } from './tipos.ts';
 
 // Bardos: o programa da música, separado do Taverneiro. Roda no PC de casa porque o YouTube bloqueia muito os
@@ -51,6 +52,7 @@ if (!bardos.length) {
 const principal = bardos[0];
 registrarCliente(principal);
 await iniciarMusica(bardos);
+iniciarVigiaNuvem(principal);
 
 // Comandos de música ficam no app do primeiro bardo (registrados por servidor: aparecem na hora).
 const corpo = COMANDOS.map((c) => c.data.toJSON());

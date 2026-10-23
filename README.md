@@ -54,6 +54,9 @@ O script escreve no [CHANGELOG.md](CHANGELOG.md) as novidades (de preferência e
 
 - **Taverneiro** (`src/index.ts`): num servidor na nuvem (Oracle Cloud, Ubuntu), ligado 24h. Instalação: `scripts/nuvem/instalar.sh`; ele baixa sozinho cada versão nova do GitHub.
 - **Bardos** (`src/bardos.ts`, a música): no PC de casa, porque o YouTube bloqueia muito os endereços de nuvem. Se o PC desligar, só a música para. O atalho do Windows (`scripts/iniciar-oculto.vbs`) liga o supervisor com `--entrada src/bardos.ts`.
+- **Atualização da nuvem:** só versões (tags do `npm run lancar`) e só depois que os testes do GitHub passaram nelas. Correção urgente: `bash scripts/nuvem/atualizar.sh --main` no servidor.
+- **Um vigia o outro:** o Taverneiro avisa no #logs e no privado do dono quando os bardos ficam offline por mais de 10 minutos. O PC dos bardos confere a nuvem por SSH a cada 10 minutos (`NUVEM_SSH` no `.env`) e o Claudinho avisa o dono se o Taverneiro cair, com o link para religar a máquina na Oracle.
+- **Backup fora da nuvem:** o PC dos bardos traz todo dia o backup do banco da nuvem para `dados/backups-nuvem/` (guarda os 14 últimos).
 
 ## Rodar no Windows em segundo plano
 

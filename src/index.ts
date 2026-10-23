@@ -27,6 +27,7 @@ import { status } from './recursos/status.ts';
 import { assaltar, botaoDesafio, desafiar, desafiosEmAndamento } from './recursos/apostas.ts';
 import { aoMudarVozLendaria } from './recursos/callLendaria.ts';
 import { iniciarManutencao } from './recursos/manutencao.ts';
+import { iniciarVigiaBardos } from './recursos/vigiaBardos.ts';
 import { botaoQuemDisse, quemdisse } from './recursos/quemDisse.ts';
 import { setup } from './recursos/setup.ts';
 import { cassino } from './recursos/cassino.ts';
@@ -110,6 +111,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarJogosGratis(c);
   iniciarTelas(c);
   iniciarManutencao(c);
+  iniciarVigiaBardos(c);
   anunciarVersao(c).catch((e) => console.error('[novidades]', e));
   c.user.setActivity(`/ajuda · ${NOME_SERVIDOR} · v${VERSAO}`, { type: ActivityType.Custom });
   console.log(`🍺 ${c.user.tag} v${VERSAO} online em ${c.guilds.cache.size} servidor(es) com ${COMANDOS.length} comandos.`);
