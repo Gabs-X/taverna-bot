@@ -141,16 +141,37 @@ function reiniciarQuandoLivre(motivo) {
   reiniciar(motivo);
 }
 
+/** Confere os tipos do código novo (tsc). Devolve as primeiras linhas de erro, ou '' se estiver tudo certo. */
+function conferirTipos() {
+  const tsc = join(RAIZ, 'node_modules', 'typescript', 'bin', 'tsc');
+  if (!existsSync(tsc)) return Promise.resolve('');
+  return new Promise((ok) => {
+    const p = spawn(process.execPath, [tsc, '--noEmit', '-p', RAIZ], { cwd: RAIZ, windowsHide: true });
+    let saida = '';
+    p.stdout.on('data', (d) => (saida += d));
+    p.stderr.on('data', (d) => (saida += d));
+    p.on('error', () => ok(''));
+    p.on('exit', (codigo) => ok(codigo === 0 ? '' : saida.trim().split(/\r?\n/).slice(0, 8).join('\n') || `tsc saiu com código ${codigo}`));
+  });
+}
+
 let timerAlteracao = null;
 const alterados = new Set();
 function aoAlterar(arquivo) {
-  if (!arquivo || /(^|[\\/])(\.git|node_modules|dados)([\\/]|$)|~$|\.tmp$|\.swp$/.test(arquivo)) return;
+  // Ignora pastas de fora e arquivos temporários de editor (ex.: index.ts.tmp.1234.abcd, ~, .swp).
+  if (!arquivo || /(^|[\\/])(\.git|node_modules|dados)([\\/]|$)|~$|\.tmp(\.|$)|\.swp$/.test(arquivo)) return;
   alterados.add(arquivo.replace(/\\/g, '/'));
   clearTimeout(timerAlteracao);
   // Espera parar de salvar (vários arquivos de uma vez, git pull) antes de reiniciar.
-  timerAlteracao = setTimeout(() => {
+  timerAlteracao = setTimeout(async () => {
     const lista = [...alterados].slice(0, 5).join(', ') + (alterados.size > 5 ? ` e mais ${alterados.size - 5}` : '');
     alterados.clear();
+    // Código quebrado (no meio de uma edição, por exemplo): continua na versão que está rodando em vez de derrubar o bot.
+    const erros = await conferirTipos();
+    if (erros) {
+      log(`⚠️ Arquivo alterado (${lista}), mas o código novo tem erro. O bot continua na versão que está rodando; corrija e salve de novo.\n${erros}`);
+      return;
+    }
     reiniciarQuandoLivre(`Arquivo alterado (${lista})`);
   }, ESPERA_ALTERACAO);
 }

@@ -140,8 +140,9 @@ async function sugestoesDoYoutubeMusic(player: Player, base: Track, youtube: { s
     id = achada.tracks[0] ? getVideoId(achada.tracks[0].url) : null;
   }
   if (!ext?.innertube || !id) return [];
-  const aSeguir = await ext.innertube.music.getUpNext(id, true);
-  return (aSeguir.contents ?? []).flatMap((item) => {
+  // Algumas músicas vêm sem "a seguir" (resposta vazia): aí o rádio cai no plano B (mesmo artista).
+  const aSeguir = await ext.innertube.music.getUpNext(id, true).catch(() => undefined);
+  return (aSeguir?.contents ?? []).flatMap((item) => {
     const v = item as unknown as ItemASeguir;
     if (v.type !== 'PlaylistPanelVideo' || !v.video_id) return [];
     const autor = v.author || v.artists?.map((a) => a.name).join(', ') || '';

@@ -116,7 +116,9 @@ export async function aoMensagem(m: Message) {
     return;
   }
   const g = ganhoMensagem();
-  await ganharAtividade(m.member, g.xp, g.moedas, m.channel, `mensagens = mensagens + 1, ultima_msg = ${Date.now()}`);
+  // Marca o horário antes (e fora do SQL montado): duas mensagens seguidas não ganham XP duas vezes.
+  db.prepare('UPDATE carteira SET ultima_msg = ? WHERE guild_id = ? AND user_id = ?').run(Date.now(), m.guildId, m.author.id);
+  await ganharAtividade(m.member, g.xp, g.moedas, m.channel, 'mensagens = mensagens + 1');
 }
 
 /** A cada minuto, quem está conversando em call ganha XP e moedas. */

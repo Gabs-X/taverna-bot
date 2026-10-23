@@ -4,6 +4,25 @@ import { DatabaseSync } from 'node:sqlite';
 mkdirSync('dados', { recursive: true });
 
 export const db = new DatabaseSync('dados/taverna.db');
+// WAL: gravar não trava quem lê e cada gravação fica bem mais leve (o bot grava a cada mensagem e minuto de call).
+// NORMAL é seguro no WAL (no máximo perde a última fração de segundo numa queda de energia). busy_timeout espera
+// o banco liberar (ex.: um backup rodando) em vez de falhar na hora.
+db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;');
+
+// Muitas consultas são preparadas dentro das funções (a cada mensagem, a cada minuto de call...). Compilar o SQL
+// toda vez custa caro, então o db.prepare reaproveita a consulta já compilada para o mesmo texto. O SQL não pode
+// levar valores no texto (use ?), senão cada valor viraria uma entrada nova; o limite abaixo é só uma rede de proteção.
+const preparadas = new Map<string, ReturnType<DatabaseSync['prepare']>>();
+const prepararDeVerdade = db.prepare.bind(db);
+db.prepare = (sql: string) => {
+  let consulta = preparadas.get(sql);
+  if (!consulta) {
+    if (preparadas.size >= 500) preparadas.delete(preparadas.keys().next().value!);
+    consulta = prepararDeVerdade(sql);
+    preparadas.set(sql, consulta);
+  }
+  return consulta;
+};
 
 // Formato do banco, em migrações numeradas: cada uma roda uma única vez, em ordem.
 // A versão atual fica no próprio banco (PRAGMA user_version). Para mudar o banco, ACRESCENTE uma migração
