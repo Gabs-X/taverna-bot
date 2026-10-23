@@ -14,6 +14,7 @@ import {
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
+import { FALAS_DRG } from '../lib/drg.ts';
 import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 
@@ -546,4 +547,59 @@ export const ambiente: Comando = {
       ),
     ),
   executar: (i) => executarAmbiente(i, i.options.getString('tipo', true) as Ambiente | 'parar'),
+};
+
+// ---------- /rockandstone: grito de Deep Rock Galactic (e, se estiver em call, um bardo solta uma fala do jogo) ----------
+
+// Buscas de clipes curtos com falas dos anões. Os áudios não ficam no bot: vêm do YouTube na hora, como as músicas.
+const BUSCAS_DRG = [
+  'deep rock galactic rock and stone voice line',
+  'deep rock galactic rock and stone sound effect',
+  "deep rock galactic we're rich voice line",
+  'deep rock galactic did i hear a rock and stone',
+];
+const CLIPE_MAX = 30_000; // só falas curtas, nada de compilação
+
+export const rockandstone: Comando = {
+  data: new SlashCommandBuilder()
+    .setName('rockandstone')
+    .setDescription('ROCK AND STONE! Se você estiver em call, um bardo entra e solta uma fala do Deep Rock')
+    .setContexts(InteractionContextType.Guild),
+
+  async executar(i) {
+    const grito = FALAS_DRG[Math.floor(Math.random() * FALAS_DRG.length)];
+    const canalVoz = (i.member as GuildMember).voice.channel;
+    if (!canalVoz) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+
+    const t = tocadorPara(i.guildId!, canalVoz.id);
+    // Bardo ocupado tocando música nesta call ou em outra: só o grito, sem interromper ninguém.
+    if (typeof t === 'string' || t.player.nodes.get(i.guildId!)) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+    const canalDoTocador = t.client.channels.cache.get(canalVoz.id);
+    if (!canalDoTocador) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+
+    await i.reply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** está descendo na sua call...`);
+    const busca = await t.player.search(BUSCAS_DRG[Math.floor(Math.random() * BUSCAS_DRG.length)]).catch(() => null);
+    const curtos = (busca?.tracks ?? []).filter((x) => x.durationMS > 0 && x.durationMS <= CLIPE_MAX);
+    const clipe = curtos[Math.floor(Math.random() * Math.min(curtos.length, 3))];
+    if (!clipe) return i.editReply(`⛏️ ${i.user} grita: **${grito}**\n(Não achei uma fala curta agora. Rock and Stone mesmo assim!)`);
+    try {
+      await t.player.play(canalDoTocador as unknown as CanalDoPlayer, clipe, {
+        requestedBy: i.user.id,
+        nodeOptions: {
+          ...SEM_EFEITOS,
+          // ambiente: não posta "Tocando agora" nem "a fila acabou".
+          metadata: { canal: i.channel as SendableChannels, ambiente: 'rockandstone' } satisfies Metadados,
+          volume: 80,
+          leaveOnEnd: true,
+          leaveOnEndCooldown: 1_500,
+          leaveOnEmpty: true,
+          leaveOnEmptyCooldown: 1_500,
+        },
+      });
+    } catch (erro) {
+      console.error('[rockandstone]', erro);
+      return i.editReply(`⛏️ ${i.user} grita: **${grito}**`);
+    }
+    return i.editReply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** desceu na call para gritar junto (e sobe de volta quando terminar).`);
+  },
 };

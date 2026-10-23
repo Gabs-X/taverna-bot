@@ -8,6 +8,30 @@ export type Classe = 'Driller' | 'Engineer' | 'Gunner' | 'Scout';
 export type Build = { overclock: string; mods: string[] | null; quando: string };
 export type Arma = { nome: string; apelidos: string[]; classe: Classe; tipo: 'primária' | 'secundária'; builds: Build[] };
 
+// Falas dos anões (gritos do /minerador e do /rockandstone).
+export const FALAS_DRG = [
+  'ROCK AND STONE!',
+  'Rock and Stone, brother!',
+  'Rock and Stone forever!',
+  'Rock and Stone to the bone!',
+  'For Rock and Stone!',
+  'Rock and Stone... yeeeaaahhh!',
+  'Did I hear a Rock and Stone?',
+  "We're rich! 💰",
+  'For Karl! 🍺',
+  'Leave no dwarf behind!',
+  'Rock solid!',
+  'Rock on!',
+  'By the beard!',
+  'Stone and Rock! ...oh, wait.',
+  "If you don't Rock and Stone, you ain't comin' home!",
+  "That's it, lads! Rock and Stone!",
+  'Karl would have loved this!',
+  'Mushroom! 🍄',
+  'We are unbreakable!',
+  'Rockity rock and stone!',
+];
+
 const m = (...niveis: string[]) => niveis;
 
 export const ARMAS: Arma[] = [

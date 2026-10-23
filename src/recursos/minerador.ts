@@ -13,6 +13,7 @@ import {
 import { CANAIS, CARGOS } from '../config.ts';
 import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
+import { FALAS_DRG } from '../lib/drg.ts';
 import { webhookDo } from './campeoes.ts';
 import { registrar } from './registro.ts';
 
@@ -104,29 +105,6 @@ export const minerador: Comando = {
 
 const CAMPO_GRITOS = '🪨 Gritaram ROCK AND STONE';
 
-// Falas dos anões de Deep Rock Galaxy: quem clica "fala" uma delas no chat, com o próprio nome e foto.
-const FALAS_DRG = [
-  'ROCK AND STONE!',
-  'Rock and Stone, brother!',
-  'Rock and Stone forever!',
-  'Rock and Stone to the bone!',
-  'For Rock and Stone!',
-  'Rock and Stone... yeeeaaahhh!',
-  'Did I hear a Rock and Stone?',
-  "We're rich! 💰",
-  'For Karl! 🍺',
-  'Leave no dwarf behind!',
-  'Rock solid!',
-  'Rock on!',
-  'By the beard!',
-  'Stone and Rock! ...oh, wait.',
-  "If you don't Rock and Stone, you ain't comin' home!",
-  "That's it, lads! Rock and Stone!",
-  'Karl would have loved this!',
-  'Mushroom! 🍄',
-  'We are unbreakable!',
-  'Rockity rock and stone!',
-];
 const MAX_NOMES = 40; // o campo do Discord tem 1024 caracteres
 
 const botaoGrito = (total: number) =>

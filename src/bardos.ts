@@ -3,7 +3,7 @@ import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags, type Cha
 import { canaisDoComando } from './canaisDosComandos.ts';
 import { CARGOS } from './config.ts';
 import { avisoCanalErrado, ehMestre, ehStaff, registrarCliente, temCargo } from './lib/servidor.ts';
-import { ambiente, botaoRadio, iniciarMusica, musica, musicasTocando, radio, tocar } from './recursos/musica.ts';
+import { ambiente, botaoRadio, iniciarMusica, musica, musicasTocando, radio, rockandstone, tocar } from './recursos/musica.ts';
 import type { Comando, HandlerBotao } from './tipos.ts';
 
 // Bardos: o programa da música, separado do Taverneiro. Roda no PC de casa porque o YouTube bloqueia muito os
@@ -13,7 +13,7 @@ import type { Comando, HandlerBotao } from './tipos.ts';
 // os outros (TOKEN_MUSICA_3...) só tocam. Cada bardo toca numa call ao mesmo tempo.
 // Uso: node --env-file=.env src/bardos.ts   (ou o supervisor: node scripts/supervisor.mjs --entrada src/bardos.ts)
 
-const COMANDOS: Comando[] = [tocar, radio, musica, ambiente];
+const COMANDOS: Comando[] = [tocar, radio, musica, ambiente, rockandstone];
 const BOTOES: HandlerBotao[] = [botaoRadio];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 

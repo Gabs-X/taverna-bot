@@ -337,6 +337,7 @@ const TOPICOS: Topico[] = [
       ['/elo', 'LoL: vincula sua conta e mostra elo, maestrias e partidas (vincular, ver, buscar).'],
       ['/gratis', 'Jogos de graça na Epic, Steam e GOG. Os novos também são avisados em #jogos-gratis.'],
       ['/drg build', 'Deep Rock Galactic: opções de build (overclock e mods) de cada arma, no canal de builds de DRG.'],
+      ['/rockandstone', 'ROCK AND STONE! Se você estiver em call, um bardo entra, solta uma fala do Deep Rock e sai.'],
       ['/grupo', 'Subgrupos: criar (a staff aprova), entrar, sair, lista. O dono pede canais, renomeia, convida, remove, transfere e apaga.'],
       ['Aviso automático', 'Quando 2 ou mais pessoas abrem o mesmo jogo, o bot avisa.'],
     ],
