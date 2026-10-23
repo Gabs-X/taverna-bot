@@ -204,6 +204,7 @@ async function garantirEmojis(guild: Guild, relatorio: string[]) {
 async function garantirCanais(guild: Guild, relatorio: string[]) {
   const doPlano = new Set<string>();
   let ajustados = 0;
+  let audioMelhorado = 0;
   const ajustar = async (canal: GuildBasedChannel, acesso: Acesso | undefined) => {
     try {
       if (await sincronizarAcesso(canal, permissoes(guild, acesso))) ajustados++;
@@ -260,10 +261,15 @@ async function garantirCanais(guild: Guild, relatorio: string[]) {
       }
       // Sem regra própria, vale a da categoria.
       await ajustar(existente, canal.acesso ?? cat.acesso);
+      // Calls na melhor qualidade de áudio que o nível de impulso do servidor permite (voz e música).
+      if (existente.type === ChannelType.GuildVoice && existente.bitrate < guild.maximumBitrate) {
+        await existente.setBitrate(guild.maximumBitrate).then(() => audioMelhorado++).catch(() => {});
+      }
       doPlano.add(existente.id);
     }
   }
   if (ajustados) relatorio.push(`🔐 acesso ajustado em ${ajustados} canal(is)/categoria(s)`);
+  if (audioMelhorado) relatorio.push(`🔊 ${audioMelhorado} call(s) agora em ${guild.maximumBitrate / 1000} kbps`);
   return doPlano;
 }
 
