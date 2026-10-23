@@ -4,13 +4,13 @@ import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 
-// ⛏️ Anão Minerador RnS: homenagem da staff a quem é muito amigo e presente no servidor. A staff dá com
+// ⛏️ Anão Minerador RnS (Rock and Stone, de Deep Rock Galaxy): homenagem da staff a quem é muito amigo e presente no servidor. A staff dá com
 // /minerador; aparece separado na lista de membros, logo abaixo da staff, e o bot anuncia no #geral.
 
 const FRASES = [
-  'cavou tão fundo na amizade da Taverna que achou ouro.',
-  'já tem picareta própria pendurada atrás do balcão.',
-  'nunca deixa a resenha esfriar: minera presença todo dia.',
+  "cavou tão fundo na amizade da Taverna que achou ouro. **We're rich!** 💰",
+  'nunca deixa um anão para trás. **Leave no dwarf behind!**',
+  'brindou no bar da estação espacial e mandou um **For Karl!** 🍺',
   'tá sempre aí quando a galera precisa, firme que nem rocha.',
 ];
 
@@ -69,11 +69,11 @@ export const minerador: Comando = {
       .setDescription(
         `${membro} ${FRASES[Math.floor(Math.random() * FRASES.length)]}\n` +
           (motivo ? `\n> ${motivo}\n` : '') +
-          '\nA partir de hoje é da guilda dos amigos de verdade da Taverna. 🍻',
+          '\nA partir de hoje é da guilda dos amigos de verdade da Taverna.\n\n⛏️ **ROCK AND STONE!**',
       )
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
     const geral = canalTexto(guild, CANAIS.geral);
-    await geral?.send({ content: `${membro}`, embeds: [embed], allowedMentions: { users: [membro.id] } }).catch(() => {});
+    await geral?.send({ content: `${membro} 🪨 Did I hear a Rock and Stone?`, embeds: [embed], allowedMentions: { users: [membro.id] } }).catch(() => {});
     return i.reply({ content: `⛏️ Pronto! ${membro.displayName} virou Anão Minerador RnS${geral ? ` e foi anunciado em ${geral}` : ''}.`, flags: MessageFlags.Ephemeral });
   },
 };
