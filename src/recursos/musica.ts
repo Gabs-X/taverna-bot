@@ -1,5 +1,6 @@
 import { DefaultExtractors } from '@discord-player/extractor';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Player, QueryType, QueueRepeatMode, type GuildQueue, type Track } from 'discord-player';
 import { getVideoId, YoutubeExtractor } from 'discord-player-youtubei';
@@ -553,9 +554,14 @@ export const ambiente: Comando = {
 
 // ---------- /rockandstone: grito de Deep Rock Galactic (e, se estiver em call, um bardo solta o "Rock and Stone!") ----------
 
-// O áudio do jogo fica só no PC dos bardos (assets/privado/ está no .gitignore: é da Ghost Ship Games, não vai para
-// o GitHub público). Sem o arquivo, o comando só grita no chat.
-const AUDIO_ROCK = fileURLToPath(new URL('../../assets/privado/rock-and-stone.mp3', import.meta.url));
+// Os áudios do jogo (as falas de "Salute" da wiki de DRG) ficam só no PC dos bardos: assets/privado/ está no
+// .gitignore, porque são da Ghost Ship Games e não vão para o GitHub público. Cada uso sorteia um. Sem nenhum, só grita
+// no chat.
+const PASTA_GRITOS = fileURLToPath(new URL('../../assets/privado/salute/', import.meta.url));
+const sortearGrito = () => {
+  const arquivos = existsSync(PASTA_GRITOS) ? readdirSync(PASTA_GRITOS).filter((f) => /\.(ogg|mp3|wav)$/i.test(f)) : [];
+  return arquivos.length ? join(PASTA_GRITOS, arquivos[Math.floor(Math.random() * arquivos.length)]) : undefined;
+};
 
 export const rockandstone: Comando = {
   data: new SlashCommandBuilder()
@@ -571,7 +577,8 @@ export const rockandstone: Comando = {
     };
     const canalVoz = (i.member as GuildMember).voice.channel;
     if (!canalVoz) return sóGrito('fora de call');
-    if (!existsSync(AUDIO_ROCK)) return sóGrito(`sem o áudio em ${AUDIO_ROCK}`);
+    const audio = sortearGrito();
+    if (!audio) return sóGrito(`sem áudios em ${PASTA_GRITOS}`);
 
     const t = tocadorPara(i.guildId!, canalVoz.id);
     if (typeof t === 'string') return sóGrito('todos os bardos ocupados em outras calls');
@@ -583,7 +590,7 @@ export const rockandstone: Comando = {
     if (!canalDoTocador) return sóGrito(`${t.nome} não vê a call`);
 
     await i.reply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** está descendo na sua call...`);
-    const clipe = (await t.player.search(AUDIO_ROCK, {
+    const clipe = (await t.player.search(audio, {
       searchEngine: QueryType.FILE,
       // A extensão do YouTube aceita qualquer busca e tem prioridade: sem bloquear, ela procura o nome do arquivo no
       // YouTube (e acha uma música). Sem cache, para não reaproveitar um resultado errado.
