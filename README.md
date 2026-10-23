@@ -47,17 +47,12 @@ O bot segue versões (v1.0.0, v1.1.0...). Para lançar uma nova, com tudo já em
 npm run lancar -- minor   # funções novas (patch = correções, major = mudança grande)
 ```
 
-O script escreve no [CHANGELOG.md](CHANGELOG.md) os commits desde a última versão, sobe o número, faz o commit "Versão vX.Y.Z", marca a tag e envia ao GitHub. O bot reinicia sozinho e anuncia a versão no #novidades e no grupo do WhatsApp. `/versao` mostra a versão atual e o que mudou.
+O script escreve no [CHANGELOG.md](CHANGELOG.md) os commits desde a última versão, sobe o número, faz o commit "Versão vX.Y.Z", marca a tag e envia ao GitHub. O servidor na nuvem baixa a versão nova em até 2 minutos, reinicia o Taverneiro e anuncia no #novidades. `/versao` mostra a versão atual e o que mudou.
 
-### Aviso no WhatsApp (opcional)
+## Onde roda
 
-Usa a biblioteca não oficial Baileys: prefira um número extra. Conecta só para mandar a mensagem e desconecta.
-
-```
-npm run whatsapp:conectar               # mostra o QR code: escaneie em WhatsApp → Aparelhos conectados
-npm run whatsapp:grupo -- "Nome do grupo"
-npm run whatsapp:desconectar            # para de usar o WhatsApp
-```
+- **Taverneiro** (`src/index.ts`): num servidor na nuvem (Oracle Cloud, Ubuntu), ligado 24h. Instalação: `scripts/nuvem/instalar.sh`; ele baixa sozinho cada versão nova do GitHub.
+- **Bardos** (`src/bardos.ts`, a música): no PC de casa, porque o YouTube bloqueia muito os endereços de nuvem. Se o PC desligar, só a música para. O atalho do Windows (`scripts/iniciar-oculto.vbs`) liga o supervisor com `--entrada src/bardos.ts`.
 
 ## Rodar no Windows em segundo plano
 

@@ -5,8 +5,8 @@
 // Opcional: --sem-enviar (não manda para o GitHub).
 //
 // Escreve no CHANGELOG.md os commits desde a última versão, sobe o número no package.json, faz o commit
-// "Versão vX.Y.Z" (sem coautoria), marca a tag e envia. O bot, ao reiniciar com a versão nova,
-// anuncia no #novidades do Discord e no grupo do WhatsApp.
+// "Versão vX.Y.Z" (sem coautoria), marca a tag e envia. O servidor na nuvem baixa a versão nova e o Taverneiro,
+// ao reiniciar com ela, anuncia no #novidades do Discord.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -73,4 +73,4 @@ if (enviar) {
     console.log('ℹ️ Não criei a página no GitHub Releases (gh não disponível); a tag já está lá.');
   }
 }
-console.log('O bot reinicia sozinho e anuncia no #novidades e no WhatsApp.');
+console.log('O servidor na nuvem baixa a versão em até 2 minutos e o Taverneiro anuncia no #novidades.');

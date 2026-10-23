@@ -16,11 +16,7 @@
     "servico:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 status",
     "servico:log": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 log",
     "supervisor": "node scripts/supervisor.mjs",
-    "lancar": "node scripts/lancar.mjs",
-    "whatsapp:conectar": "node scripts/whatsapp.mjs conectar",
-    "whatsapp:grupos": "node scripts/whatsapp.mjs grupos",
-    "whatsapp:grupo": "node scripts/whatsapp.mjs grupo",
-    "whatsapp:desconectar": "node scripts/whatsapp.mjs desconectar"
+    "lancar": "node scripts/lancar.mjs"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +26,6 @@
     "@discord-player/extractor": "^7.2.0",
     "@resvg/resvg-js": "^2.6.2",
     "@snazzah/davey": "^0.1.12",
-    "@whiskeysockets/baileys": "^6.7.24",
     "bgutils-js": "^4.0.3",
     "discord-player": "^7.2.0",
     "discord-player-youtubei": "^3.1.0",
