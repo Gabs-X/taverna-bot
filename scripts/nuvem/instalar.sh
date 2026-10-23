@@ -12,7 +12,18 @@ set -euo pipefail
 
 PASTA="$HOME/taverna-bot"
 REPO="https://github.com/Gabs-X/taverna-bot.git"
+RAMO="${RAMO:-main}" # para testar um ramo antes de juntar: RAMO=nome bash instalar.sh
 USUARIO="$(whoami)"
+
+echo "==> Memória extra (swap) em máquina pequena"
+# Com 1 GB de RAM (ex.: a VM.Standard.E2.1.Micro grátis), o npm ci pode ficar sem memória.
+if [[ "$(free -m | awk '/^Mem:/ {print $2}')" -lt 2000 ]] && ! swapon --show | grep -q .; then
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile >/dev/null
+  sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+fi
 
 echo "==> Node 24 e git"
 if ! command -v node >/dev/null || [[ "$(node -v)" != v24* ]]; then
@@ -25,7 +36,7 @@ echo "==> Código em $PASTA"
 if [[ -d "$PASTA/.git" ]]; then
   git -C "$PASTA" pull --ff-only
 else
-  git clone "$REPO" "$PASTA"
+  git clone -b "$RAMO" "$REPO" "$PASTA"
 fi
 cd "$PASTA"
 npm ci
@@ -73,8 +84,13 @@ WantedBy=timers.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable taverna taverna-atualizar.timer
-sudo systemctl start taverna-atualizar.timer
+sudo systemctl enable taverna
+# A atualização automática segue o main; num ramo de teste ela fica desligada até trocar para o main.
+if [[ "$RAMO" == "main" ]]; then
+  sudo systemctl enable --now taverna-atualizar.timer
+else
+  echo "(ramo $RAMO: atualização automática desligada; depois de juntar, rode: git checkout main && sudo systemctl enable --now taverna-atualizar.timer)"
+fi
 
 echo
 echo "Pronto. Falta:"
