@@ -1,5 +1,20 @@
 # Novidades do Taverneiro
 
+## v1.4.0 (22/10/2026)
+
+- /tela usa a Tela da Taverna (VDO.Ninja com o visual da Taverna) e explica como mostrar vídeo do YouTube
+- /tela sem opções: título genérico e sempre com o som da tela
+- /tela usa a nova Tela da Taverna (página própria, sem VDO.Ninja)
+- Parabéns de aniversário sem o tema de maluco
+- /tela avisa que a tela inteira com som leva o som do Discord junto
+- /apostas (staff): máximo por aposta (/desafiar, /gotica duelo, /cassino) e limite diário do cassino configuráveis por servidor
+- Caneca de Honra (/caneca): cargo de homenagem da staff com anúncio no #geral; /ajuda em tópicos com menu; /setup ordena os cargos um a um quando o Discord recusa em bloco
+- Cargo de homenagem vira ⛏️ Anão Minerador RnS (/minerador), no clima de Deep Rock Galaxy: Rock and Stone!
+- /minerador anuncia com os bordões de Deep Rock Galaxy (Rock and Stone!)
+- README: lista de cargos com o Anão Minerador RnS
+- Anão Minerador R&S (com & no lugar do n)
+- Anúncio do Anão Minerador com botão ROCK AND STONE!: conta quem gritou e a pessoa fala uma frase aleatória de Deep Rock Galaxy no chat
+
 ## v1.3.0 (22/10/2026)
 
 - Aviso de comando no canal errado agora é público (marca a pessoa) e some em 30 s; o efêmero passava despercebido no chat das calls
