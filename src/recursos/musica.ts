@@ -60,8 +60,6 @@ async function criarTocador(client: Client, nome: string): Promise<Tocador> {
 
 function registrarEventos(player: Player) {
   player.events.on('playerStart', (fila: GuildQueue<Metadados>, faixa) => {
-    // Codifica na qualidade máxima da call (o padrão da biblioteca é mais baixo). Vale a cada faixa nova.
-    fila.node.setBitrate('auto');
     if (fila.metadata.ambiente) return;
     const radio = fila.metadata.radio;
     if (radio) {
