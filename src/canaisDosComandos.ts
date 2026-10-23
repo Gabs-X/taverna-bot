@@ -27,6 +27,7 @@ const TABELA: [string[], string[]][] = [
   [['conquistas'], [CANAIS.economia, CANAIS.comandos]],
   [[...CAMPEOES.map((c) => c.comando), 'vitimas'], [CANAIS.campeoes]],
   [['elo'], [CANAIS.campeoes, CANAIS.comandos]],
+  [['drg'], [CANAIS.buildsDrg, CANAIS.drg]],
   [['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'], [CANAIS.economia]],
 
   // O resto fica no chat de comandos (/grupo também vale dentro dos canais do próprio grupo).

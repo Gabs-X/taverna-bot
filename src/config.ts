@@ -39,6 +39,7 @@ export const JOGOS: Jogo[] = [
   { id: 'fortnite', nome: 'Fortnite', emoji: '🪂', cor: 0x9d4dbb },
   { id: 'indie', nome: 'Indie Aleatório', emoji: '🎲', cor: 0xf5c542 },
   { id: 'cobblemon', nome: 'Cobblemon', emoji: '🐾', cor: 0xe3350d }, // libera a categoria do Farbound
+  { id: 'drg', nome: 'Deep Rock Galactic', emoji: '🪨', cor: 0xd68b2a }, // libera a categoria de DRG
 ];
 
 export const nomeCargoJogo = (j: Jogo) => `${j.emoji} ${j.nome}`;
@@ -76,6 +77,8 @@ export const CANAIS = {
   mesaDh: '🌗 Mesa de Daggerheart',
   avisosFarbound: '📢・avisos-farbound',
   farbound: '💬・farbound',
+  drg: '💬・deep-rock',
+  buildsDrg: '🔧・builds-drg',
 } as const;
 
 // Atividades do bot: cada uma tem um canal que só aparece para quem desbloquear no painel de #escolha-suas-atividades.
@@ -107,6 +110,7 @@ export type CategoriaPlano = { nome: string; antigos?: string[]; acesso?: Acesso
 
 const cargoCobblemon = nomeCargoJogo(JOGOS.find((j) => j.id === 'cobblemon')!);
 const cobblemon: Acesso = { tipo: 'cargo', cargo: cargoCobblemon };
+const drg: Acesso = { tipo: 'cargo', cargo: nomeCargoJogo(JOGOS.find((j) => j.id === 'drg')!) };
 const rpg: Acesso = { tipo: 'cargo', cargo: CARGOS.aventureiro.nome };
 const dh: Acesso = { tipo: 'cargo', cargo: CARGOS.daggerheart.nome };
 
@@ -159,6 +163,16 @@ export const PLANO: CategoriaPlano[] = [
       { nome: CANAIS.farbound, acesso: cobblemon, topico: 'Servidor brasileiro de Cobblemon com mods exclusivos, temporadas com pioneiros e nenhum pay-to-win.' },
       { nome: '📸・prints-farbound', acesso: cobblemon, topico: 'Capturas, shinies, bases e times.' },
       { nome: '🐾 Farbound', voz: true, acesso: cobblemon },
+    ],
+  },
+  {
+    // Deep Rock Galactic: aparece para quem tem o cargo de jogo. /drg build mostra builds das armas.
+    nome: '🪨 DEEP ROCK GALACTIC',
+    acesso: drg,
+    canais: [
+      { nome: CANAIS.drg, acesso: drg, topico: 'Rock and Stone! Bora minerar: marque a galera com /lfg.' },
+      { nome: CANAIS.buildsDrg, acesso: drg, topico: 'Use /drg build arma: para ver opções de overclock e mods de cada arma.' },
+      { nome: '🪨 Deep Rock', voz: true, acesso: drg },
     ],
   },
   {

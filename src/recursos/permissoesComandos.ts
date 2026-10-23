@@ -9,7 +9,7 @@ import {
   type Client,
   type Guild,
 } from 'discord.js';
-import { ATIVIDADES, CARGOS, nomeCargoAtividade } from '../config.ts';
+import { ATIVIDADES, CARGOS, JOGOS, nomeCargoAtividade, nomeCargoJogo } from '../config.ts';
 import { db } from '../db.ts';
 import { cargoPorNome } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
@@ -31,6 +31,7 @@ function mapa(): Record<string, string[]> {
   const economia = atividade('economia');
   return {
     gotica: [atividade('goticas')],
+    drg: [nomeCargoJogo(JOGOS.find((j) => j.id === 'drg')!)],
     loja: [atividade('goticas'), economia],
     quiz: [atividade('quiz')],
     palavra: [atividade('quiz')],
