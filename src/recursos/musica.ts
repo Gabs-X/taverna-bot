@@ -565,22 +565,36 @@ export const rockandstone: Comando = {
 
   async executar(i) {
     const grito = FALAS_DRG[Math.floor(Math.random() * FALAS_DRG.length)];
-    const canalVoz = (i.member as GuildMember).voice.channel;
-    if (!canalVoz) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
-    if (!existsSync(AUDIO_ROCK)) {
-      console.warn(`[rockandstone] sem o áudio em ${AUDIO_ROCK}: só o grito no chat.`);
+    const sóGrito = (motivo: string) => {
+      console.log(`[rockandstone] ${i.user.username}: só o grito (${motivo}).`);
       return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
-    }
+    };
+    const canalVoz = (i.member as GuildMember).voice.channel;
+    if (!canalVoz) return sóGrito('fora de call');
+    if (!existsSync(AUDIO_ROCK)) return sóGrito(`sem o áudio em ${AUDIO_ROCK}`);
 
     const t = tocadorPara(i.guildId!, canalVoz.id);
-    // Bardo ocupado tocando música nesta call ou em outra: só o grito, sem interromper ninguém.
-    if (typeof t === 'string' || t.player.nodes.get(i.guildId!)) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+    if (typeof t === 'string') return sóGrito('todos os bardos ocupados em outras calls');
+    const filaAtual = t.player.nodes.get(i.guildId!);
+    // Tocando música: não interrompe. Parado na call (ex.: depois de um /tocar): libera a vaga e grita.
+    if (filaAtual?.isPlaying()) return sóGrito(`${t.nome} tocando música`);
+    filaAtual?.delete();
     const canalDoTocador = t.client.channels.cache.get(canalVoz.id);
-    if (!canalDoTocador) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+    if (!canalDoTocador) return sóGrito(`${t.nome} não vê a call`);
 
     await i.reply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** está descendo na sua call...`);
-    const clipe = (await t.player.search(AUDIO_ROCK, { searchEngine: QueryType.FILE }).catch(() => null))?.tracks[0];
-    if (!clipe) return i.editReply(`⛏️ ${i.user} grita: **${grito}**`);
+    const clipe = (await t.player.search(AUDIO_ROCK, {
+      searchEngine: QueryType.FILE,
+      // A extensão do YouTube aceita qualquer busca e tem prioridade: sem bloquear, ela procura o nome do arquivo no
+      // YouTube (e acha uma música). Sem cache, para não reaproveitar um resultado errado.
+      blockExtractors: [YoutubeExtractor.identifier],
+      ignoreCache: true,
+    }).catch((e) => console.error('[rockandstone] busca do arquivo', e)))?.tracks[0];
+    if (!clipe) {
+      console.log('[rockandstone] o discord-player não leu o arquivo.');
+      return i.editReply(`⛏️ ${i.user} grita: **${grito}**`);
+    }
+    console.log(`[rockandstone] ${t.nome} tocando o grito em ${canalVoz.name} para ${i.user.username}.`);
     try {
       await t.player.play(canalDoTocador as unknown as CanalDoPlayer, clipe, {
         requestedBy: i.user.id,
