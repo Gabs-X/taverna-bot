@@ -45,6 +45,10 @@ export const musicasTocando = () => tocadores.reduce((n, t) => n + t.player.node
 type ClientDoPlayer = ConstructorParameters<typeof Player>[0];
 type CanalDoPlayer = Parameters<Player['play']>[0];
 
+// O discord-player passa todo áudio por uma cadeia de efeitos em JavaScript (equalizador, filtros, reamostragem)
+// mesmo sem usar nenhum, o que deixa o som abafado. Fica só o volume.
+const SEM_EFEITOS = { disableEqualizer: true, disableBiquad: true, disableFilterer: true, disableResampler: true } as const;
+
 /** Prepara um tocador para cada bardo já conectado (a ordem define quem é escolhido primeiro). */
 export async function iniciarMusica(bardos: Client[]) {
   for (const bardo of bardos) tocadores.push(await criarTocador(bardo, bardo.user?.username ?? 'Bardo'));
@@ -366,6 +370,7 @@ export const tocar: Comando = {
       const { track, searchResult } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, i.options.getString('busca', true), {
         requestedBy: i.user.id,
         nodeOptions: {
+          ...SEM_EFEITOS,
           metadata: { canal: i.channel as SendableChannels } satisfies Metadados,
           volume: 70,
           leaveOnEmpty: true,
@@ -421,6 +426,7 @@ export const radio: Comando = {
         await t.player.play(canalDoTocador as unknown as CanalDoPlayer, semente, {
           requestedBy: i.user.id,
           nodeOptions: {
+            ...SEM_EFEITOS,
             metadata: { canal: i.channel as SendableChannels, radio: { historico: [], sugestoes: [] } } satisfies Metadados,
             volume: 70,
             leaveOnEmpty: true,
@@ -511,6 +517,7 @@ export async function executarAmbiente(i: ChatInputCommandInteraction, tipo: Amb
     const { queue } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, faixa, {
       requestedBy: i.user.id,
       nodeOptions: {
+        ...SEM_EFEITOS,
         metadata: { canal: i.channel as SendableChannels, ambiente: tipo } satisfies Metadados,
         volume: 35,
         leaveOnEmpty: true,
