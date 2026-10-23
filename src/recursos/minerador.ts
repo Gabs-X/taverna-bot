@@ -85,7 +85,16 @@ export const minerador: Comando = {
       )
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
     const geral = canalTexto(guild, CANAIS.geral);
-    await geral?.send({ content: `${membro} 🪨 Did I hear a Rock and Stone?`, embeds: [embed], components: [botaoGrito(0)], allowedMentions: { users: [membro.id] } }).catch(() => {});
+    // Chama todos os fregueses para gritar junto.
+    const fregueses = cargoPorNome(guild, CARGOS.membro.nome);
+    await geral
+      ?.send({
+        content: `${fregueses ?? ''} ${membro} virou Anão Minerador R&S! 🪨 Did I hear a Rock and Stone?`.trim(),
+        embeds: [embed],
+        components: [botaoGrito(0)],
+        allowedMentions: { users: [membro.id], roles: fregueses ? [fregueses.id] : [] },
+      })
+      .catch(() => {});
     return i.reply({ content: `⛏️ Pronto! ${membro.displayName} virou Anão Minerador R&S${geral ? ` e foi anunciado em ${geral}` : ''}.`, flags: MessageFlags.Ephemeral });
   },
 };
