@@ -1,7 +1,19 @@
-import { EmbedBuilder, InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  EmbedBuilder,
+  InteractionContextType,
+  MessageFlags,
+  PermissionFlagsBits,
+  SlashCommandBuilder,
+  type GuildMember,
+} from 'discord.js';
 import { CANAIS, CARGOS } from '../config.ts';
 import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
-import type { Comando } from '../tipos.ts';
+import type { Comando, HandlerBotao } from '../tipos.ts';
+import { webhookDo } from './campeoes.ts';
 import { registrar } from './registro.ts';
 
 // ⛏️ Anão Minerador R&S (Rock and Stone, de Deep Rock Galaxy): homenagem da staff a quem é muito amigo e presente no servidor. A staff dá com
@@ -73,7 +85,80 @@ export const minerador: Comando = {
       )
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
     const geral = canalTexto(guild, CANAIS.geral);
-    await geral?.send({ content: `${membro} 🪨 Did I hear a Rock and Stone?`, embeds: [embed], allowedMentions: { users: [membro.id] } }).catch(() => {});
+    await geral?.send({ content: `${membro} 🪨 Did I hear a Rock and Stone?`, embeds: [embed], components: [botaoGrito(0)], allowedMentions: { users: [membro.id] } }).catch(() => {});
     return i.reply({ content: `⛏️ Pronto! ${membro.displayName} virou Anão Minerador R&S${geral ? ` e foi anunciado em ${geral}` : ''}.`, flags: MessageFlags.Ephemeral });
+  },
+};
+
+// ---------- Botão "ROCK AND STONE!" do anúncio ----------
+// Quem gritou fica guardado num campo do próprio anúncio (sobrevive a reinícios do bot); cada pessoa grita uma vez.
+
+const CAMPO_GRITOS = '🪨 Gritaram ROCK AND STONE';
+
+// Falas dos anões de Deep Rock Galaxy: quem clica "fala" uma delas no chat, com o próprio nome e foto.
+const FALAS_DRG = [
+  'ROCK AND STONE!',
+  'Rock and Stone, brother!',
+  'Rock and Stone forever!',
+  'Rock and Stone to the bone!',
+  'For Rock and Stone!',
+  'Rock and Stone... yeeeaaahhh!',
+  'Did I hear a Rock and Stone?',
+  "We're rich! 💰",
+  'For Karl! 🍺',
+  'Leave no dwarf behind!',
+  'Rock solid!',
+  'Rock on!',
+  'By the beard!',
+  'Stone and Rock! ...oh, wait.',
+  "If you don't Rock and Stone, you ain't comin' home!",
+  "That's it, lads! Rock and Stone!",
+  'Karl would have loved this!',
+  'Mushroom! 🍄',
+  'We are unbreakable!',
+  'Rockity rock and stone!',
+];
+const MAX_NOMES = 40; // o campo do Discord tem 1024 caracteres
+
+const botaoGrito = (total: number) =>
+  new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('rns')
+      .setLabel(total ? `ROCK AND STONE! (${total})` : 'ROCK AND STONE!')
+      .setEmoji('⛏️')
+      .setStyle(ButtonStyle.Success),
+  );
+
+export const botaoMinerador: HandlerBotao = {
+  prefixo: 'rns',
+  async executar(i) {
+    const anuncio = i.message.embeds[0];
+    if (!anuncio) return i.deferUpdate();
+    const campo = anuncio.fields.find((f) => f.name.startsWith(CAMPO_GRITOS));
+    const ids = [...(campo?.value.matchAll(/<@(\d+)>/g) ?? [])].map((m) => m[1]);
+    const extras = Number(/e mais (\d+)/.exec(campo?.value ?? '')?.[1] ?? 0);
+    if (ids.includes(i.user.id)) return i.reply({ content: '⛏️ Você já gritou, anão! **ROCK AND STONE!**', flags: MessageFlags.Ephemeral });
+
+    const total = ids.length + extras + 1;
+    const nomes = ids.length < MAX_NOMES ? [...ids, i.user.id] : ids;
+    const sobra = total - nomes.length;
+    const valor = nomes.map((id) => `<@${id}>`).join(' ') + (sobra ? ` e mais ${sobra}` : '');
+    const embed = EmbedBuilder.from(anuncio).setFields(
+      ...anuncio.fields.filter((f) => !f.name.startsWith(CAMPO_GRITOS)),
+      { name: `${CAMPO_GRITOS} (${total})`, value: valor },
+    );
+    await i.update({ embeds: [embed], components: [botaoGrito(total)], allowedMentions: { parse: [] } });
+
+    // A pessoa "fala" no chat uma frase de DRG, com o próprio nome e foto (webhook, como os campeões).
+    const fala = FALAS_DRG[Math.floor(Math.random() * FALAS_DRG.length)];
+    const membro = i.member as GuildMember;
+    if (i.channel?.type !== ChannelType.GuildText) return;
+    try {
+      const gancho = await webhookDo(i.channel, i.client.user.id);
+      await gancho.send({ content: `⛏️ ${fala}`, username: membro.displayName.slice(0, 80), avatarURL: membro.displayAvatarURL(), allowedMentions: { parse: [] } });
+    } catch {
+      // Sem a permissão "Gerenciar webhooks": manda pelo próprio bot, no formato de fala.
+      await i.channel.send({ content: `⛏️ **${membro.displayName}**: ${fala}`, allowedMentions: { parse: [] } }).catch(() => {});
+    }
   },
 };

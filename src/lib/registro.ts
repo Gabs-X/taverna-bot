@@ -72,6 +72,8 @@ export function descreverBotao(customId: string, valorFormulario?: string): stri
       return acao === 'aceitar' ? 'Desafio: aceitou a aposta' : 'Desafio: recusou a aposta';
     case 'quemdisse':
       return `Quem disse: chutou a opção ${Number(acao) + 1}`;
+    case 'rns':
+      return 'Anão Minerador: gritou ROCK AND STONE!';
     case 'tela':
       return 'Tela: parou de compartilhar';
     case 'grupo':

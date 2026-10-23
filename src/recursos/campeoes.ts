@@ -135,7 +135,7 @@ export const CAMPEOES: Campeao[] = [
 // Um webhook do bot por canal; o nome e a foto mudam a cada mensagem.
 const ganchos = new Map<string, Webhook>();
 
-async function webhookDo(canal: TextChannel, botId: string) {
+export async function webhookDo(canal: TextChannel, botId: string) {
   const salvo = ganchos.get(canal.id);
   if (salvo) return salvo;
   const existentes = await canal.fetchWebhooks();
