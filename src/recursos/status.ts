@@ -3,7 +3,7 @@ import { EmbedBuilder, InteractionContextType, SlashCommandBuilder } from 'disco
 import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
 import { duelosEmAndamento } from './goticaSocial.ts';
-import { situacaoTocadores } from './musica.ts';
+import { BARDOS } from '../config.ts';
 import { VERSAO } from './novidades.ts';
 import { quizzesEmAndamento } from './quiz.ts';
 import { telasAbertas } from './tela.ts';
@@ -20,7 +20,12 @@ export const status: Comando = {
     await i.deferReply();
     const resposta = Date.now() - inicio;
     const ping = i.client.ws.ping;
-    const tocadores = situacaoTocadores();
+    // Os bardos rodam em outro programa (no PC de casa): o status deles vem do servidor (online e em que call estão).
+    const tocadores = BARDOS.map((b) => {
+      const m = i.guild?.members.cache.get(b.id);
+      const online = !!m?.presence && m.presence.status !== 'offline';
+      return { nome: m?.displayName ?? b.nome, online, tocando: m?.voice.channelId ? 1 : 0 };
+    });
     const memoria = process.memoryUsage();
     let banco = '?';
     try {
@@ -46,7 +51,7 @@ export const status: Comando = {
         { name: '⏱️ No ar há', value: duracaoTexto(process.uptime() * 1000), inline: true },
         { name: '📶 Ping', value: `${ping >= 0 ? `${ping} ms` : 'medindo...'} (resposta ${resposta} ms)`, inline: true },
         { name: '🧠 Memória', value: `${mb(memoria.rss)} · banco ${banco}`, inline: true },
-        { name: '🎵 Música', value: tocadores.map((t) => `${t.online ? '🟢' : '🔴'} ${t.nome}${t.tocando ? ` · tocando em ${t.tocando} call(s)` : ' · livre'}`).join('\n') || 'Sem tocadores' },
+        { name: '🎵 Bardos (no PC de casa)', value: tocadores.map((t) => `${t.online ? '🟢' : '🔴'} ${t.nome}${!t.online ? ' · offline' : t.tocando ? ' · tocando numa call' : ' · livre'}`).join('\n') || 'Sem bardos' },
         { name: '🎲 Rolando agora', value: rolando.join(' · ') || 'Nada no momento' },
         { name: '🛡️ Reinício automático', value: process.env.TAVERNA_SUPERVISOR ? 'Ligado (volta sozinho se cair)' : 'Desligado (rodando pelo terminal)' },
       )

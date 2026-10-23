@@ -33,7 +33,7 @@ export function canalPorNome<T extends GuildBasedChannel>(guild: Guild, nome: st
 
 export const canalTexto = (guild: Guild, nome: string): TextChannel | undefined => canalPorNome<TextChannel>(guild, nome, ChannelType.GuildText);
 
-const temCargo = (membro: GuildMember, nome: string) => {
+export const temCargo = (membro: GuildMember, nome: string) => {
   const cargo = cargoPorNome(membro.guild, nome);
   return !!cargo && membro.roles.cache.has(cargo.id);
 };

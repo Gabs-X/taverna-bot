@@ -17,7 +17,6 @@ import { botaoGrupo, ehCanalDeGrupo, grupo, modalGrupo } from './recursos/grupos
 import { botaoLimpeza } from './recursos/limpeza.ts';
 import { loja } from './recursos/loja.ts';
 import { botaoJam, jam } from './recursos/jam.ts';
-import { botaoRadio, iniciarMusica, musica, musicasTocando, radio, tocar } from './recursos/musica.ts';
 import { botaoQuiz, quiz, quizzesEmAndamento } from './recursos/quiz.ts';
 import { iniciarRegistro, logs, registrarInteracao } from './recursos/registro.ts';
 import { ficha, iniciativa, rolarComando, teste } from './recursos/rpg.ts';
@@ -32,7 +31,7 @@ import { setup } from './recursos/setup.ts';
 import { cassino } from './recursos/cassino.ts';
 import { conquistas } from './recursos/conquistas.ts';
 import { palavra } from './recursos/palavra.ts';
-import { ambiente, gerar } from './recursos/mestre.ts';
+import { gerar } from './recursos/mestre.ts';
 import { botaoSugestao, sugestao } from './recursos/sugestoes.ts';
 import { staff } from './recursos/staff.ts';
 import { ajuda, selecaoAjuda, botaoLfg, botaoLimparTudo, castigo, lfg, limpar, sortear, times } from './recursos/utilidades.ts';
@@ -52,11 +51,11 @@ if (!token) {
 }
 
 const COMANDOS: Comando[] = [
-  setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
+  setup, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, apostas, minerador, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, apostas, minerador, ...comandosCampeoes,
 ];
-const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario, botaoFormulario, botaoMinerador];
+const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario, botaoFormulario, botaoMinerador];
 const SELECOES: HandlerSelecao[] = [selecaoFormulario, selecaoAjuda];
 const MODAIS: HandlerModal[] = [modalGrupo, modalAniversario];
 const MENUS: MenuMensagem[] = [salvarCitacao];
@@ -101,7 +100,6 @@ client.once(Events.ClientReady, async (c) => {
   const corpo = [...COMANDOS.map((cmd) => cmd.data.toJSON()), ...MENUS.map((m) => m.data.toJSON())];
   for (const guild of c.guilds.cache.values()) await guild.commands.set(corpo);
 
-  await iniciarMusica(c);
   await limparCallsOrfas(c);
   iniciarAgenda(c);
   iniciarAtividade(c);
@@ -168,7 +166,6 @@ client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error(
 const ARQUIVO_ESTADO = 'dados/estado.json';
 setInterval(() => {
   const ocupado = [
-    musicasTocando() && `${musicasTocando()} música(s) tocando`,
     duelosEmAndamento() && `${duelosEmAndamento()} duelo(s)`,
     quizzesEmAndamento() && `${quizzesEmAndamento()} quiz(zes)`,
     desafiosEmAndamento() && `${desafiosEmAndamento()} desafio(s) com aposta`,

@@ -1,7 +1,6 @@
 import { EmbedBuilder, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { gerarLoot, gerarNome, gerarNpc, gerarTaverna, RACAS } from '../lib/gerador.ts';
 import type { Comando } from '../tipos.ts';
-import { AMBIENTES, executarAmbiente, type Ambiente } from './musica.ts';
 
 // Ferramentas do Mestre para as mesas de RPG: gerador de NPC, taverna, tesouro e nome, e trilha sonora na call.
 
@@ -54,18 +53,4 @@ export const gerar: Comando = {
     }
     return i.reply({ embeds: [embed] });
   },
-};
-
-export const ambiente: Comando = {
-  data: new SlashCommandBuilder()
-    .setName('ambiente')
-    .setDescription('Trilha sonora da mesa: toca em loop na sua call, com volume baixo')
-    .setContexts(InteractionContextType.Guild)
-    .addStringOption((o) =>
-      o.setName('tipo').setDescription('Clima da cena').setRequired(true).addChoices(
-        ...Object.entries(AMBIENTES).map(([value, a]) => ({ name: a.nome, value })),
-        { name: '🔇 Parar', value: 'parar' },
-      ),
-    ),
-  executar: (i) => executarAmbiente(i, i.options.getString('tipo', true) as Ambiente | 'parar'),
 };

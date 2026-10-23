@@ -9,16 +9,20 @@ import {
   InteractionContextType,
   MessageFlags,
   SlashCommandBuilder,
-  Client,
-  Events,
-  GatewayIntentBits,
+  type Client,
   type ChatInputCommandInteraction,
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
 import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
-import { contarMusicaSemana } from './resenha.ts';
+
+// Quem quiser saber das músicas pedidas (ex.: o resumo da semana) se inscreve aqui. Os bardos rodam em outro
+// programa, sem o banco do Taverneiro, então a música não depende de nada de fora.
+let aoPedir: (guildId: string, titulo: string) => void = () => {};
+export const aoPedirMusica = (f: typeof aoPedir) => {
+  aoPedir = f;
+};
 
 // radio: ligado pelo /radio. sugestoes: associadas à música inicial ainda não tocadas (o rádio fica no
 // estilo dela e só busca novas quando a lista acaba); historico: últimas tocadas, para não repetir.
@@ -27,46 +31,23 @@ type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; bu
 // ambiente: trilha da mesa de RPG (toca em loop, sem avisar cada volta).
 type Metadados = { canal: SendableChannels; radio?: Radio; ambiente?: string };
 
-// Tocadores: os bardos (TOKEN_MUSICA_2, TOKEN_MUSICA_3... no .env). O Discord só deixa cada conta de bot numa
-// call por servidor: cada bardo é mais uma call tocando ao mesmo tempo. Só o Taverneiro tem comandos; os bardos
-// só entram na call e tocam. Se nenhum bardo conectar, o próprio Taverneiro toca, para a música não parar.
+// Tocadores: os bardos (Claudinho, Durgan...), ligados pelo src/bardos.ts. O Discord só deixa cada conta de bot
+// numa call por servidor: cada bardo é mais uma call tocando ao mesmo tempo. O primeiro bardo atende os comandos;
+// quem toca numa call nova é o primeiro bardo livre.
 type Tocador = { nome: string; client: Client; player: Player };
 const tocadores: Tocador[] = [];
-let taverneiro: Client | undefined;
 
 /** Calls com música tocando agora, somando todos os tocadores (o supervisor espera acabar antes de reiniciar). */
 export const musicasTocando = () => tocadores.reduce((n, t) => n + t.player.nodes.cache.filter((f) => f.isPlaying()).size, 0);
-
-/** Para o /status: cada tocador, se está conectado e quantas calls toca. */
-export const situacaoTocadores = () =>
-  tocadores.map((t) => ({ nome: t.nome, online: t.client.isReady(), tocando: t.player.nodes.cache.filter((f) => f.isPlaying()).size }));
 
 // O discord-player usa os tipos CJS do discord.js e o bot os ESM: é o mesmo objeto em
 // tempo de execução, mas o TypeScript enxerga duas classes. Converte só nesta fronteira.
 type ClientDoPlayer = ConstructorParameters<typeof Player>[0];
 type CanalDoPlayer = Parameters<Player['play']>[0];
 
-export async function iniciarMusica(client: Client) {
-  taverneiro = client;
-  const tokens = Object.entries(process.env)
-    .filter(([chave, valor]) => /^TOKEN_MUSICA_\d+$/.test(chave) && valor)
-    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
-  for (const [chave, token] of tokens) {
-    try {
-      const ajudante = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
-      const pronto = new Promise((r) => ajudante.once(Events.ClientReady, r));
-      await ajudante.login(token);
-      await pronto;
-      tocadores.push(await criarTocador(ajudante, ajudante.user!.username));
-      console.log(`🎵 Bardo ${ajudante.user!.tag} online (${chave}).`);
-    } catch (erro) {
-      console.error(`[música] o bardo ${chave} não conectou:`, (erro as Error).message);
-    }
-  }
-  if (!tocadores.length) {
-    console.warn('⚠️ Nenhum bardo conectou: o Taverneiro vai tocar a música.');
-    tocadores.push(await criarTocador(client, client.user?.username ?? 'Taverneiro'));
-  }
+/** Prepara um tocador para cada bardo já conectado (a ordem define quem é escolhido primeiro). */
+export async function iniciarMusica(bardos: Client[]) {
+  for (const bardo of bardos) tocadores.push(await criarTocador(bardo, bardo.user?.username ?? 'Bardo'));
 }
 
 async function criarTocador(client: Client, nome: string): Promise<Tocador> {
@@ -396,11 +377,11 @@ export const tocar: Comando = {
       // Com o rádio ligado, o pedido passa na frente das músicas escolhidas pelo rádio.
       const fila = t.player.nodes.get<Metadados>(i.guildId!);
       if (fila?.metadata.radio && !searchResult.playlist) fila.moveTrack(track, 0);
-      if (!searchResult.playlist) contarMusicaSemana(i.guildId!, track.title);
+      if (!searchResult.playlist) aoPedir(i.guildId!, track.title);
       const texto = searchResult.playlist
         ? `📃 Adicionei **${searchResult.tracks.length}** músicas de **${searchResult.playlist.title}**.`
         : `➕ Na fila: **${track.title}** · \`${track.duration}\``;
-      return i.editReply(texto + (t.client === taverneiro ? '' : ` (tocando pelo **${t.nome}**)`));
+      return i.editReply(texto + ` (tocando pelo **${t.nome}**)`);
     } catch (erro) {
       console.error('[música] /tocar', erro);
       return i.editReply('😵 Não achei nada com essa busca (ou o link não é suportado).');
@@ -428,7 +409,7 @@ export const radio: Comando = {
     const busca = await t.player.search(i.options.getString('musica', true), { requestedBy: i.user.id }).catch(() => null);
     const semente = busca?.tracks[0];
     if (!semente) return i.editReply('😵 Não achei essa música para começar o rádio.');
-    contarMusicaSemana(i.guildId!, semente.title);
+    aoPedir(i.guildId!, semente.title);
 
     try {
       if (filaAtual) {
@@ -453,7 +434,7 @@ export const radio: Comando = {
       console.error('[rádio] /radio', erro);
       return i.editReply('😵 Não consegui começar o rádio com essa música.');
     }
-    const quem = t.client === taverneiro ? '' : ` (tocando pelo **${t.nome}**)`;
+    const quem = ` (tocando pelo **${t.nome}**)`;
     return i.editReply(`📻 **Rádio ligado**${quem} com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
   },
 };
@@ -542,6 +523,20 @@ export async function executarAmbiente(i: ChatInputCommandInteraction, tipo: Amb
     console.error('[ambiente]', erro);
     return i.editReply('😵 Não consegui tocar a trilha.');
   }
-  const quem = t.client === taverneiro ? '' : ` pelo **${t.nome}**`;
+  const quem = ` pelo **${t.nome}**`;
   return i.editReply(`${ambiente.nome}: trilha tocando em loop${quem}, volume baixo para a narração. Troque com \`/ambiente\` ou desligue com \`/ambiente tipo:parar\`.`);
 }
+
+export const ambiente: Comando = {
+  data: new SlashCommandBuilder()
+    .setName('ambiente')
+    .setDescription('Trilha sonora da mesa: toca em loop na sua call, com volume baixo')
+    .setContexts(InteractionContextType.Guild)
+    .addStringOption((o) =>
+      o.setName('tipo').setDescription('Clima da cena').setRequired(true).addChoices(
+        ...Object.entries(AMBIENTES).map(([value, a]) => ({ name: a.nome, value })),
+        { name: '🔇 Parar', value: 'parar' },
+      ),
+    ),
+  executar: (i) => executarAmbiente(i, i.options.getString('tipo', true) as Ambiente | 'parar'),
+};

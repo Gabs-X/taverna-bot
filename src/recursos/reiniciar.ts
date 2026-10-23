@@ -2,7 +2,6 @@ import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommand
 import { ehAdmin } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { duelosEmAndamento } from './goticaSocial.ts';
-import { musicasTocando } from './musica.ts';
 import { quizzesEmAndamento } from './quiz.ts';
 
 // Código de saída que o supervisor entende como "reinício pedido" (volta na hora, sem contar como queda).
@@ -14,7 +13,7 @@ export const reiniciar: Comando = {
     .setDescription('(Dono e admin) Reinicia o bot')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setContexts(InteractionContextType.Guild)
-    .addBooleanOption((o) => o.setName('agora').setDescription('Reinicia mesmo com música, duelo ou quiz em andamento')),
+    .addBooleanOption((o) => o.setName('agora').setDescription('Reinicia mesmo com duelo ou quiz em andamento')),
 
   async executar(i) {
     if (!ehAdmin(i.guild!, i.user.id)) return i.reply({ content: 'Só o Dono e os admins reiniciam o bot.', flags: MessageFlags.Ephemeral });
@@ -23,7 +22,6 @@ export const reiniciar: Comando = {
       return i.reply({ content: 'Não estou rodando pelo supervisor (`npm run servico:iniciar`), então se eu desligar não volto sozinho. Reinicie pelo terminal.', flags: MessageFlags.Ephemeral });
     }
     const ocupado = [
-      musicasTocando() && `${musicasTocando()} música(s) tocando`,
       duelosEmAndamento() && `${duelosEmAndamento()} duelo(s)`,
       quizzesEmAndamento() && `${quizzesEmAndamento()} quiz(zes)`,
     ].filter(Boolean);

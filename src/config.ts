@@ -2,6 +2,12 @@
 
 export const NOME_SERVIDOR = 'Taverna';
 
+// Bots de música (rodam no programa src/bardos.ts, no PC de casa). O Taverneiro só mostra se estão online.
+export const BARDOS = [
+  { id: '1562800102463242292', nome: 'Claudinho, o Bardo' },
+  { id: '1562948061347446884', nome: 'Durgan, o Bardo' },
+];
+
 // Hierarquia de cima para baixo: Dono > Taverneiro (admin) > Staff. Canais e comandos de staff valem para Staff e acima.
 export const CARGOS = {
   dono: { nome: '👑 Dono', cor: 0xf1c40f },

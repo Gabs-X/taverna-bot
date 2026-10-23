@@ -312,7 +312,7 @@ const TOPICOS: Topico[] = [
     emoji: '🎵',
     nome: 'Música e calls',
     resumo: 'Tocar música, rádio, calls próprias e compartilhar tela',
-    texto: 'Quem toca são os bardos (Claudinho e Durgan): cada um numa call ao mesmo tempo.',
+    texto: 'Quem toca são os bardos (Claudinho e Durgan), cada um numa call ao mesmo tempo. Os comandos de música são do Claudinho e funcionam quando os bardos estão online (veja no `/status`).',
     linhas: [
       ['/tocar', 'Toca uma música pelo nome ou link (YouTube, Spotify…) na sua call.'],
       ['/radio', 'Começa por uma música e segue sozinho com músicas parecidas, sem repetir.'],
