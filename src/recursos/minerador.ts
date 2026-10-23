@@ -4,41 +4,40 @@ import { canalTexto, cargoPorNome, ehStaff } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { registrar } from './registro.ts';
 
-// 🏅 Caneca de Honra: como nas tavernas antigas, quem é muito amigo e presente ganha uma caneca com o nome
-// pendurada atrás do balcão. A staff dá com /caneca; aparece separado na lista de membros, logo abaixo da staff,
-// e o bot anuncia no #geral.
+// ⛏️ Anão Minerador RnS: homenagem da staff a quem é muito amigo e presente no servidor. A staff dá com
+// /minerador; aparece separado na lista de membros, logo abaixo da staff, e o bot anuncia no #geral.
 
 const FRASES = [
-  'já tem a caneca pendurada atrás do balcão, com o nome gravado.',
-  'é tão da casa que o taverneiro já enche a caneca sem perguntar o pedido.',
-  'nunca deixa a resenha esfriar.',
-  'tá sempre aí quando a galera precisa.',
+  'cavou tão fundo na amizade da Taverna que achou ouro.',
+  'já tem picareta própria pendurada atrás do balcão.',
+  'nunca deixa a resenha esfriar: minera presença todo dia.',
+  'tá sempre aí quando a galera precisa, firme que nem rocha.',
 ];
 
-export const caneca: Comando = {
+export const minerador: Comando = {
   data: new SlashCommandBuilder()
-    .setName('caneca')
-    .setDescription('(Staff) Caneca de Honra: homenagem a quem é muito amigo e presente')
+    .setName('minerador')
+    .setDescription('(Staff) Anão Minerador RnS: homenagem a quem é muito amigo e presente')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setContexts(InteractionContextType.Guild)
     .addSubcommand((s) =>
       s
         .setName('dar')
-        .setDescription('Dá a Caneca de Honra e anuncia no #geral')
+        .setDescription('Dá o cargo de Anão Minerador RnS e anuncia no #geral')
         .addUserOption((o) => o.setName('membro').setDescription('Quem merece').setRequired(true))
         .addStringOption((o) => o.setName('motivo').setDescription('Por que merece (aparece no anúncio)').setMaxLength(200)),
     )
     .addSubcommand((s) =>
       s
         .setName('tirar')
-        .setDescription('Tira a Caneca de Honra')
+        .setDescription('Tira o cargo de Anão Minerador RnS')
         .addUserOption((o) => o.setName('membro').setDescription('De quem').setRequired(true)),
     )
-    .addSubcommand((s) => s.setName('lista').setDescription('Quem tem a Caneca de Honra')),
+    .addSubcommand((s) => s.setName('lista').setDescription('Quem é Anão Minerador RnS')),
 
   async executar(i) {
     const guild = i.guild!;
-    if (!ehStaff(guild, i.user.id)) return i.reply({ content: 'Só a staff dá a Caneca de Honra.', flags: MessageFlags.Ephemeral });
+    if (!ehStaff(guild, i.user.id)) return i.reply({ content: 'Só a staff dá o cargo de Anão Minerador RnS.', flags: MessageFlags.Ephemeral });
     const cargo = cargoPorNome(guild, CARGOS.honra.nome);
     if (!cargo) return i.reply({ content: `O cargo ${CARGOS.honra.nome} ainda não existe. Peça a um admin para rodar \`/setup\`.`, flags: MessageFlags.Ephemeral });
     const sub = i.options.getSubcommand();
@@ -53,28 +52,28 @@ export const caneca: Comando = {
     if (!membro || membro.user.bot) return i.reply({ content: 'Escolha uma pessoa do servidor.', flags: MessageFlags.Ephemeral });
 
     if (sub === 'tirar') {
-      if (!membro.roles.cache.has(cargo.id)) return i.reply({ content: `${membro.displayName} não tem a Caneca de Honra.`, flags: MessageFlags.Ephemeral });
-      await membro.roles.remove(cargo, `Caneca de Honra tirada por ${i.user.tag}`);
-      registrar({ guild, userId: membro.id, tipo: 'auto', acao: `🏅 perdeu a Caneca de Honra (por <@${i.user.id}>)` });
-      return i.reply({ content: `${membro.displayName} não tem mais a Caneca de Honra.`, flags: MessageFlags.Ephemeral });
+      if (!membro.roles.cache.has(cargo.id)) return i.reply({ content: `${membro.displayName} não é Anão Minerador RnS.`, flags: MessageFlags.Ephemeral });
+      await membro.roles.remove(cargo, `Anão Minerador RnS tirado por ${i.user.tag}`);
+      registrar({ guild, userId: membro.id, tipo: 'auto', acao: `⛏️ perdeu o cargo de Anão Minerador RnS (por <@${i.user.id}>)` });
+      return i.reply({ content: `${membro.displayName} não é mais Anão Minerador RnS.`, flags: MessageFlags.Ephemeral });
     }
 
-    if (membro.roles.cache.has(cargo.id)) return i.reply({ content: `${membro.displayName} já tem a Caneca de Honra.`, flags: MessageFlags.Ephemeral });
-    await membro.roles.add(cargo, `Caneca de Honra dada por ${i.user.tag}`);
-    registrar({ guild, userId: membro.id, tipo: 'auto', acao: `🏅 ganhou a Caneca de Honra (de <@${i.user.id}>)` });
+    if (membro.roles.cache.has(cargo.id)) return i.reply({ content: `${membro.displayName} já é Anão Minerador RnS.`, flags: MessageFlags.Ephemeral });
+    await membro.roles.add(cargo, `Anão Minerador RnS dado por ${i.user.tag}`);
+    registrar({ guild, userId: membro.id, tipo: 'auto', acao: `⛏️ virou Anão Minerador RnS (por <@${i.user.id}>)` });
 
     const motivo = i.options.getString('motivo')?.trim();
     const embed = new EmbedBuilder()
       .setColor(CARGOS.honra.cor)
-      .setTitle(`🏅 ${membro.displayName} ganhou uma Caneca de Honra!`)
+      .setTitle(`⛏️ ${membro.displayName} virou Anão Minerador RnS!`)
       .setDescription(
         `${membro} ${FRASES[Math.floor(Math.random() * FRASES.length)]}\n` +
           (motivo ? `\n> ${motivo}\n` : '') +
-          '\nA partir de hoje tem caneca própria atrás do balcão da Taverna. 🍻',
+          '\nA partir de hoje é da guilda dos amigos de verdade da Taverna. 🍻',
       )
       .setThumbnail(membro.displayAvatarURL({ size: 256 }));
     const geral = canalTexto(guild, CANAIS.geral);
     await geral?.send({ content: `${membro}`, embeds: [embed], allowedMentions: { users: [membro.id] } }).catch(() => {});
-    return i.reply({ content: `🏅 Pronto! ${membro.displayName} ganhou a Caneca de Honra${geral ? ` e foi anunciado em ${geral}` : ''}.`, flags: MessageFlags.Ephemeral });
+    return i.reply({ content: `⛏️ Pronto! ${membro.displayName} virou Anão Minerador RnS${geral ? ` e foi anunciado em ${geral}` : ''}.`, flags: MessageFlags.Ephemeral });
   },
 };

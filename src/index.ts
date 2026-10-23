@@ -3,7 +3,7 @@ import { ActivityType, ApplicationFlagsBitField, Client, Events, GatewayIntentBi
 import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { apostas } from './recursos/limitesApostas.ts';
-import { caneca } from './recursos/caneca.ts';
+import { minerador } from './recursos/minerador.ts';
 import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, selecaoFormulario } from './recursos/formulario.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
@@ -54,7 +54,7 @@ if (!token) {
 const COMANDOS: Comando[] = [
   setup, tocar, radio, musica, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
-  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, apostas, caneca, ...comandosCampeoes,
+  daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, ambiente, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, apostas, minerador, ...comandosCampeoes,
 ];
 const BOTOES: HandlerBotao[] = [botaoCargo, botaoLfg, botaoLimpeza, botaoJam, botaoGotica, botaoLimparTudo, botaoDuelo, botaoQuiz, botaoGrupo, botaoRadio, botaoSugestao, botaoTela, botaoQuemDisse, botaoDesafio, botaoAniversario, botaoFormulario];
 const SELECOES: HandlerSelecao[] = [selecaoFormulario, selecaoAjuda];

@@ -451,7 +451,7 @@ const TOPICOS: Topico[] = [
       ['/logs', 'Tudo o que o bot fez para cada pessoa.'],
       ['/resumo', 'Prévia do resumo da semana que sai domingo às 20h.'],
       ['/apostas', 'Máximo por aposta e limite diário do cassino.'],
-      ['/caneca', '🏅 Caneca de Honra: homenagem para quem é muito amigo e presente, com anúncio no #geral (dar, tirar, lista).'],
+      ['/minerador', '⛏️ Anão Minerador RnS: homenagem para quem é muito amigo e presente, com anúncio no #geral (dar, tirar, lista).'],
       ['/staff', 'Admin: dá e tira o cargo de Staff e mostra quem é.'],
       ['/setup', 'Admin: monta ou completa o servidor (cargos, canais e painéis).'],
       ['/permissoes', 'Admin: faz cada comando aparecer só para quem tem o cargo dele.'],
