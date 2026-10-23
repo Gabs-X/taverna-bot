@@ -1,5 +1,16 @@
 # Novidades do Taverneiro
 
+## v1.5.0 (23/10/2026)
+
+- O Taverneiro agora fica no ar 24 horas por dia
+- Música com os bardos: os comandos de música (/tocar, /radio, /musica e /ambiente) agora são do Claudinho, o Bardo, e ele e o Durgan tocam em calls diferentes ao mesmo tempo
+- Som melhor nas calls: a qualidade do áudio dobrou (128 kbps), para a música e para a voz de todo mundo
+- Caça-níquel novo: os rolos giram de verdade, param um de cada vez com suspense, e cada símbolo paga um valor diferente com 2 ou 3 iguais. Veja a tabela com /cassino premios
+- Deep Rock Galactic tem categoria própria: marque o jogo no formulário de #verificacao para liberar o chat, o canal de builds e a call
+- /drg build mostra opções de build (overclock e mods) para cada uma das 24 armas de Deep Rock Galactic
+- /rockandstone: ROCK AND STONE! Se você estiver em call, um bardo entra, solta um grito dos anões e sai
+- Quando alguém vira Anão Minerador R&S, todos os Fregueses são chamados para gritar junto
+
 ## v1.4.0 (22/10/2026)
 
 - /tela usa a Tela da Taverna (VDO.Ninja com o visual da Taverna) e explica como mostrar vídeo do YouTube
