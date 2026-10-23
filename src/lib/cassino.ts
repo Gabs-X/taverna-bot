@@ -18,18 +18,24 @@ export function jogarMoeda(escolha: Lado, r: Sorteio = Math.random) {
 // ---------- Caça-níquel ----------
 
 // Símbolos com o emoji da Taverna (nome) e o comum de reserva; peso = chance de cair em cada rolo.
+// paga2/paga3: multiplicador da aposta com dois ou três iguais. Cada símbolo paga diferente; a caveira é o azar
+// (dois devolvem só um quarto, três levam tudo). Com esses valores a casa fica com uns 7% (retornoMedioSlots).
 export const SIMBOLOS = [
-  { id: 'cerveja', emoji: 'taverna_cerveja', reserva: '🍺', peso: 30, paga3: 4 },
-  { id: 'd20', emoji: 'd20', reserva: '🎲', peso: 25, paga3: 8 },
-  { id: 'coracao', emoji: 'coracao_gotico', reserva: '🖤', peso: 18, paga3: 12 },
-  { id: 'caveira', emoji: 'caveira', reserva: '💀', peso: 15, paga3: 0 },
-  { id: 'gotica', emoji: 'gotica_feliz', reserva: '🦇', peso: 8, paga3: 30 },
-  { id: 'moeda', emoji: 'moeda_taverna', reserva: '🪙', peso: 4, paga3: 100 },
+  { id: 'cerveja', nome: 'Cerveja', emoji: 'taverna_cerveja', reserva: '🍺', peso: 30, paga2: 1.1, paga3: 4 },
+  { id: 'd20', nome: 'D20', emoji: 'd20', reserva: '🎲', peso: 25, paga2: 1.3, paga3: 8 },
+  { id: 'coracao', nome: 'Coração gótico', emoji: 'coracao_gotico', reserva: '🖤', peso: 18, paga2: 1.6, paga3: 12 },
+  { id: 'caveira', nome: 'Caveira', emoji: 'caveira', reserva: '💀', peso: 15, paga2: 0.25, paga3: 0 },
+  { id: 'gotica', nome: 'Gótica', emoji: 'gotica_feliz', reserva: '🦇', peso: 8, paga2: 3, paga3: 30 },
+  { id: 'moeda', nome: 'Moeda da Taverna', emoji: 'moeda_taverna', reserva: '🪙', peso: 4, paga2: 5, paga3: 100 },
 ] as const;
 export type Simbolo = (typeof SIMBOLOS)[number];
 const PESO_TOTAL = SIMBOLOS.reduce((s, x) => s + x.peso, 0);
-/** Dois iguais (menos caveira) devolvem a aposta com um troco. */
-export const PAGA_PAR = 1.4;
+
+/** Chance (0 a 1) de sair exatamente dois iguais e de sair três iguais de um símbolo. */
+export function chancesSlots(s: Simbolo) {
+  const p = s.peso / PESO_TOTAL;
+  return { dois: 3 * p ** 2 * (1 - p), tres: p ** 3 };
+}
 
 function rolo(r: Sorteio): Simbolo {
   let n = r() * PESO_TOTAL;
@@ -39,28 +45,25 @@ function rolo(r: Sorteio): Simbolo {
   return SIMBOLOS[0];
 }
 
+/** Um símbolo qualquer (para a animação dos rolos girando). */
+export const simboloAleatorio = (r: Sorteio = Math.random) => rolo(r);
+
 export function girarSlots(r: Sorteio = Math.random) {
   const rolos = [rolo(r), rolo(r), rolo(r)] as const;
   const [a, b, c] = rolos;
-  let multiplicador = 0;
-  let jackpot = false;
-  if (a.id === b.id && b.id === c.id) {
-    multiplicador = a.paga3;
-    jackpot = a.id === 'moeda';
-  } else {
-    const par = a.id === b.id ? a : b.id === c.id ? b : a.id === c.id ? a : undefined;
-    if (par && par.id !== 'caveira') multiplicador = PAGA_PAR;
-  }
-  return { rolos, multiplicador, jackpot };
+  if (a.id === b.id && b.id === c.id) return { rolos, combinacao: 'tres' as const, simbolo: a as Simbolo, multiplicador: a.paga3, jackpot: a.id === 'moeda' };
+  const par = a.id === b.id ? a : b.id === c.id ? b : a.id === c.id ? a : undefined;
+  if (par) return { rolos, combinacao: 'dois' as const, simbolo: par as Simbolo, multiplicador: par.paga2, jackpot: false };
+  return { rolos, combinacao: 'nada' as const, simbolo: undefined, multiplicador: 0, jackpot: false };
 }
 
 /** Retorno médio do caça-níquel (para os testes garantirem que a casa ganha um pouco). */
 export function retornoMedioSlots() {
-  const p = (s: Simbolo) => s.peso / PESO_TOTAL;
   let ev = 0;
-  for (const s of SIMBOLOS) ev += p(s) ** 3 * s.paga3;
-  // exatamente dois iguais: 3 posições × p² × (1 − p)
-  for (const s of SIMBOLOS) if (s.id !== 'caveira') ev += 3 * p(s) ** 2 * (1 - p(s)) * PAGA_PAR;
+  for (const s of SIMBOLOS) {
+    const c = chancesSlots(s);
+    ev += c.tres * s.paga3 + c.dois * s.paga2;
+  }
   return ev;
 }
 

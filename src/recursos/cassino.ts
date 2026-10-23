@@ -1,13 +1,17 @@
-import { InteractionContextType, MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { db } from '../db.ts';
 import {
   APOSTA_MINIMA,
+  chancesSlots,
   girarRoleta,
   girarSlots,
   jogarMoeda,
   PAGA_MOEDA,
   premio,
+  retornoMedioSlots,
+  simboloAleatorio,
   SIMBOLOS,
+  type Simbolo,
   type ApostaRoleta,
   type Lado,
 } from '../lib/cassino.ts';
@@ -52,7 +56,7 @@ export const cassino: Comando = {
         .addIntegerOption((o) => o.setName('aposta').setDescription('Quantas moedas').setRequired(true).setMinValue(APOSTA_MINIMA)),
     )
     .addSubcommand((s) =>
-      s.setName('slots').setDescription('Caça-níquel: três iguais pagam até 100x (três moedas = jackpot)')
+      s.setName('slots').setDescription('Caça-níquel: cada símbolo paga diferente com 2 ou 3 iguais (3 moedas = jackpot 100x)')
         .addIntegerOption((o) => o.setName('aposta').setDescription('Quantas moedas').setRequired(true).setMinValue(APOSTA_MINIMA)),
     )
     .addSubcommand((s) =>
@@ -68,6 +72,7 @@ export const cassino: Comando = {
         .addIntegerOption((o) => o.setName('aposta').setDescription('Quantas moedas').setRequired(true).setMinValue(APOSTA_MINIMA))
         .addIntegerOption((o) => o.setName('numero').setDescription('Se apostou em número: de 0 a 36').setMinValue(0).setMaxValue(36)),
     )
+    .addSubcommand((s) => s.setName('premios').setDescription('Tabela do caça-níquel: quanto cada símbolo paga e a chance'))
     .addSubcommand((s) => s.setName('limite').setDescription('Quanto você ainda pode apostar hoje')),
 
   async executar(i) {
@@ -75,6 +80,7 @@ export const cassino: Comando = {
     const u = i.user.id;
     const sub = i.options.getSubcommand();
 
+    if (sub === 'premios') return i.reply({ embeds: [tabelaPremios(i)], flags: MessageFlags.Ephemeral });
     if (sub === 'limite') {
       const hoje = apostadoHoje(g, u);
       return i.reply({ content: `🎰 Hoje você apostou ${moedas(i.guild, hoje)}. Ainda pode ${moedas(i.guild, Math.max(0, limitesApostas(i.guildId!).cassinoDia - hoje))}.`, flags: MessageFlags.Ephemeral });
@@ -106,25 +112,80 @@ export const cassino: Comando = {
       return i.editReply(`🎡 ${i.user} apostou em **${em === 'numero' ? `número ${numero}` : em}**. Caiu no ${bola} **${r.saiu}**! ${resultado(i, aposta, ganho)}`);
     }
 
-    // slots, com os rolos parando um de cada vez
+    // slots: os rolos giram trocando de símbolo e param um de cada vez (com suspense se os dois primeiros baterem)
     const r = girarSlots();
     const ganho = premio(aposta, r.multiplicador);
     if (ganho) darMoedas(g, u, ganho);
-    const icone = (k: number) => emoji(i.guild, r.rolos[k].emoji, r.rolos[k].reserva);
-    const girando = emoji(i.guild, SIMBOLOS[1].emoji, '🎲');
-    const tela = (parados: number) => `🎰 ${i.user} puxou a alavanca!\n# ${[0, 1, 2].map((k) => (k < parados ? icone(k) : girando)).join(' ')}`;
-    await i.reply(tela(0));
-    for (const n of [1, 2]) {
-      await esperar(900);
-      await i.editReply(tela(n));
+    const desenho = (s: Simbolo) => emoji(i.guild, s.emoji, s.reserva);
+    const linha = (parados: number) => [0, 1, 2].map((k) => desenho(k < parados ? r.rolos[k] : simboloAleatorio())).join(' ┃ ');
+    const topo = `🎰 **${i.user.displayName}** puxou a alavanca · aposta ${moedas(i.guild, aposta)}`;
+    const tela = (parados: number, status: string) => `${topo}\n# ${linha(parados)}\n${status}`;
+    const quaseLa = r.rolos[0].id === r.rolos[1].id;
+    const quadros: [number, string, number][] = [
+      [0, '🌀 Girando...', 650],
+      [0, '🌀 Girando...', 650],
+      [1, '⏹️ O primeiro rolo parou...', 650],
+      [1, '🌀 Girando...', 650],
+      [2, quaseLa ? `👀 Dois ${r.rolos[0].nome.toLowerCase()}... será?` : '⏹️ O segundo rolo parou...', quaseLa ? 900 : 650],
+      ...(quaseLa ? ([[2, '🥁 ...', 1100]] as [number, string, number][]) : []),
+    ];
+    await i.reply(tela(0, '🌀 Girando...'));
+    for (const [parados, status, espera] of quadros) {
+      await esperar(espera);
+      await i.editReply(tela(parados, status));
     }
-    await esperar(900);
-    const final = r.jackpot ? `\n💥 **JACKPOT!!!** ${resultado(i, aposta, ganho)}` : `\n${resultado(i, aposta, ganho)}`;
-    await i.editReply(tela(3) + final);
+    await esperar(700);
+    await i.editReply({ content: `${topo}\n# ${linha(3)}`, embeds: [cartaoSlots(i, r, aposta, ganho)] });
     if (r.jackpot) {
       contar(g, u, 'jackpots');
       await verificarConquistas(i.guild!, u);
     }
   },
 };
+
+// ---------- Caça-níquel: resultado e tabela de prêmios ----------
+
+const vezes = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}x`;
+const porcento = (n: number) => `${(n * 100).toLocaleString('pt-BR', { maximumFractionDigits: n < 0.01 ? 2 : 1 })}%`;
+
+/** Cartão do resultado: qual combinação saiu, quanto pagou e o saldo da jogada. */
+function cartaoSlots(i: ChatInputCommandInteraction, r: ReturnType<typeof girarSlots>, aposta: number, ganho: number) {
+  const s = r.simbolo;
+  const nome = s ? `${emoji(i.guild, s.emoji, s.reserva)} ${s.nome}` : '';
+  const titulo =
+    r.jackpot ? '💥 JACKPOT!!! Três moedas da Taverna!'
+    : r.combinacao === 'tres' && s?.id === 'caveira' ? '💀 Três caveiras: maldição!'
+    : r.combinacao === 'tres' ? `🎉 Três iguais: ${nome}!`
+    : r.combinacao === 'dois' && s?.id === 'caveira' ? '💀 Duas caveiras...'
+    : r.combinacao === 'dois' ? `✨ Dois iguais: ${nome}`
+    : '💸 Nada dessa vez';
+  const saldo = ganho - aposta;
+  const conta = r.multiplicador
+    ? `Pagou **${vezes(r.multiplicador)}** da aposta: você colocou ${moedas(i.guild, aposta)} e levou **${moedas(i.guild, ganho)}**.`
+    : `Você perdeu ${moedas(i.guild, aposta)}. A casa agradece.`;
+  return new EmbedBuilder()
+    .setColor(r.jackpot ? 0xf1c40f : saldo > 0 ? 0x3ba55d : saldo === 0 ? 0x95a5a6 : 0xe74c3c)
+    .setTitle(titulo)
+    .setDescription(`${conta}\n${saldo > 0 ? `📈 Lucro de **${moedas(i.guild, saldo)}**` : saldo < 0 && r.multiplicador ? `📉 Voltou só parte: prejuízo de ${moedas(i.guild, -saldo)}` : saldo === 0 ? '↔️ Empatou' : ''}`.trim())
+    .setFooter({ text: '/cassino premios mostra o que cada símbolo paga' });
+}
+
+/** Tabela completa: quanto cada símbolo paga com dois e três iguais, e a chance de cada combinação. */
+function tabelaPremios(i: ChatInputCommandInteraction) {
+  const linhas = SIMBOLOS.map((s) => {
+    const c = chancesSlots(s);
+    const dois = s.id === 'caveira' ? `devolve só **${vezes(s.paga2)}** (um quarto)` : `**${vezes(s.paga2)}**`;
+    const tres = s.paga3 ? `**${vezes(s.paga3)}**${s.id === 'moeda' ? ' 💥 JACKPOT' : ''}` : '**perde tudo** 💀';
+    return `${emoji(i.guild, s.emoji, s.reserva)} **${s.nome}**\n> 2 iguais: ${dois} · chance ${porcento(c.dois)}\n> 3 iguais: ${tres} · chance ${porcento(c.tres)}`;
+  });
+  return new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle('🎰 Caça-níquel: o que cada símbolo paga')
+    .setDescription(
+      'O número é quanto da aposta volta para você. Apostando 100: **1,1x** devolve 110 (lucro de 10), **4x** devolve 400.\n' +
+        'Vale o par em qualquer posição (1º e 2º, 2º e 3º ou 1º e 3º rolo).\n\n' +
+        linhas.join('\n\n'),
+    )
+    .setFooter({ text: `Em média a casa fica com ${porcento(1 - retornoMedioSlots())} das apostas. Jogue com moderação!` });
+}
 

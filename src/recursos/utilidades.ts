@@ -400,7 +400,7 @@ const TOPICOS: Topico[] = [
     resumo: 'Cassino, desafios, assalto, quiz e palavra do dia',
     texto: 'Para gastar (ou multiplicar) as moedas.',
     linhas: [
-      ['/cassino', 'Moeda, slots e roleta. `/cassino limite` mostra quanto ainda dá para apostar hoje.'],
+      ['/cassino', 'Moeda, slots e roleta. No caça-níquel cada símbolo paga diferente com 2 ou 3 iguais: `/cassino premios` mostra a tabela. `/cassino limite` mostra quanto ainda dá para apostar hoje.'],
       ['/desafiar', 'Desafia alguém valendo moedas: cara ou coroa, dado ou duelo de góticas. Quem ganha leva as duas apostas.'],
       ['/assaltar', 'Tenta roubar moedas de alguém (40% de chance). Se for pego, paga multa para a vítima.'],
       ['/quemdisse', 'Uma frase salva da galera: acerte quem falou e ganhe moedas.'],

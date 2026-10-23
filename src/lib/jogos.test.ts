@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { corDoNumero, girarRoleta, girarSlots, jogarMoeda, retornoMedioSlots } from './cassino.ts';
+import { corDoNumero, girarRoleta, girarSlots, jogarMoeda, retornoMedioSlots, SIMBOLOS } from './cassino.ts';
 import { CONQUISTAS, novasConquistas, type Estatisticas } from './conquistas.ts';
 import { avaliar, diaDe, palavraDoDia, PALAVRAS, premioPalavra } from './palavra.ts';
 
@@ -11,6 +11,20 @@ test('cassino: a casa ganha um pouco, mas não demais', () => {
   let total = 0;
   for (let k = 0; k < 200_000; k++) total += girarSlots().multiplicador;
   assert.ok(Math.abs(total / 200_000 - ev) < 0.03);
+});
+
+test('cassino: cada símbolo paga um valor diferente com dois iguais', () => {
+  assert.equal(new Set(SIMBOLOS.map((x) => x.paga2)).size, SIMBOLOS.length);
+  const seq = (...v: number[]) => () => v.shift()!; // cerveja < 0.30 · d20 < 0.55 · coração < 0.73 · caveira < 0.88 · gótica < 0.96 · moeda
+  const parCerveja = girarSlots(seq(0.1, 0.1, 0.5));
+  assert.deepEqual([parCerveja.combinacao, parCerveja.simbolo?.id, parCerveja.multiplicador], ['dois', 'cerveja', 1.1]);
+  const parGotica = girarSlots(seq(0.9, 0.2, 0.9));
+  assert.deepEqual([parGotica.combinacao, parGotica.simbolo?.id, parGotica.multiplicador], ['dois', 'gotica', 3]);
+  assert.equal(girarSlots(seq(0.8, 0.8, 0.1)).multiplicador, 0.25); // duas caveiras: devolve só um quarto
+  assert.equal(girarSlots(seq(0.8, 0.8, 0.8)).multiplicador, 0); // três caveiras: perde tudo
+  const jackpot = girarSlots(seq(0.97, 0.97, 0.97));
+  assert.ok(jackpot.jackpot && jackpot.multiplicador === 100);
+  assert.equal(girarSlots(seq(0.1, 0.4, 0.6)).combinacao, 'nada');
 });
 
 test('cassino: moeda e roleta pagam certo', () => {
