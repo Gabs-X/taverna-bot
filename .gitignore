@@ -2,3 +2,6 @@ node_modules/
 .env
 dados/
 .vercel/
+
+# Áudios do jogo (direitos da Ghost Ship Games): ficam só no PC dos bardos, fora do GitHub público.
+assets/privado/

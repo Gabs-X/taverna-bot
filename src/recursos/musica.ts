@@ -1,5 +1,7 @@
 import { DefaultExtractors } from '@discord-player/extractor';
-import { Player, QueueRepeatMode, type GuildQueue, type Track } from 'discord-player';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { Player, QueryType, QueueRepeatMode, type GuildQueue, type Track } from 'discord-player';
 import { getVideoId, YoutubeExtractor } from 'discord-player-youtubei';
 import {
   ActionRowBuilder,
@@ -549,27 +551,26 @@ export const ambiente: Comando = {
   executar: (i) => executarAmbiente(i, i.options.getString('tipo', true) as Ambiente | 'parar'),
 };
 
-// ---------- /rockandstone: grito de Deep Rock Galactic (e, se estiver em call, um bardo solta uma fala do jogo) ----------
+// ---------- /rockandstone: grito de Deep Rock Galactic (e, se estiver em call, um bardo solta o "Rock and Stone!") ----------
 
-// Buscas de clipes curtos com falas dos anões. Os áudios não ficam no bot: vêm do YouTube na hora, como as músicas.
-const BUSCAS_DRG = [
-  'deep rock galactic rock and stone voice line',
-  'deep rock galactic rock and stone sound effect',
-  "deep rock galactic we're rich voice line",
-  'deep rock galactic did i hear a rock and stone',
-];
-const CLIPE_MAX = 30_000; // só falas curtas, nada de compilação
+// O áudio do jogo fica só no PC dos bardos (assets/privado/ está no .gitignore: é da Ghost Ship Games, não vai para
+// o GitHub público). Sem o arquivo, o comando só grita no chat.
+const AUDIO_ROCK = fileURLToPath(new URL('../../assets/privado/rock-and-stone.mp3', import.meta.url));
 
 export const rockandstone: Comando = {
   data: new SlashCommandBuilder()
     .setName('rockandstone')
-    .setDescription('ROCK AND STONE! Se você estiver em call, um bardo entra e solta uma fala do Deep Rock')
+    .setDescription('ROCK AND STONE! Se você estiver em call, um bardo entra, grita junto e sai')
     .setContexts(InteractionContextType.Guild),
 
   async executar(i) {
     const grito = FALAS_DRG[Math.floor(Math.random() * FALAS_DRG.length)];
     const canalVoz = (i.member as GuildMember).voice.channel;
     if (!canalVoz) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+    if (!existsSync(AUDIO_ROCK)) {
+      console.warn(`[rockandstone] sem o áudio em ${AUDIO_ROCK}: só o grito no chat.`);
+      return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
+    }
 
     const t = tocadorPara(i.guildId!, canalVoz.id);
     // Bardo ocupado tocando música nesta call ou em outra: só o grito, sem interromper ninguém.
@@ -578,10 +579,8 @@ export const rockandstone: Comando = {
     if (!canalDoTocador) return i.reply(`⛏️ ${i.user} grita: **${grito}**`);
 
     await i.reply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** está descendo na sua call...`);
-    const busca = await t.player.search(BUSCAS_DRG[Math.floor(Math.random() * BUSCAS_DRG.length)]).catch(() => null);
-    const curtos = (busca?.tracks ?? []).filter((x) => x.durationMS > 0 && x.durationMS <= CLIPE_MAX);
-    const clipe = curtos[Math.floor(Math.random() * Math.min(curtos.length, 3))];
-    if (!clipe) return i.editReply(`⛏️ ${i.user} grita: **${grito}**\n(Não achei uma fala curta agora. Rock and Stone mesmo assim!)`);
+    const clipe = (await t.player.search(AUDIO_ROCK, { searchEngine: QueryType.FILE }).catch(() => null))?.tracks[0];
+    if (!clipe) return i.editReply(`⛏️ ${i.user} grita: **${grito}**`);
     try {
       await t.player.play(canalDoTocador as unknown as CanalDoPlayer, clipe, {
         requestedBy: i.user.id,
