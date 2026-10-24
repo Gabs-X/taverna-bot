@@ -2,7 +2,7 @@
 # Atualiza o Taverneiro na nuvem (rodado a cada 2 minutos pelo taverna-atualizar.timer).
 # Só vai para o ar uma VERSÃO (tag vX.Y.Z, criada pelo npm run lancar) e só depois que os testes do GitHub
 # (Actions) passaram nela: commits soltos no main não derrubam o bot. O supervisor percebe os arquivos novos em
-# src/ e reinicia o bot sozinho.
+# src/ e reinicia o bot sozinho, mas só depois que este script apaga dados/atualizando (fim do npm ci).
 # Para mandar o main na hora (correção urgente): bash scripts/nuvem/atualizar.sh --main
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -35,6 +35,10 @@ fi
 
 [[ "$(git rev-parse HEAD)" == "$alvo" ]] && exit 0
 antes="$(git rev-parse HEAD)"
+# Avisa o supervisor para não religar o bot no meio da troca (o npm ci apaga o node_modules antes de reinstalar).
+mkdir -p dados
+touch dados/atualizando
+trap 'rm -f dados/atualizando' EXIT
 git merge --ff-only --quiet "$alvo"
 # Dependências mudaram: instala antes de o supervisor reiniciar o bot.
 if ! git diff --quiet "$antes" HEAD -- package-lock.json; then npm ci --silent; fi

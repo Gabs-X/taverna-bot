@@ -2,7 +2,8 @@
 // - reinicia sozinho quando um arquivo de src/, assets/, .env ou package.json muda;
 // - religa se o bot cair (esperando mais a cada queda seguida, até 1 minuto);
 // - grava a saída do bot em dados/bot.log (gira em 5 MB, guarda o anterior em bot.log.1);
-// - não deixa abrir duas cópias (trava em dados/supervisor.pid).
+// - não deixa abrir duas cópias (trava em dados/supervisor.pid);
+// - não (re)liga o bot enquanto a atualização da nuvem instala as dependências (dados/atualizando).
 // Uso: node scripts/supervisor.mjs [--entrada arquivo]   (padrão: src/index.ts)
 import { spawn } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, watch, writeFileSync } from 'node:fs';
@@ -16,6 +17,9 @@ const MAX_LOG = 5 * 1024 * 1024;
 const ESPERA_ALTERACAO = 1500;
 const ESTADO = join(DADOS, 'estado.json');
 const ESPERA_MAXIMA_OCUPADO = 30 * 60_000; // depois disso reinicia mesmo ocupado
+const ATUALIZANDO = join(DADOS, 'atualizando'); // criado pelo scripts/nuvem/atualizar.sh do merge até o fim do npm ci
+const ATUALIZACAO_TRAVADA = 15 * 60_000; // marca mais velha que isso é resto de atualização que morreu: ignora
+const ESPERA_ATUALIZACAO = 5000;
 
 const arg = process.argv.indexOf('--entrada');
 const ENTRADA = arg > 0 ? process.argv[arg + 1] : 'src/index.ts';
@@ -59,9 +63,26 @@ let reiniciandoDeProposito = false;
 let quedasSeguidas = 0;
 let iniciadoEm = 0;
 let timerReinicio = null;
+let esperandoAtualizacao = false;
+
+/** A nuvem está trocando o código e as dependências: ligar agora daria "Cannot find package". */
+function atualizando() {
+  try {
+    return Date.now() - statSync(ATUALIZANDO).mtimeMs < ATUALIZACAO_TRAVADA;
+  } catch {
+    return false;
+  }
+}
 
 function iniciar() {
   clearTimeout(timerReinicio);
+  if (atualizando()) {
+    if (!esperandoAtualizacao) log('⏳ Atualização instalando as dependências: ligo o bot quando terminar.');
+    esperandoAtualizacao = true;
+    timerReinicio = setTimeout(iniciar, ESPERA_ATUALIZACAO);
+    return;
+  }
+  esperandoAtualizacao = false;
   if (!existsSync(join(RAIZ, '.env'))) {
     log('❌ Falta o arquivo .env com o DISCORD_TOKEN. Esperando ele ser criado...');
     return;
@@ -163,17 +184,24 @@ function aoAlterar(arquivo) {
   alterados.add(arquivo.replace(/\\/g, '/'));
   clearTimeout(timerAlteracao);
   // Espera parar de salvar (vários arquivos de uma vez, git pull) antes de reiniciar.
-  timerAlteracao = setTimeout(async () => {
-    const lista = [...alterados].slice(0, 5).join(', ') + (alterados.size > 5 ? ` e mais ${alterados.size - 5}` : '');
-    alterados.clear();
-    // Código quebrado (no meio de uma edição, por exemplo): continua na versão que está rodando em vez de derrubar o bot.
-    const erros = await conferirTipos();
-    if (erros) {
-      log(`⚠️ Arquivo alterado (${lista}), mas o código novo tem erro. O bot continua na versão que está rodando; corrija e salve de novo.\n${erros}`);
-      return;
-    }
-    reiniciarQuandoLivre(`Arquivo alterado (${lista})`);
-  }, ESPERA_ALTERACAO);
+  timerAlteracao = setTimeout(processarAlteracoes, ESPERA_ALTERACAO);
+}
+
+async function processarAlteracoes() {
+  // Código novo chegou mas as dependências ainda estão instalando: o bot segue na versão atual até acabar.
+  if (atualizando()) {
+    timerAlteracao = setTimeout(processarAlteracoes, ESPERA_ATUALIZACAO);
+    return;
+  }
+  const lista = [...alterados].slice(0, 5).join(', ') + (alterados.size > 5 ? ` e mais ${alterados.size - 5}` : '');
+  alterados.clear();
+  // Código quebrado (no meio de uma edição, por exemplo): continua na versão que está rodando em vez de derrubar o bot.
+  const erros = await conferirTipos();
+  if (erros) {
+    log(`⚠️ Arquivo alterado (${lista}), mas o código novo tem erro. O bot continua na versão que está rodando; corrija e salve de novo.\n${erros}`);
+    return;
+  }
+  reiniciarQuandoLivre(`Arquivo alterado (${lista})`);
 }
 
 for (const pasta of ['src', 'assets']) {
