@@ -45,8 +45,11 @@ denied-peer-ip=100.64.0.0-100.127.255.255
 denied-peer-ip=169.254.0.0-169.254.255.255
 denied-peer-ip=172.16.0.0-172.31.255.255
 denied-peer-ip=192.168.0.0-192.168.255.255
-user-quota=20
-total-quota=60
+# Todos da mesma sala usam o mesmo usuário temporário e cada reconexão abre retransmissões novas: limite folgado.
+user-quota=0
+total-quota=300
+# Anota cada sessão (abriu, fechou, bytes) no journalctl -u coturn.
+verbose
 syslog
 CONF
 sudo chown root:turnserver /etc/turnserver.conf
