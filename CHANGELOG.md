@@ -1,5 +1,11 @@
 # Novidades do Taverneiro
 
+## v1.6.0 (23/10/2026)
+
+- 💀 As góticas agora podem morrer de fome: 24 h com a barriga zerada e ela se vai. O cartão avisa antes quando ela está morrendo.
+- 🕯️ Gótica morta? Traga de volta com /gotica reviver ou com o botão Reviver, por 1000 moedas. Nível, XP e acessórios continuam.
+- 🖥️ /tela consertado: a tela agora chega mesmo quando a internet de quem compartilha e de quem assiste não se conectam direto (era a tela preta).
+
 ## v1.5.0 (23/10/2026)
 
 - O Taverneiro agora fica no ar 24 horas por dia
