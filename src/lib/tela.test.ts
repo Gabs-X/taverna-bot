@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { codigo, criarSala, duracaoTexto, SITE_TELA } from './tela.ts';
+import { codigo, criarSala, duracaoTexto, senhaTurn, SITE_TELA, VALIDADE_TURN } from './tela.ts';
 
 test('senha e sala só com letras e números (exigência da página)', () => {
   for (let k = 0; k < 50; k++) {
@@ -20,6 +20,20 @@ test('quem compartilha e quem assiste usam a mesma sala e senha na Tela da Taver
   assert.equal(v.searchParams.get('assistir'), s.id);
   assert.equal(c.searchParams.get('chave'), s.senha);
   assert.equal(v.searchParams.get('chave'), s.senha);
+});
+
+test('com TURN, os dois links levam a mesma senha temporária, que vence em 12 h', () => {
+  const s = criarSala(Math.random, { host: '1.2.3.4', segredo: 'segredo' }, 1_000_000);
+  const c = new URL(s.compartilhar);
+  const v = new URL(s.assistir);
+  assert.equal(c.searchParams.get('turn'), '1.2.3.4');
+  assert.equal(c.searchParams.get('tu'), v.searchParams.get('tu'));
+  assert.equal(c.searchParams.get('tp'), v.searchParams.get('tp'));
+  assert.equal(c.searchParams.get('tu'), `${1000 + VALIDADE_TURN / 1000}:taverna`);
+  // Mesmo cálculo do coturn: base64(HMAC-SHA1(segredo, usuario)).
+  assert.equal(senhaTurn('segredo', 1_000_000).senha, c.searchParams.get('tp'));
+  assert.match(c.searchParams.get('tp')!, /^[A-Za-z0-9+/]{27}=$/);
+  assert.equal(new URL(criarSala().assistir).searchParams.has('turn'), false);
 });
 
 test('duração da tela em texto curto', () => {

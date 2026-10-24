@@ -29,6 +29,10 @@ const daCall = db.prepare('SELECT * FROM telas WHERE guild_id = ? AND user_id = 
 const MAX_COM_CALL = 6 * 3_600_000; // sem sair da call: ninguém compartilha tanto tempo assim
 const MAX_SEM_CALL = 2 * 3_600_000; // sem call não há como saber quando parou
 
+/** TURN da nuvem (scripts/nuvem/turn.sh). Sem ele no .env, a tela só funciona quando os navegadores se acham direto. */
+const turnDoEnv = () =>
+  process.env.TURN_HOST && process.env.TURN_SEGREDO ? { host: process.env.TURN_HOST, segredo: process.env.TURN_SEGREDO } : undefined;
+
 let cliente: Client | undefined;
 
 /** Troca o aviso do chat por "encerrada" (sem o botão de assistir) e esquece a tela. */
@@ -54,7 +58,7 @@ export const tela: Comando = {
 
   async executar(i) {
     // Sem opções: título genérico e sempre com o som da tela.
-    const sala = criarSala();
+    const sala = criarSala(Math.random, turnDoEnv());
     const call = (i.member as GuildMember).voice.channel;
     const botaoCompartilhar = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Começar a compartilhar').setEmoji('🖥️').setURL(sala.compartilhar);
 
