@@ -16,13 +16,18 @@ import {
   aplicarAcao,
   barra,
   DESBLOQUEIOS,
+  estaMorta,
   evolucaoDe,
+  fomeDepois,
   gostoDe,
   humorDe,
   lerAparencia,
+  morreEm,
   nomeDaOpcao,
   OPCOES,
   PARTES,
+  PRECO_REVIVER,
+  reviver,
   sortearAparencia,
   sortearPersonalidade,
   statusAgora,
@@ -32,7 +37,8 @@ import {
   type Estado,
   type Humor,
 } from '../lib/gotica.ts';
-import { desenharGotica } from '../lib/goticaArte.ts';
+import { apagarRetrato, desenharGotica } from '../lib/goticaArte.ts';
+import { carteira, gastarMoedas, moedas } from './economia.ts';
 import { lerEquipados } from '../lib/loja.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { executarDuelo, executarVisita } from './goticaSocial.ts';
@@ -53,6 +59,7 @@ export type Linha = {
   ultimas: string;
   criada_em: number;
   equipados: string;
+  fome_desde: number | null;
 };
 
 const COR = { feliz: 0x9b59b6, neutra: 0x6c3483, triste: 0x34495e } as const;
@@ -67,6 +74,8 @@ const ROTULOS: Record<Parte, string> = {
   vestido: 'Cor do vestido',
 };
 const SEM_GOTICA ='Você ainda não tem uma gótica. Adote uma com `/gotica adotar`.';
+const textoRevivida = (l: Linha, guild: Parameters<typeof moedas>[0]) =>
+  `🕯️ **${l.nome} voltou dos mortos!** Custou ${moedas(guild, PRECO_REVIVER)}. Dê comida para ela não morrer de novo.\n`;
 
 export const ler = (g: string, u: string) =>
   db.prepare('SELECT * FROM goticas WHERE guild_id = ? AND user_id = ?').get(g, u) as Linha | undefined;
@@ -79,13 +88,30 @@ export const estadoDe = (l: Linha): Estado => ({
   energia: l.energia,
   atualizadoEm: l.atualizado_em,
   ultimas: JSON.parse(l.ultimas),
+  fomeDesde: l.fome_desde,
 });
 
 function salvar(l: Linha, e: Estado) {
   db.prepare(
-    `UPDATE goticas SET nivel = ?, xp = ?, barriga = ?, humor = ?, energia = ?, atualizado_em = ?, ultimas = ?
+    `UPDATE goticas SET nivel = ?, xp = ?, barriga = ?, humor = ?, energia = ?, atualizado_em = ?, ultimas = ?, fome_desde = ?
      WHERE guild_id = ? AND user_id = ?`,
-  ).run(e.nivel, e.xp, e.barriga, e.humor, e.energia, e.atualizadoEm, JSON.stringify(e.ultimas), l.guild_id, l.user_id);
+  ).run(e.nivel, e.xp, e.barriga, e.humor, e.energia, e.atualizadoEm, JSON.stringify(e.ultimas), e.fomeDesde ?? null, l.guild_id, l.user_id);
+}
+
+/** Morta de fome agora? (duelo e visita conferem antes de começar) */
+export const morta = (l: Linha) => estaMorta(estadoDe(l), Date.now());
+
+/** Paga as moedas e traz de volta. Devolve o texto para quem pediu. */
+function tentarReviver(l: Linha, guild: Parameters<typeof moedas>[0]): { ok: true; estado: Estado } | { ok: false; texto: string } {
+  const e = estadoDe(l);
+  if (!estaMorta(e, Date.now())) return { ok: false, texto: `A **${l.nome}** está viva, não precisa reviver.` };
+  if (!gastarMoedas(l.guild_id, l.user_id, PRECO_REVIVER)) {
+    const saldo = carteira(l.guild_id, l.user_id).moedas;
+    return { ok: false, texto: `Reviver custa ${moedas(guild, PRECO_REVIVER)} e você tem ${moedas(guild, saldo)}. Junte com \`/daily\`, \`/trabalhar\`, conversando e em call.` };
+  }
+  const nova = reviver(e, Date.now());
+  salvar(l, nova);
+  return { ok: true, estado: nova };
 }
 
 /** SVG do retrato com o humor atual (ou um forçado, como no fim do duelo). */
@@ -113,6 +139,7 @@ export function ajustarGotica(l: Linha, mudanca: { xp: number; humor?: number; e
     nivel,
     xp,
     barriga: s.barriga,
+    fomeDesde: fomeDepois(e, s.barriga, agora),
     humor: limitar(s.humor + (mudanca.humor ?? 0)),
     energia: limitar(s.energia + (mudanca.energia ?? 0)),
     atualizadoEm: agora,
@@ -122,6 +149,7 @@ export function ajustarGotica(l: Linha, mudanca: { xp: number; humor?: number; e
 
 /** Embed com o retrato (PNG gerado na hora) e, para a dona, os botões de cuidar. */
 export async function cartao(l: Linha, e: Estado, extra?: string) {
+  if (estaMorta(e, Date.now())) return cartaoMorta(l, e, extra);
   const s = statusAgora(e, Date.now());
   const humor = humorDe(s);
   const svg = desenharGotica(lerAparencia(l.aparencia), e.nivel, humor, lerEquipados(l.equipados));
@@ -140,6 +168,7 @@ export async function cartao(l: Linha, e: Estado, extra?: string) {
         `🖤 Humor    ${barra(s.humor)}`,
         `⚡ Energia  ${barra(s.energia)}`,
         `✨ XP ${e.xp}/${xpParaProximo(e.nivel)}`,
+        s.barriga === 0 ? `\n💀 **Está morrendo de fome!** Morre <t:${Math.ceil(morreEm(e) / 1000)}:R> se ninguém der comida.` : undefined,
       ].filter((x) => x !== undefined).join('\n'),
     )
     .setImage('attachment://gotica.png')
@@ -149,6 +178,28 @@ export async function cartao(l: Linha, e: Estado, extra?: string) {
     (Object.keys(ACOES) as Acao[]).map((a) =>
       new ButtonBuilder().setCustomId(`gotica:${a}:${l.user_id}`).setLabel(ACOES[a].rotulo).setEmoji(ACOES[a].emoji).setStyle(ButtonStyle.Secondary),
     ),
+  );
+  return { embeds: [embed], files: [imagem], components: [botoes], allowedMentions: { parse: [] } };
+}
+
+/** Cartão da gótica morta: retrato apagado e só o botão de reviver. */
+async function cartaoMorta(l: Linha, e: Estado, extra?: string) {
+  const svg = apagarRetrato(desenharGotica(lerAparencia(l.aparencia), e.nivel, 'triste', lerEquipados(l.equipados)));
+  const imagem = new AttachmentBuilder(await renderizarPng(svg), { name: 'gotica.png' });
+  const embed = new EmbedBuilder()
+    .setColor(0x2c2c2c)
+    .setTitle(`💀 ${l.nome} · nível ${e.nivel} · morta`)
+    .setDescription(
+      [
+        extra,
+        `De <@${l.user_id}> · morreu de fome <t:${Math.ceil(morreEm(e) / 1000)}:R>.`,
+        `Ela volta por **${PRECO_REVIVER.toLocaleString('pt-BR')} moedas**, com nível, XP e acessórios.`,
+      ].filter((x) => x !== undefined).join('\n'),
+    )
+    .setImage('attachment://gotica.png')
+    .setFooter({ text: 'Sem comida por 24 h com a barriga zerada, ela morre.' });
+  const botoes = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`gotica:reviver:${l.user_id}`).setLabel(`Reviver (${PRECO_REVIVER.toLocaleString('pt-BR')} moedas)`).setEmoji('🕯️').setStyle(ButtonStyle.Danger),
   );
   return { embeds: [embed], files: [imagem], components: [botoes], allowedMentions: { parse: [] } };
 }
@@ -192,6 +243,7 @@ export const gotica: Comando = {
       s.setName('visitar').setDescription('Sua gótica visita a de alguém (as duas ganham XP)')
         .addUserOption((o) => o.setName('membro').setDescription('Dona da gótica visitada').setRequired(true)),
     )
+    .addSubcommand((s) => s.setName('reviver').setDescription(`Traz de volta sua gótica que morreu de fome (${PRECO_REVIVER} moedas)`))
     .addSubcommand((s) => s.setName('ranking').setDescription('As góticas mais bem cuidadas do servidor')),
 
   async executar(i) {
@@ -263,6 +315,15 @@ export const gotica: Comando = {
       return i.editReply(await cartao(nova, estadoDe(nova), `${emoji(i.guild, 'gotica_apaixonada', '💄')} **${l.nome}** se arrumou: ${mudou.join(', ')}.\n`));
     }
 
+    if (sub === 'reviver') {
+      const l = ler(g, i.user.id);
+      if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
+      const r = tentarReviver(l, i.guild);
+      if (!r.ok) return i.reply({ content: `🕯️ ${r.texto}`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+      await i.deferReply();
+      return i.editReply(await cartao(l, r.estado, textoRevivida(l, i.guild)));
+    }
+
     if (sub === 'renomear') {
       const l = ler(g, i.user.id);
       if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
@@ -285,13 +346,26 @@ export const gotica: Comando = {
 export const botaoGotica: HandlerBotao = {
   prefixo: 'gotica',
   async executar(i, argumento) {
-    const [acao, donoId] = argumento.split(':') as [Acao, string];
-    if (!(acao in ACOES)) return i.deferUpdate();
+    const [acao, donoId] = argumento.split(':') as [Acao | 'reviver', string];
+    if (!(acao in ACOES) && acao !== 'reviver') return i.deferUpdate();
     if (i.user.id !== donoId) {
       return i.reply({ content: 'Essa gótica não é sua. Adote a sua com `/gotica adotar`.', flags: MessageFlags.Ephemeral });
     }
     const l = ler(i.guildId!, donoId);
     if (!l) return i.reply({ content: SEM_GOTICA, flags: MessageFlags.Ephemeral });
+
+    if (acao === 'reviver') {
+      const rv = tentarReviver(l, i.guild);
+      if (!rv.ok) return i.reply({ content: `🕯️ ${rv.texto}`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+      await i.deferUpdate();
+      return i.editReply({ ...(await cartao(l, rv.estado, textoRevivida(l, i.guild))), attachments: [] });
+    }
+
+    // Morreu com o cartão aberto: troca os botões de cuidar pelo de reviver.
+    if (estaMorta(estadoDe(l), Date.now())) {
+      await i.deferUpdate();
+      return i.editReply({ ...(await cartao(l, estadoDe(l))), attachments: [] });
+    }
 
     const r = aplicarAcao(estadoDe(l), acao, Date.now());
     if (!r.ok) {

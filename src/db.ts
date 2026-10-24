@@ -392,6 +392,12 @@ const MIGRACOES: (() => void)[] = [
       )
     `);
   },
+  // 10 (23/10/2026): góticas morrem de fome. As que já estão de barriga zerada contam as 24 h a partir de agora.
+  () => {
+    db.exec('ALTER TABLE goticas ADD COLUMN fome_desde INTEGER');
+    const agora = Date.now();
+    db.prepare('UPDATE goticas SET fome_desde = ? WHERE barriga - 4.0 * (? - atualizado_em) / 3600000 <= 0').run(agora, agora);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

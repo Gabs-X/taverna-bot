@@ -460,6 +460,13 @@ export function desenharGotica(a: Aparencia, nivel: number, humor: Humor, eq: Eq
 </svg>`;
 }
 
+/** Gótica morta: o retrato todo em cinza escuro, como foto antiga de lápide. */
+export function apagarRetrato(svg: string) {
+  const abre = svg.indexOf('>') + 1;
+  const filtro = `<defs><filter id="morta"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="0.7"/><feFuncG type="linear" slope="0.7"/><feFuncB type="linear" slope="0.75"/></feComponentTransfer></filter></defs><g filter="url(#morta)">`;
+  return `${svg.slice(0, abre)}${filtro}${svg.slice(abre, svg.lastIndexOf('</svg>'))}</g></svg>`;
+}
+
 /** Só a cabeça, sem fundo, recortada para emoji (o resto da imagem fica transparente). */
 export function desenharCabecaGotica(a: Aparencia, humor: Humor, eq: Pick<Equipados, 'cabeca' | 'rosto'> = {}) {
   const topo = eq.cabeca === 'chapeu-bruxa' ? 0 : 50;

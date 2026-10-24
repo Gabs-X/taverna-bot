@@ -24,7 +24,7 @@ import { humorDe, statusAgora } from '../lib/gotica.ts';
 import { juntarRetratos } from '../lib/goticaDupla.ts';
 import type { HandlerBotao } from '../tipos.ts';
 import { carteira, darMoedas, gastarMoedas, moedas } from './economia.ts';
-import { ajustarGotica, estadoDe, ler, retratoSvg, type Linha } from './gotica.ts';
+import { ajustarGotica, estadoDe, ler, morta, retratoSvg, type Linha } from './gotica.ts';
 import { emoji } from '../lib/servidor.ts';
 import { renderizarPng } from '../lib/renderizar.ts';
 import { contar, verificarConquistas } from './conquistas.ts';
@@ -44,7 +44,10 @@ async function imagemDupla(a: Linha, b: Linha, simbolo: 'duelo' | 'visita', humo
 }
 
 const energiaDe = (l: Linha) => statusAgora(estadoDe(l), Date.now()).energia;
-const subiuTexto = (nome: string, subiu: number[]) => (subiu.length ? `\n🎉 **${nome}** subiu para o nível ${subiu.at(-1)}!` : '');
+/** Aviso se alguma das duas morreu de fome (morta não duela nem visita). */
+const avisoMorta = (a: Linha, b: Linha) =>
+  morta(a) ? `A **${a.nome}** morreu de fome. Reviva com \`/gotica reviver\` antes.` : morta(b) ? `A **${b.nome}** morreu de fome. Só depois que a dona reviver.` : undefined;
+const subiuTexto =(nome: string, subiu: number[]) => (subiu.length ? `\n🎉 **${nome}** subiu para o nível ${subiu.at(-1)}!` : '');
 
 // ---------- Duelo ----------
 
@@ -63,6 +66,8 @@ export async function executarDuelo(i: ChatInputCommandInteraction, aposta = i.o
   const b = ler(g, alvo.id);
   if (!a) return i.reply({ content: 'Você ainda não tem uma gótica. Adote com `/gotica adotar`.', flags: MessageFlags.Ephemeral });
   if (!b) return i.reply({ content: `${alvo.username} ainda não tem uma gótica.`, flags: MessageFlags.Ephemeral });
+  const mortaDuelo = avisoMorta(a, b);
+  if (mortaDuelo) return i.reply({ content: `💀 ${mortaDuelo}`, flags: MessageFlags.Ephemeral });
   if (ocupadas.has(`${g}:${i.user.id}`) || ocupadas.has(`${g}:${alvo.id}`)) {
     return i.reply({ content: 'Uma das duas já está num duelo (ou com convite aberto).', flags: MessageFlags.Ephemeral });
   }
@@ -197,6 +202,10 @@ export const botaoDuelo: HandlerBotao = {
         liberar();
         return i.update({ content: `🏃‍♀️ A **${b?.nome ?? 'gótica'}** fugiu do duelo. Covarde... ou esperta.`, components: [] });
       }
+      if (morta(a) || morta(b)) {
+        liberar();
+        return i.update({ content: `💀 ${avisoMorta(a, b)} Duelo cancelado.`, components: [] });
+      }
       if (energiaDe(b) < ENERGIA_DUELO) return i.reply({ content: `A **${b.nome}** está cansada demais. Deixe ela dormir e aceite depois.`, flags: MessageFlags.Ephemeral });
       if (energiaDe(a) < ENERGIA_DUELO) {
         liberar();
@@ -253,8 +262,10 @@ export async function executarVisita(i: ChatInputCommandInteraction) {
   const b = ler(g, alvo.id);
   if (!a) return i.reply({ content: 'Você ainda não tem uma gótica. Adote com `/gotica adotar`.', flags: MessageFlags.Ephemeral });
   if (!b) return i.reply({ content: `${alvo.username} ainda não tem uma gótica.`, flags: MessageFlags.Ephemeral });
+  const mortaVisita = avisoMorta(a, b);
+  if (mortaVisita) return i.reply({ content: `💀 ${mortaVisita}`, flags: MessageFlags.Ephemeral });
 
-  const ultima = (db.prepare('SELECT ultima FROM gotica_visitas WHERE guild_id = ? AND visitante = ? AND anfitria = ?').get(g, a.user_id, b.user_id) as { ultima: number } | undefined)?.ultima ?? 0;
+  const ultima =(db.prepare('SELECT ultima FROM gotica_visitas WHERE guild_id = ? AND visitante = ? AND anfitria = ?').get(g, a.user_id, b.user_id) as { ultima: number } | undefined)?.ultima ?? 0;
   if (Date.now() - ultima < ESPERA_VISITA) {
     return i.reply({ content: `A **${a.nome}** visitou a **${b.nome}** há pouco. Pode voltar <t:${Math.ceil((ultima + ESPERA_VISITA) / 1000)}:R>.`, flags: MessageFlags.Ephemeral });
   }

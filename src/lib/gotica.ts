@@ -131,6 +131,7 @@ export type Estado = Status & {
   xp: number;
   atualizadoEm: number; // ms
   ultimas: Record<string, number>; // última vez de cada ação (ms)
+  fomeDesde?: number | null; // quando a barriga zerou (ms); null enquanto tem comida
 };
 
 const HORA = 3_600_000;
@@ -146,6 +147,25 @@ export function statusAgora(e: Estado, agora: number): Status {
     energia: limitar(e.energia - QUEDA_POR_HORA.energia * horas),
   };
 }
+
+// ---------- Morte ----------
+
+export const MORRE_APOS = 24 * HORA; // de barriga zerada até morrer de fome
+export const PRECO_REVIVER = 1000;
+
+/** Quando a barriga zera (ou zerou) se ninguém der comida. */
+const zeraEm = (e: Estado) => e.atualizadoEm + (e.barriga / QUEDA_POR_HORA.barriga) * HORA;
+
+/** Quando ela morre de fome se continuar sem comer. */
+export const morreEm = (e: Estado) => (e.fomeDesde ?? zeraEm(e)) + MORRE_APOS;
+export const estaMorta = (e: Estado, agora: number) => agora >= morreEm(e);
+
+/** fomeDesde para salvar junto com a barriga nova: comer zera a contagem; duelo e visita não. */
+export const fomeDepois = (e: Estado, barrigaNova: number, agora: number) =>
+  barrigaNova > 0 ? null : (e.fomeDesde ?? Math.min(zeraEm(e), agora));
+
+/** Volta da morte com os status no meio; nível, XP e acessórios continuam. */
+export const reviver = (e: Estado, agora: number): Estado => ({ ...e, barriga: 70, humor: 50, energia: 70, atualizadoEm: agora, fomeDesde: null });
 
 export type Humor = 'feliz' | 'neutra' | 'triste';
 export const humorDe = (s: Status): Humor => {
@@ -189,6 +209,7 @@ export type Resultado =
 export function aplicarAcao(e: Estado, acao: Acao, agora: number, r: Sorteio = Math.random): Resultado {
   const a = ACOES[acao];
   const ultima = e.ultimas[acao];
+  if (estaMorta(e, agora)) return { ok: false, motivo: `Ela morreu de fome. Reviva por ${PRECO_REVIVER} moedas com \`/gotica reviver\`.` };
   if (ultima !== undefined && agora - ultima < ESPERA_ACAO) return { ok: false, motivo: 'ainda não', liberaEm: ultima + ESPERA_ACAO };
 
   const s = statusAgora(e, agora);
@@ -206,6 +227,7 @@ export function aplicarAcao(e: Estado, acao: Acao, agora: number, r: Sorteio = M
     subiu.push(nivel);
   }
 
+  const barriga = limitar(s.barriga + a.efeito.barriga);
   return {
     ok: true,
     xpGanho,
@@ -214,7 +236,8 @@ export function aplicarAcao(e: Estado, acao: Acao, agora: number, r: Sorteio = M
     estado: {
       nivel,
       xp,
-      barriga: limitar(s.barriga + a.efeito.barriga),
+      barriga,
+      fomeDesde: fomeDepois(e, barriga, agora),
       humor: limitar(s.humor + a.efeito.humor),
       energia: limitar(s.energia + a.efeito.energia),
       atualizadoEm: agora,
