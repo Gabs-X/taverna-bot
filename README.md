@@ -1,5 +1,7 @@
 # 🍺 Taverneiro · bot da Taverna
 
+**Português** | [English](README.en.md)
+
 Um bot só para o servidor todo, no lugar de dez: música, calls que se criam sozinhas, RPG de D&D 3.5 e Daggerheart,
 chamada para jogar, boas-vindas e moderação. O `/setup` monta o servidor inteiro.
 
