@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.8.1 (10/11/2026)
+
+- Campanhas: o Mestre já pode abrir a sessão com /campanha iniciar mesmo antes de adicionar os jogadores
+
 ## v1.8.0 (10/11/2026)
 
 - Campanhas: o Mestre abre a sessão com /campanha iniciar, que cria o canal de texto e a call da mesa (só para quem joga) e manda o link do mapa no privado de cada jogador
