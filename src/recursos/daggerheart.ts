@@ -170,6 +170,11 @@ async function fichaSub(i: ChatInputCommandInteraction, sub: string) {
     const valor = i.options.getString('valor', true);
     const numerico = !(campo in CAMPOS_TEXTO);
     if (numerico && !/^[-+]?\d+$/.test(valor)) return i.reply({ content: 'Esse campo precisa de um número.', flags: MessageFlags.Ephemeral });
+    if (campo === 'limiar_maior' || campo === 'limiar_grave') {
+      const maior = campo === 'limiar_maior' ? Number(valor) : f.limiar_maior;
+      const grave = campo === 'limiar_grave' ? Number(valor) : f.limiar_grave;
+      if (grave <= maior) return i.reply({ content: 'O limiar Grave precisa ser maior que o Maior.', flags: MessageFlags.Ephemeral });
+    }
     // `campo` vem de uma lista fixa de choices, então pode ir direto na SQL.
     db.prepare(`UPDATE fichas_dh SET ${campo} = ? WHERE guild_id = ? AND user_id = ?`).run(numerico ? Number(valor) : valor, g, i.user.id);
     db.prepare(

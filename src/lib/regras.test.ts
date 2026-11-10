@@ -91,4 +91,11 @@ describe('Daggerheart', () => {
     ]);
     assert.deepEqual(desserializarExperiencias(serializarExperiencias(lista)), lista);
   });
+
+  it('experiências com bônus de mais de um dígito', () => {
+    assert.deepEqual(lerExperiencias('Fulano +10, Beltrano 12'), [
+      { nome: 'Fulano', bonus: 10 },
+      { nome: 'Beltrano', bonus: 12 },
+    ]);
+  });
 });

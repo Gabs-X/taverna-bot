@@ -56,7 +56,7 @@ export function lerExperiencias(texto: string) {
     .map((p) => p.trim())
     .filter(Boolean)
     .map((parte) => {
-      const m = parte.match(/^(.+?)\s*\+?(\d)?$/);
+      const m = parte.match(/^(.+?)\s*\+?(\d+)?$/);
       return { nome: m![1].trim(), bonus: Number(m![2] ?? 2) };
     });
 }
