@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.9.0 (10/11/2026)
+
+- Mapa da campanha: o Mestre agora pode pôr imagem nos NPCs, rolar e falar em nome deles e mudar o tamanho das peças
+
 ## v1.8.1 (10/11/2026)
 
 - Campanhas: o Mestre já pode abrir a sessão com /campanha iniciar mesmo antes de adicionar os jogadores
