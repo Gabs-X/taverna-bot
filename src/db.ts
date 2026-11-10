@@ -398,6 +398,61 @@ const MIGRACOES: (() => void)[] = [
     const agora = Date.now();
     db.prepare('UPDATE goticas SET fome_desde = ? WHERE barriga - 4.0 * (? - atualizado_em) / 3600000 <= 0').run(agora, agora);
   },
+  // 11: campanhas de RPG (um mestre; os personagens são as fichas dos jogadores no sistema da campanha).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS campanhas (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id  TEXT NOT NULL,
+        nome      TEXT NOT NULL,
+        sistema   TEXT NOT NULL,
+        mestre_id TEXT NOT NULL,
+        criada_em INTEGER NOT NULL,
+        UNIQUE (guild_id, nome COLLATE NOCASE)
+      );
+      CREATE TABLE IF NOT EXISTS campanha_personagens (
+        campanha_id INTEGER NOT NULL,
+        user_id     TEXT NOT NULL,
+        PRIMARY KEY (campanha_id, user_id)
+      );
+    `);
+  },
+  // 12: mapa da campanha (imagem em dados/mapas; peças dos jogadores e NPCs do mestre em pixels da imagem)
+  // e o chat da mesa, com rolagens públicas, escondidas pelo mestre e reveladas depois.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS mapas (
+        campanha_id INTEGER PRIMARY KEY,
+        imagem  TEXT,
+        largura INTEGER NOT NULL DEFAULT 1500,
+        altura  INTEGER NOT NULL DEFAULT 1000,
+        grade   INTEGER NOT NULL DEFAULT 50,
+        versao  INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS mapa_pecas (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        user_id     TEXT,
+        nome        TEXT NOT NULL,
+        x REAL NOT NULL,
+        y REAL NOT NULL,
+        UNIQUE (campanha_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS mapa_chat (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        user_id     TEXT NOT NULL,
+        autor       TEXT NOT NULL,
+        tipo        TEXT NOT NULL,
+        texto       TEXT NOT NULL DEFAULT '',
+        resultado   TEXT,
+        secreta     INTEGER NOT NULL DEFAULT 0,
+        revelada    INTEGER NOT NULL DEFAULT 0,
+        criada_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS mapa_chat_campanha ON mapa_chat (campanha_id, id);
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

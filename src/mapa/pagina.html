@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>🗺️ Mapa da campanha</title>
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; height: 100vh; display: flex; font-family: system-ui, sans-serif; background: #150c1f; color: #eee; overflow: hidden; }
+  #palco { flex: 1; position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas.arrastando { cursor: grabbing; }
+  aside { width: 360px; background: #22132f; border-left: 1px solid #3a2550; display: flex; flex-direction: column; min-height: 0; }
+  aside > section { padding: 12px 14px; border-bottom: 1px solid #3a2550; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #b99be0; margin: 0 0 8px; }
+  small, .mudo { color: #a99bbd; font-size: 12px; }
+  .voce { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; }
+  .voce img, .item img { width: 26px; height: 26px; border-radius: 50%; background: #3a2550; object-fit: cover; }
+  .abas { display: flex; border-bottom: 1px solid #3a2550; }
+  .abas button { flex: 1; border-radius: 0; background: transparent; padding: 10px; color: #a99bbd; position: relative; }
+  .abas button.ativa { color: #fff; box-shadow: inset 0 -2px #b07ce8; }
+  .abas .contador { background: #e74c3c; color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+  .aba { flex: 1; min-height: 0; display: none; flex-direction: column; }
+  .aba.ativa { display: flex; }
+  #aba-mesa { overflow-y: auto; }
+  #aba-mesa section { padding: 12px 14px; border-bottom: 1px solid #3a2550; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+  .item:hover, .item.sel { background: #33204a; }
+  .item .nome { font-weight: 600; font-size: 14px; }
+  button, .botao { background: #8e44ad; color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; display: inline-block; }
+  button.sec, .botao.sec { background: #3a2550; }
+  button:hover, .botao:hover { filter: brightness(1.15); }
+  input[type=text], input[type=number], select { width: 100%; background: #150c1f; border: 1px solid #3a2550; border-radius: 8px; color: #eee; padding: 7px 9px; font: inherit; font-size: 13px; }
+  .linha { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+
+  /* Chat */
+  #mensagens { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { background: #2b1a3d; border-radius: 10px; padding: 7px 10px; font-size: 13px; line-height: 1.35; }
+  .msg .topo { display: flex; justify-content: space-between; gap: 8px; color: #c9b3ea; font-weight: 600; font-size: 12px; margin-bottom: 3px; }
+  .msg .topo time { color: #7f6f95; font-weight: 400; }
+  .msg .corpo { white-space: pre-wrap; word-break: break-word; }
+  .msg.secreta { background: #1d2a3d; outline: 1px dashed #5d7fb0; }
+  .selo { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 9px; background: #5d7fb0; color: #fff; margin: 4px 6px 0 0; }
+  .selo.revelada { background: #6c5a2a; }
+  .rolagem .rotulo { font-weight: 600; }
+  .rolagem .expr { color: #a99bbd; font-size: 12px; }
+  .dados { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 5px 0; }
+  .dado { min-width: 26px; height: 26px; padding: 0 5px; border-radius: 6px; background: #3a2550; display: inline-grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .dado.max { background: #1e7a46; } .dado.um { background: #9b2c2c; }
+  .dado.fora { opacity: .4; text-decoration: line-through; }
+  .dado.esperanca { background: #b8860b; } .dado.medo { background: #5b2a86; }
+  .op { color: #a99bbd; font-weight: 700; }
+  .total { font-size: 22px; font-weight: 800; }
+  .resultado { font-size: 12px; font-weight: 600; margin-left: 6px; }
+  .resultado.critico { color: #2ecc71; } .resultado.esperanca { color: #f1c40f; } .resultado.medo { color: #c39bff; }
+  #barra { border-top: 1px solid #3a2550; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .botoes-dado { display: flex; flex-wrap: wrap; gap: 4px; }
+  .botoes-dado button { padding: 5px 8px; font-size: 12px; background: #3a2550; }
+  .botoes-dado button.dh { background: linear-gradient(90deg, #b8860b, #5b2a86); }
+  #barra .linha { margin-top: 0; }
+  #mod { width: 64px; flex: none; }
+  #vantagem { width: auto; flex: 1; }
+  label.escondida { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #9fc1f0; white-space: nowrap; cursor: pointer; }
+
+  /* Ficha flutuante sobre o mapa */
+  #ficha-card { position: absolute; left: 12px; top: 12px; width: 280px; max-height: calc(100% - 60px); overflow-y: auto; background: #22132fee; border: 1px solid #3a2550; border-radius: 12px; padding: 12px 14px; display: none; }
+  #ficha-card.aberta { display: block; }
+  #ficha-card .fechar { position: absolute; right: 8px; top: 6px; background: transparent; padding: 4px 8px; color: #a99bbd; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+  dt { color: #a99bbd; } dd { margin: 0; word-break: break-word; }
+  .tracos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0; }
+  .tracos button { padding: 5px 6px; font-size: 12px; background: #3a2550; display: flex; justify-content: space-between; gap: 4px; white-space: nowrap; overflow: hidden; }
+  #aviso { position: absolute; left: 12px; bottom: 12px; background: #000a; padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
+  #erro { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: #c0392b; padding: 8px 14px; border-radius: 8px; display: none; font-size: 13px; max-width: 80%; z-index: 5; }
+  @media (max-width: 760px) { body { flex-direction: column; } aside { width: 100%; height: 50vh; border-left: 0; border-top: 1px solid #3a2550; } #ficha-card { width: calc(100% - 24px); } }
+</style>
+</head>
+<body>
+<div id="palco">
+  <canvas id="c"></canvas>
+  <div id="ficha-card">
+    <button class="fechar" id="fechar-ficha" title="Fechar">✕</button>
+    <h2 id="ficha-titulo">Ficha</h2>
+    <div class="tracos" id="tracos"></div>
+    <dl id="ficha"></dl>
+    <div class="linha"><button id="remover-npc" class="sec" hidden>Remover NPC</button></div>
+  </div>
+  <div id="aviso">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem para mover</div>
+  <div id="erro"></div>
+</div>
+<aside>
+  <section>
+    <h1 id="titulo">Carregando…</h1>
+    <small id="sub"></small>
+    <div class="voce"><img id="eu-avatar" alt=""><span id="eu-nome"></span></div>
+  </section>
+  <div class="abas">
+    <button id="tab-chat" class="ativa">💬 Chat<span id="novas" class="contador" hidden></span></button>
+    <button id="tab-mesa">🧙 Mesa</button>
+  </div>
+
+  <div id="aba-chat" class="aba ativa">
+    <div id="mensagens"></div>
+    <div id="barra">
+      <div class="botoes-dado" id="botoes-dado"></div>
+      <div class="linha">
+        <input id="mod" type="number" placeholder="mod" title="Modificador somado aos botões">
+        <select id="vantagem" title="Vantagem: no d20 rola 2 e fica com o maior; na dualidade soma um d6">
+          <option value="0">Normal</option><option value="1">Vantagem</option><option value="-1">Desvantagem</option>
+        </select>
+        <label class="escondida" id="rotulo-escondida" hidden><input type="checkbox" id="escondida"> 🔒 Escondida</label>
+      </div>
+      <div class="linha">
+        <input id="texto" type="text" maxlength="500" placeholder="Mensagem ou /r 1d20+5 # Ataque" autocomplete="off">
+        <button id="enviar">➤</button>
+      </div>
+      <small id="dica"></small>
+    </div>
+  </div>
+
+  <div id="aba-mesa" class="aba">
+    <section id="painel-mestre" hidden>
+      <h2>Mestre</h2>
+      <label class="botao sec" for="arquivo">🖼️ Importar mapa</label>
+      <input id="arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      <div class="mudo" style="margin-top:6px">PNG, JPG, WEBP ou GIF, até 12 MB.</div>
+      <div class="linha"><input id="grade" type="number" min="10" max="400" placeholder="Grade (px)"><button id="salvar-grade" class="sec">Grade</button></div>
+      <div class="linha"><input id="npc-nome" type="text" maxlength="40" placeholder="Nome do NPC / monstro"><button id="add-npc" class="sec">+ NPC</button></div>
+      <div class="linha"><button id="limpar-chat" class="sec">🧹 Limpar o chat</button></div>
+    </section>
+    <section>
+      <h2>Personagens</h2>
+      <div id="lista"></div>
+    </section>
+  </div>
+</aside>
+<script>
+const ID = location.pathname.split('/').pop();
+const api = (p) => `/api/m/${ID}/${p}`;
+const $ = (s) => document.getElementById(s);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+const cv = $('c'), ctx = cv.getContext('2d');
+let estado = null, imagem = null, versaoImagem = -1;
+let cam = { x: 0, y: 0, z: 1 }, ajustou = false;
+let selecionada = null, arrasto = null;
+let chat = [], ultimoChat = 0, novas = 0;
+const avatares = new Map();
+const CORES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
+
+function mostrarErro(msg) {
+  const e = $('erro'); e.textContent = msg; e.style.display = 'block';
+  clearTimeout(mostrarErro.t); mostrarErro.t = setTimeout(() => (e.style.display = 'none'), 5000);
+}
+async function post(p, corpo, opcoes = {}) {
+  const r = await fetch(api(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo === undefined ? undefined : JSON.stringify(corpo), ...opcoes });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { mostrarErro(j.erro || 'Não deu certo.'); throw new Error(j.erro); }
+  return j;
+}
+async function pegar(p) {
+  const r = await fetch(api(p));
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { mostrarErro(j.erro || 'Não consegui carregar.'); throw new Error(j.erro); }
+  return j;
+}
+
+// ---------- Mapa ----------
+
+async function carregar() {
+  const novo = await pegar('estado');
+  // Quem está arrastando não perde a peça por causa de um aviso de outro jogador.
+  if (arrasto && arrasto.peca) { const p = novo.pecas.find((q) => q.id === arrasto.peca.id); if (p) { p.x = arrasto.peca.x; p.y = arrasto.peca.y; arrasto.peca = p; } }
+  const primeira = !estado;
+  estado = novo;
+  if (versaoImagem !== estado.mapa.versao) {
+    versaoImagem = estado.mapa.versao; imagem = null;
+    if (estado.mapa.temImagem) { const i = new Image(); i.onload = () => { imagem = i; desenhar(); }; i.src = api('imagem') + '?v=' + versaoImagem; }
+    ajustou = false;
+  }
+  if (!ajustou) ajustar();
+  if (primeira) montarBarra();
+  painel(); desenhar();
+}
+
+function dimensionar() {
+  const dpr = devicePixelRatio || 1, w = cv.clientWidth * dpr, h = cv.clientHeight * dpr;
+  if (cv.width === w && cv.height === h) return false;
+  cv.width = w; cv.height = h; return true;
+}
+
+function ajustar() {
+  dimensionar();
+  const { largura, altura } = estado.mapa;
+  const z = Math.min(cv.width / largura, cv.height / altura) * 0.95;
+  cam = { z, x: (cv.width - largura * z) / 2, y: (cv.height - altura * z) / 2 };
+  ajustou = true;
+}
+
+function painel() {
+  $('titulo').textContent = '🐉 ' + estado.campanha.nome;
+  $('sub').textContent = (estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D 3.5') + ' · mestre ' + estado.campanha.mestre;
+  $('eu-nome').textContent = estado.voce.nome + (estado.voce.mestre ? ' (mestre)' : '');
+  $('eu-avatar').hidden = !estado.voce.avatar;
+  if (estado.voce.avatar) $('eu-avatar').src = estado.voce.avatar;
+  $('painel-mestre').hidden = !estado.voce.mestre;
+  $('rotulo-escondida').hidden = !estado.voce.mestre;
+  if (estado.voce.mestre && document.activeElement !== $('grade')) $('grade').value = estado.mapa.grade;
+  const lista = $('lista'); lista.textContent = '';
+  for (const p of estado.pecas) {
+    const d = el('div', 'item' + (p.id === selecionada ? ' sel' : ''));
+    const im = el('img'); im.alt = ''; if (p.avatar) im.src = p.avatar; else im.style.visibility = 'hidden';
+    const t = el('div');
+    t.append(el('div', 'nome', p.nome + (p.meu ? ' (você)' : '')), el('small', '', p.npc ? 'NPC do mestre' : p.jogador));
+    d.append(im, t);
+    d.onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
+    lista.append(d);
+  }
+  if (!estado.pecas.length) lista.append(el('span', 'mudo', 'Nenhum personagem na campanha ainda.'));
+  fichaCard();
+}
+
+const NOMES = { forca: 'Força', destreza: 'Destreza', constituicao: 'Constituição', inteligencia: 'Inteligência', sabedoria: 'Sabedoria', carisma: 'Carisma',
+  agilidade: 'Agilidade', acuidade: 'Acuidade', instinto: 'Instinto', presenca: 'Presença', conhecimento: 'Conhecimento',
+  fort: 'Fortitude', ref: 'Reflexos', von: 'Vontade', bba: 'Ataque base', ca: 'CA', evasao: 'Evasão', pv: 'PV marcados', pv_atual: 'PV', pv_max: 'PV máx.',
+  estresse: 'Estresse', estresse_max: 'Estresse máx.', esperanca: 'Esperança', armadura: 'Armadura usada', armadura_max: 'Armadura', limiar_maior: 'Limiar Maior',
+  limiar_grave: 'Limiar Grave', proficiencia: 'Proficiência', ini_extra: 'Iniciativa extra', pericias: 'Perícias', experiencias: 'Experiências', nivel: 'Nível', classe: 'Classe',
+  raca: 'Raça', ancestralidade: 'Ancestralidade', comunidade: 'Comunidade' };
+const TRACOS_DH = ['agilidade', 'forca', 'acuidade', 'instinto', 'presenca', 'conhecimento'];
+const ATRIBUTOS_DND = ['forca', 'destreza', 'constituicao', 'inteligencia', 'sabedoria', 'carisma'];
+const sinal = (n) => (n >= 0 ? '+' + n : String(n));
+
+function fichaCard() {
+  const p = estado.pecas.find((q) => q.id === selecionada);
+  $('ficha-card').classList.toggle('aberta', !!p);
+  if (!p) return;
+  $('ficha-titulo').textContent = p.nome + (p.jogador ? ' · ' + p.jogador : '');
+  const tracos = $('tracos'); tracos.textContent = '';
+  const f = p.ficha || {};
+  // Botões que rolam direto no chat com o valor da ficha (só aparecem para o dono e o mestre, que veem a ficha toda).
+  const botao = (rotulo, valor, comando) => {
+    const b = el('button'); b.append(el('span', '', '🎲 ' + rotulo), el('b', '', sinal(valor)));
+    b.onclick = () => enviar(comando); tracos.append(b);
+  };
+  if (estado.campanha.sistema === 'dh') {
+    for (const k of TRACOS_DH) if (typeof f[k] === 'number') botao(NOMES[k], f[k], dualidade(f[k], NOMES[k]));
+  } else {
+    for (const k of ATRIBUTOS_DND) if (typeof f[k] === 'number') { const m = Math.floor((f[k] - 10) / 2); botao(NOMES[k] + ' ' + f[k], m, d20(m, NOMES[k])); }
+    for (const k of ['fort', 'ref', 'von', 'bba']) if (typeof f[k] === 'number') botao(NOMES[k], f[k], d20(f[k], NOMES[k]));
+  }
+  const dl = $('ficha'); dl.textContent = '';
+  for (const [k, v] of Object.entries(f)) {
+    if (v === null || v === '' || k === 'nome' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
+    dl.append(el('dt', '', NOMES[k] || k.replaceAll('_', ' ')), el('dd', '', String(v)));
+  }
+  if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? 'NPC do mestre.' : 'Sem ficha.'));
+  $('remover-npc').hidden = !(p.npc && estado.voce.mestre);
+}
+$('fechar-ficha').onclick = () => { selecionada = null; painel(); desenhar(); };
+
+function centralizar(p) { cam.x = cv.width / 2 - p.x * cam.z; cam.y = cv.height / 2 - p.y * cam.z; }
+function corDe(p) { return CORES[p.id % CORES.length]; }
+function avatarDe(url) {
+  if (!url) return null;
+  if (!avatares.has(url)) { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = desenhar; i.src = url; avatares.set(url, i); }
+  const i = avatares.get(url); return i.complete && i.naturalWidth ? i : null;
+}
+
+function desenhar() {
+  if (dimensionar() && estado && !ajustou) ajustar();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#150c1f'; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!estado) return;
+  const { largura, altura, grade } = estado.mapa;
+  ctx.setTransform(cam.z, 0, 0, cam.z, cam.x, cam.y);
+  if (imagem) ctx.drawImage(imagem, 0, 0, largura, altura);
+  else { ctx.fillStyle = '#2a1a3c'; ctx.fillRect(0, 0, largura, altura); }
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
+  for (let x = 0; x <= largura; x += grade) { ctx.moveTo(x, 0); ctx.lineTo(x, altura); }
+  for (let y = 0; y <= altura; y += grade) { ctx.moveTo(0, y); ctx.lineTo(largura, y); }
+  ctx.stroke(); ctx.strokeStyle = '#b99be0'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
+  const r = grade * 0.42;
+  for (const p of estado.pecas) {
+    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = corDe(p); ctx.fill();
+    const av = avatarDe(p.avatar);
+    if (av) { ctx.clip(); ctx.drawImage(av, p.x - r, p.y - r, r * 2, r * 2); }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.lineWidth = (p.id === selecionada ? 4 : 2) / cam.z; ctx.strokeStyle = p.id === selecionada ? '#f1c40f' : p.meu ? '#fff' : '#000a'; ctx.stroke();
+    ctx.font = `bold ${Math.max(12, grade * 0.28)}px system-ui`; ctx.textAlign = 'center';
+    ctx.lineWidth = 3 / cam.z; ctx.strokeStyle = '#000'; ctx.strokeText(p.nome, p.x, p.y + r + grade * 0.32);
+    ctx.fillStyle = '#fff'; ctx.fillText(p.nome, p.x, p.y + r + grade * 0.32);
+  }
+}
+
+const mundo = (e) => { const b = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1; return { x: ((e.clientX - b.left) * dpr - cam.x) / cam.z, y: ((e.clientY - b.top) * dpr - cam.y) / cam.z }; };
+function pecaEm(pt) {
+  const r = estado.mapa.grade * 0.42;
+  return [...estado.pecas].reverse().find((p) => Math.hypot(p.x - pt.x, p.y - pt.y) <= r);
+}
+
+let ultimoEnvio = 0;
+function enviarMover(p, forcar) {
+  const agora = Date.now();
+  if (!forcar && agora - ultimoEnvio < 90) return;
+  ultimoEnvio = agora;
+  post('mover', { peca: p.id, x: p.x, y: p.y }).catch(() => {});
+}
+
+cv.addEventListener('pointerdown', (e) => {
+  if (!estado) return; cv.setPointerCapture(e.pointerId);
+  const pt = mundo(e), p = pecaEm(pt);
+  if (p) {
+    selecionada = p.id; painel();
+    if (p.podeMover) arrasto = { peca: p, dx: p.x - pt.x, dy: p.y - pt.y };
+  } else arrasto = { mapa: true, sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y };
+  cv.classList.add('arrastando'); desenhar();
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!arrasto) return;
+  if (arrasto.mapa) { const dpr = devicePixelRatio || 1; cam.x = arrasto.cx + (e.clientX - arrasto.sx) * dpr; cam.y = arrasto.cy + (e.clientY - arrasto.sy) * dpr; }
+  else { const pt = mundo(e); arrasto.peca.x = Math.min(estado.mapa.largura, Math.max(0, pt.x + arrasto.dx)); arrasto.peca.y = Math.min(estado.mapa.altura, Math.max(0, pt.y + arrasto.dy)); enviarMover(arrasto.peca, false); }
+  desenhar();
+});
+function soltar() {
+  if (arrasto && arrasto.peca) {
+    const g = estado.mapa.grade, p = arrasto.peca; // encaixa no centro da casa
+    p.x = Math.min(estado.mapa.largura, (Math.floor(p.x / g) + 0.5) * g); p.y = Math.min(estado.mapa.altura, (Math.floor(p.y / g) + 0.5) * g);
+    enviarMover(p, true);
+  }
+  arrasto = null; cv.classList.remove('arrastando'); desenhar();
+}
+cv.addEventListener('pointerup', soltar); cv.addEventListener('pointercancel', soltar);
+cv.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const pt = mundo(e), f = e.deltaY < 0 ? 1.12 : 1 / 1.12, dpr = devicePixelRatio || 1, b = cv.getBoundingClientRect();
+  cam.z = Math.min(6, Math.max(0.05, cam.z * f));
+  cam.x = (e.clientX - b.left) * dpr - pt.x * cam.z; cam.y = (e.clientY - b.top) * dpr - pt.y * cam.z; desenhar();
+}, { passive: false });
+addEventListener('resize', desenhar);
+
+$('arquivo').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const url = URL.createObjectURL(f), i = new Image();
+  i.onload = async () => {
+    try { await post(`mapa?l=${i.naturalWidth}&a=${i.naturalHeight}`, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: f }); }
+    catch {} finally { URL.revokeObjectURL(url); }
+  };
+  i.onerror = () => mostrarErro('Não consegui ler essa imagem.'); i.src = url;
+};
+$('salvar-grade').onclick = () => post('grade', { grade: Number($('grade').value) }).catch(() => {});
+$('add-npc').onclick = () => { post('npc', { nome: $('npc-nome').value }).then(() => ($('npc-nome').value = '')).catch(() => {}); };
+$('remover-npc').onclick = () => { if (selecionada) post('npc/remover', { peca: selecionada }).then(() => { selecionada = null; }).catch(() => {}); };
+$('limpar-chat').onclick = () => { if (confirmarLimpeza()) post('chat/limpar', {}).catch(() => {}); };
+// Sem diálogo do navegador: o primeiro clique arma, o segundo (em até 4 s) confirma.
+function confirmarLimpeza() {
+  const b = $('limpar-chat');
+  if (b.dataset.armado) { delete b.dataset.armado; b.textContent = '🧹 Limpar o chat'; return true; }
+  b.dataset.armado = '1'; b.textContent = 'Clique de novo para apagar tudo';
+  setTimeout(() => { delete b.dataset.armado; b.textContent = '🧹 Limpar o chat'; }, 4000);
+  return false;
+}
+
+// ---------- Abas ----------
+
+function abrirAba(qual) {
+  for (const a of ['chat', 'mesa']) { $('tab-' + a).classList.toggle('ativa', a === qual); $('aba-' + a).classList.toggle('ativa', a === qual); }
+  if (qual === 'chat') { novas = 0; contador(); rolarParaFim(); }
+}
+$('tab-chat').onclick = () => abrirAba('chat');
+$('tab-mesa').onclick = () => abrirAba('mesa');
+function contador() { $('novas').hidden = !novas; $('novas').textContent = novas; }
+
+// ---------- Chat e rolagens ----------
+
+const escondida = () => estado && estado.voce.mestre && $('escondida').checked;
+const vantagem = () => Number($('vantagem').value);
+const mod = () => Math.trunc(Number($('mod').value) || 0);
+const comMod = (m) => (m ? sinal(m) : '');
+function d20(m, rotulo) {
+  const v = vantagem(), dado = v > 0 ? '2d20kh1' : v < 0 ? '2d20kl1' : '1d20';
+  return `/r ${dado}${comMod(m)}` + (rotulo ? ` # ${rotulo}` : '');
+}
+function dualidade(m, rotulo) {
+  const v = vantagem();
+  return `/dh ${sinal(m)}` + (v > 0 ? ' vantagem' : v < 0 ? ' desvantagem' : '') + (rotulo ? ` # ${rotulo}` : '');
+}
+
+function montarBarra() {
+  const caixa = $('botoes-dado'); caixa.textContent = '';
+  if (estado.campanha.sistema === 'dh') {
+    const b = el('button', 'dh', '🌗 Dualidade'); b.title = 'd12 de Esperança + d12 de Medo + modificador';
+    b.onclick = () => enviar(dualidade(mod())); caixa.append(b);
+  }
+  for (const f of [4, 6, 8, 10, 12, 20, 100]) {
+    const b = el('button', '', 'd' + f);
+    b.onclick = () => enviar(f === 20 ? d20(mod()) : `/r 1d${f}${comMod(mod())}`);
+    caixa.append(b);
+  }
+  $('dica').textContent = estado.campanha.sistema === 'dh'
+    ? '/r 2d6+3 · /dh +2 vantagem · # dá nome à rolagem' + (estado.voce.mestre ? ' · /gr e /gdh rolam escondido' : '')
+    : '/r 1d20+5 · /r 4d6kh3 · # dá nome à rolagem' + (estado.voce.mestre ? ' · /gr rola escondido' : '');
+}
+
+/** Envia texto ao chat. Com "Escondida" marcada, o mestre transforma /r em /gr e /dh em /gdh. */
+async function enviar(texto) {
+  let t = texto.trim(); if (!t) return;
+  if (escondida()) t = t.replace(/^\/(r|roll|rolar)(\s|$)/i, '/gr$2').replace(/^\/(dh|dualidade)(\s|$)/i, '/gdh$2');
+  await post('chat', { texto: t });
+}
+$('enviar').onclick = () => { const i = $('texto'); enviar(i.value).then(() => (i.value = '')).catch(() => {}); };
+$('texto').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('enviar').onclick(); } });
+
+const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const pertoDoFim = () => { const m = $('mensagens'); return m.scrollHeight - m.scrollTop - m.clientHeight < 80; };
+const rolarParaFim = () => { const m = $('mensagens'); m.scrollTop = m.scrollHeight; };
+
+function desenharRolagem(r, rotulo) {
+  const caixa = el('div', 'rolagem');
+  if (rotulo) caixa.append(el('div', 'rotulo', rotulo));
+  const dados = el('div', 'dados');
+  if (r.tipo === 'dados') {
+    caixa.append(el('div', 'expr', r.expressao));
+    for (const p of r.pedacos) {
+      if (p.t === 'op') dados.append(el('span', 'op', p.v));
+      else if (p.t === 'fixo') dados.append(el('span', 'dado', String(p.v)));
+      else dados.append(el('span', 'dado' + (!p.mantido ? ' fora' : p.v === p.faces ? ' max' : p.v === 1 ? ' um' : ''), String(p.v)));
+    }
+  } else {
+    caixa.append(el('div', 'expr', 'Dualidade ' + sinal(r.modificador) + (r.vantagem > 0 ? ' com vantagem' : r.vantagem < 0 ? ' com desvantagem' : '')));
+    const e = el('span', 'dado esperanca', String(r.esperanca)); e.title = 'Esperança';
+    const m = el('span', 'dado medo', String(r.medo)); m.title = 'Medo';
+    dados.append(e, el('span', 'op', '+'), m);
+    if (r.d6) { dados.append(el('span', 'op', r.vantagem > 0 ? '+' : '-')); const d = el('span', 'dado', String(r.d6)); d.title = 'd6'; dados.append(d); }
+    if (r.modificador) dados.append(el('span', 'op', r.modificador > 0 ? '+' : '-'), el('span', 'dado', String(Math.abs(r.modificador))));
+  }
+  dados.append(el('span', 'op', '='));
+  const linha = el('div'); linha.append(el('span', 'total', String(r.total)));
+  if (r.tipo === 'dualidade') {
+    const txt = { critico: '✨ Sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[r.resultado];
+    linha.append(el('span', 'resultado ' + r.resultado, txt));
+  }
+  caixa.append(dados, linha);
+  return caixa;
+}
+
+function desenharChat() {
+  const caixa = $('mensagens'), descer = pertoDoFim();
+  caixa.textContent = '';
+  if (!chat.length) caixa.append(el('div', 'mudo', 'Nada por aqui ainda. Mande uma mensagem ou role um dado.'));
+  for (const m of chat) {
+    const d = el('div', 'msg' + (m.secreta ? ' secreta' : ''));
+    const topo = el('div', 'topo'); topo.append(el('span', '', m.autor), el('time', '', hora(m.em)));
+    d.append(topo);
+    if (m.tipo === 'msg') d.append(el('div', 'corpo', m.texto));
+    else if (m.resultado) d.append(desenharRolagem(m.resultado, m.texto));
+    if (m.secreta) {
+      d.append(el('span', 'selo', '🔒 Escondida: só você vê'));
+      const b = el('button', 'sec', '👁️ Mostrar para a mesa'); b.style.marginTop = '6px';
+      b.onclick = () => post('chat/revelar', { id: m.id }).catch(() => {});
+      d.append(b);
+    } else if (m.revelada) d.append(el('span', 'selo revelada', '👁️ Revelada pelo mestre'));
+    caixa.append(d);
+  }
+  if (descer) rolarParaFim();
+}
+
+async function carregarChat() {
+  const novo = await pegar('chat');
+  const ultimo = novo.length ? novo[novo.length - 1].id : 0;
+  if (ultimoChat && ultimo > ultimoChat && !$('aba-chat').classList.contains('ativa')) { novas += novo.filter((m) => m.id > ultimoChat).length; contador(); }
+  ultimoChat = ultimo; chat = novo; desenharChat();
+}
+
+function conectar() {
+  const es = new EventSource(api('eventos'));
+  es.onmessage = (e) => { (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {}); };
+  es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };
+}
+Promise.all([carregar(), carregarChat()]).then(() => { rolarParaFim(); conectar(); }).catch(() => {});
+</script>
+</body>
+</html>

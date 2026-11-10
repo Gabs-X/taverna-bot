@@ -8,6 +8,8 @@ import { botaoMinerador, minerador } from './recursos/minerador.ts';
 import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, selecaoFormulario } from './recursos/formulario.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
+import { campanha } from './recursos/campanha.ts';
+import { iniciarMapa } from './recursos/mapa.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { comandosCampeoes, vitimas } from './recursos/campeoes.ts';
 import { botaoCargo } from './recursos/cargos.ts';
@@ -53,7 +55,7 @@ if (!token) {
 }
 
 const COMANDOS: Comando[] = [
-  setup, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao,
+  setup, jam, call, ficha, rolarComando, teste, iniciativa, dh, sessao, campanha,
   lfg, times, sortear, enquete, lembrete, aniversario, moeda, bola8, cafe, gotica, avatar, servidor, limpar, castigo, ajuda,
   daily, trabalhar, carteiraCmd, pix, rank, top, loja, vitimas, quiz, grupo, logs, staff, permissoes, sugestao, reiniciar, cassino, conquistas, palavra, gerar, citacao, resumo, elo, gratis, versao, tela, status, quemdisse, desafiar, assaltar, apostas, minerador, drg, ...comandosCampeoes,
 ];
@@ -110,6 +112,7 @@ client.once(Events.ClientReady, async (c) => {
   iniciarResumo(c);
   iniciarJogosGratis(c);
   iniciarTelas(c);
+  iniciarMapa(c);
   iniciarManutencao(c);
   iniciarVigiaBardos(c);
   anunciarVersao(c).catch((e) => console.error('[novidades]', e));
