@@ -360,6 +360,7 @@ async function carregar() {
   if (!ajustou) ajustar();
   if (primeira) montarBarra();
   painel(); desenhar();
+  if (chat.length) desenharChat(); // a foto de um NPC pode ter mudado
 }
 
 function dimensionar() {
@@ -847,7 +848,10 @@ function desenharChat() {
   for (const m of chat) {
     const minha = estado && m.userId === estado.voce.id;
     const d = el('div', 'msg' + (minha ? ' minha' : ''));
-    const av = el('div', 'avatar'); pintarAvatar(av, m.autor, minha ? estado.voce.avatar : null);
+    // Quando o mestre fala por um NPC, aparece a foto do NPC no lugar da dele.
+    const npc = m.pecaId && estado ? estado.pecas.find((p) => p.id === m.pecaId) : null;
+    const av = el('div', 'avatar');
+    if (npc) pintarAvatar(av, npc.nome, npc.avatar, corDe(npc)); else pintarAvatar(av, m.autor, minha ? estado.voce.avatar : null);
     const c = el('div', 'conteudo');
     const topo = el('div', 'topo'); topo.append(el('b', '', m.autor), el('time', '', hora(m.em)));
     c.append(topo);

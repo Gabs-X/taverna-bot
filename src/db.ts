@@ -473,6 +473,10 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE mapa_pecas ADD COLUMN tamanho REAL NOT NULL DEFAULT 1;
     `);
   },
+  // 17: de qual peça (NPC) saiu a linha do chat, para mostrar a foto dele no lugar da do mestre.
+  () => {
+    db.exec('ALTER TABLE mapa_chat ADD COLUMN peca_id INTEGER');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

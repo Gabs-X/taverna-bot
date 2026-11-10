@@ -163,7 +163,7 @@ export function textoParaDiscord(autor: string, tipo: 'msg' | 'dados' | 'dualida
   return `🌗 **${nome}** rolou dualidade${vantagem}${motivo}: Esperança [${resultado.esperanca}] · Medo [${resultado.medo}] = **${resultado.total}** ${sorte}`;
 }
 
-export type LinhaChat = { id: number; user_id: string; autor: string; tipo: 'msg' | 'dados' | 'dualidade'; texto: string; resultado: string | null; secreta: number; revelada: number; criada_em: number };
+export type LinhaChat = { id: number; user_id: string; autor: string; tipo: 'msg' | 'dados' | 'dualidade'; texto: string; resultado: string | null; secreta: number; revelada: number; criada_em: number; peca_id?: number | null };
 
 /** O que cada um recebe do histórico: rolagem escondida só chega ao mestre, nem pelo histórico os jogadores a veem. */
 export function chatVisivel(linhas: LinhaChat[], souMestre: boolean) {
@@ -179,6 +179,7 @@ export function chatVisivel(linhas: LinhaChat[], souMestre: boolean) {
       secreta: !!l.secreta,
       revelada: !!l.revelada,
       em: l.criada_em,
+      pecaId: l.peca_id ?? null,
     }));
 }
 

@@ -175,8 +175,8 @@ async function espelharNoDiscord(c: Campanha, conteudo: string) {
 }
 
 /** Grava uma linha no chat da mesa, avisa as telas abertas e (se não for escondida) repete no canal do Discord. */
-function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat['tipo'], texto: string, resultado: ResultadoChat | null, secreta: boolean, paraDiscord = true) {
-  db.prepare('INSERT INTO mapa_chat (campanha_id, user_id, autor, tipo, texto, resultado, secreta, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat['tipo'], texto: string, resultado: ResultadoChat | null, secreta: boolean, paraDiscord = true, pecaId: number | null = null) {
+  db.prepare('INSERT INTO mapa_chat (campanha_id, user_id, autor, tipo, texto, resultado, secreta, criada_em, peca_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
     c.id,
     userId,
     autor,
@@ -185,6 +185,7 @@ function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat[
     resultado ? JSON.stringify(resultado) : null,
     secreta ? 1 : 0,
     Date.now(),
+    pecaId,
   );
   // Guarda só as últimas mensagens de cada mesa.
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ? AND id <= (SELECT id FROM mapa_chat WHERE campanha_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)').run(c.id, c.id, HISTORICO * 2);
@@ -357,13 +358,15 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const txt = entrada.tipo === 'msg' ? entrada.texto : entrada.rotulo;
     // O mestre pode falar e rolar pelos NPCs dele: o chat mostra o nome do NPC.
     let autor = await autorDe(c, userId);
+    let pecaId: number | null = null;
     if (b.como !== undefined && b.como !== null) {
       if (!souMestre) return json(res, 403, { erro: 'Só o mestre fala por um NPC.' });
       const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.como), c.id) as Peca | undefined;
       if (!npc) return json(res, 404, { erro: 'Esse NPC não está mais no mapa.' });
       autor = `🎭 ${npc.nome} (NPC)`;
+      pecaId = npc.id;
     }
-    gravarChat(c, userId, autor, entrada.tipo, txt, resultado, secreta);
+    gravarChat(c, userId, autor, entrada.tipo, txt, resultado, secreta, true, pecaId);
     return json(res, 200, { ok: true });
   }
 
