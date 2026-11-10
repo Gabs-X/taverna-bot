@@ -477,6 +477,13 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE mapa_chat ADD COLUMN peca_id INTEGER');
   },
+  // 18: arquivo permanente de resumos e canal de texto temporário criado pelo bot.
+  () => {
+    db.exec(`
+      ALTER TABLE campanhas ADD COLUMN canal_resumos_id TEXT;
+      ALTER TABLE campanhas ADD COLUMN canal_sessao_id TEXT;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

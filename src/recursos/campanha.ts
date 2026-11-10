@@ -18,6 +18,7 @@ import {
 } from 'discord.js';
 import { db } from '../db.ts';
 import { CANAIS } from '../config.ts';
+import { encerrarSalas } from '../lib/campanhaSessao.ts';
 import { DURACAO_CONVITE, registroDaSessao, type LinhaChat } from '../lib/mapa.ts';
 import { canalTexto, ehMestre } from '../lib/servidor.ts';
 import { duracaoTexto } from '../lib/tela.ts';
@@ -35,6 +36,7 @@ export const SISTEMAS: Record<Sistema, { nome: string; tabela: string }> = {
   dnd: { nome: 'D&D 3.5', tabela: 'fichas' },
 };
 const COR = 0x8e44ad;
+const finalizando = new Set<number>();
 
 export type Campanha = {
   id: number;
@@ -45,6 +47,8 @@ export type Campanha = {
   criada_em: number;
   canal_id: string | null;
   canal_voz_id: string | null;
+  canal_resumos_id: string | null;
+  canal_sessao_id: string | null;
   sessao_inicio: number | null;
 };
 type FichaResumo = { nome: string; classe: string; nivel: number };
@@ -80,6 +84,19 @@ function embedCampanha(c: Campanha, g: string) {
 const nomeDeCanal = (t: string) =>
   t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'campanha';
 
+// O Discord responde "Unknown Channel" (10003) para canal apagado à mão: vira null. Outros erros (rede, permissão) sobem.
+const CANAL_INEXISTENTE = 10003;
+const semCanal = (erro: unknown) => (erro as { code?: unknown })?.code === CANAL_INEXISTENTE;
+async function buscarCanal(guild: Guild, id: string | null) {
+  if (!id) return null;
+  try {
+    return await guild.channels.fetch(id);
+  } catch (erro) {
+    if (semCanal(erro)) return null;
+    throw erro;
+  }
+}
+
 /**
  * Garante o canal de texto e a call da campanha, só para o mestre e os jogadores (o resto do servidor não vê).
  * Se já existem (de uma sessão anterior), só confere quem tem acesso. O canal de texto vira o canal ligado ao chat do mapa.
@@ -113,6 +130,7 @@ async function prepararCanais(guild: Guild, c: Campanha, jogadores: string[]) {
       reason: `/campanha iniciar ${c.nome}`,
     });
     novos.push('texto');
+    db.prepare('UPDATE campanhas SET canal_sessao_id = ? WHERE id = ?').run(texto.id, c.id);
   } else {
     for (const id of gente) await texto.permissionOverwrites.edit(id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(() => {});
   }
@@ -133,6 +151,35 @@ async function prepararCanais(guild: Guild, c: Campanha, jogadores: string[]) {
 
   db.prepare('UPDATE campanhas SET canal_id = ?, canal_voz_id = ? WHERE id = ?').run(texto.id, voz.id, c.id);
   return { texto, voz, novos };
+}
+
+async function prepararResumos(guild: Guild, c: Campanha) {
+  const { ViewChannel, SendMessages, ReadMessageHistory, AttachFiles, EmbedLinks, ManageChannels } = PermissionFlagsBits;
+  const eu = guild.members.me;
+  if (!eu) throw new Error('bot fora do servidor');
+  const gente = (await Promise.all([...new Set([c.mestre_id, ...personagens(c.id)])]
+    .map((id) => guild.members.fetch(id).then(() => id).catch(() => null))))
+    .filter((id): id is string => !!id);
+  const regras: OverwriteResolvable[] = [
+    { id: guild.roles.everyone.id, deny: [ViewChannel] },
+    { id: eu.id, allow: [ViewChannel, SendMessages, ReadMessageHistory, AttachFiles, EmbedLinks, ManageChannels] },
+    ...gente.map((id) => ({ id, allow: [ViewChannel, ReadMessageHistory] })),
+  ];
+  const existente = await buscarCanal(guild, c.canal_resumos_id);
+  if (existente?.type === ChannelType.GuildText) {
+    await existente.permissionOverwrites.set(regras);
+    return existente;
+  }
+  const canal = await guild.channels.create({
+    name: `📜・resumos-${nomeDeCanal(c.nome)}`,
+    type: ChannelType.GuildText,
+    parent: canalTexto(guild, c.sistema === 'dh' ? CANAIS.mesaDhTexto : CANAIS.mesaRpgTexto)?.parentId ?? undefined,
+    topic: `Resumos e registros das sessões de ${c.nome}. Este canal é preservado ao finalizar a sessão.`,
+    permissionOverwrites: regras,
+    reason: `/campanha finalizar ${c.nome}: arquivo de sessões`,
+  });
+  db.prepare('UPDATE campanhas SET canal_resumos_id = ? WHERE id = ?').run(canal.id, c.id);
+  return canal;
 }
 
 export const campanha: Comando = {
@@ -184,7 +231,7 @@ export const campanha: Comando = {
     .addSubcommand((s) =>
       s
         .setName('finalizar')
-        .setDescription('Encerra a sessão: posta o resumo e o registro do chat da sessão no canal da campanha (só o mestre)')
+        .setDescription('Envia o resumo em outro canal e apaga o canal de texto e a call da sessão (só o mestre)')
         .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true)),
     )
     .addSubcommand((s) =>
@@ -277,6 +324,9 @@ export const campanha: Comando = {
     }
 
     if (!podeMexer(i, c)) return i.reply(SEM_PERMISSAO);
+    if (finalizando.has(c.id)) {
+      return i.reply({ content: 'Esta sessão está sendo finalizada. Aguarde o encerramento.', flags: MessageFlags.Ephemeral });
+    }
 
     if (sub === 'iniciar') {
       if (!mapaPublico()) {
@@ -288,7 +338,7 @@ export const campanha: Comando = {
       const jogadores = personagens(c.id);
       await i.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Canal de texto e call só da campanha (criados na primeira vez, reaproveitados nas próximas).
+      // Canal de texto e call da sessão; a próxima sessão recria as salas apagadas.
       let salas: Awaited<ReturnType<typeof prepararCanais>> | undefined;
       try {
         salas = await prepararCanais(i.guild!, c, jogadores);
@@ -374,46 +424,70 @@ export const campanha: Comando = {
       if (!c.sessao_inicio) {
         return i.reply({ content: `**${c.nome}** não tem sessão em andamento. Use \`/campanha iniciar\` para abrir uma.`, flags: MessageFlags.Ephemeral });
       }
-      await i.deferReply({ flags: MessageFlags.Ephemeral });
-      const fim = Date.now();
-      const linhas = db.prepare('SELECT * FROM mapa_chat WHERE campanha_id = ? AND criada_em >= ? ORDER BY id').all(c.id, c.sessao_inicio) as LinhaChat[];
-      const publicas = linhas.filter((l) => !l.secreta);
-      const mensagens = publicas.filter((l) => l.tipo === 'msg').length;
-      const rolagens = publicas.length - mensagens;
-      const texto = registroDaSessao(c.nome, c.sessao_inicio, fim, linhas);
+      finalizando.add(c.id);
+      let encerrada = false;
+      try {
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        const fim = Date.now();
+        const linhas = db.prepare('SELECT * FROM mapa_chat WHERE campanha_id = ? AND criada_em >= ? ORDER BY id').all(c.id, c.sessao_inicio) as LinhaChat[];
+        const publicas = linhas.filter((l) => !l.secreta);
+        const mensagens = publicas.filter((l) => l.tipo === 'msg').length;
+        const rolagens = publicas.length - mensagens;
+        const texto = registroDaSessao(c.nome, c.sessao_inicio, fim, linhas);
 
-      // O chat do mapa guarda só as últimas mensagens, então o registro da sessão fica salvo em arquivo.
-      const dia = new Date(c.sessao_inicio).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-      const arquivo = `${nomeDeCanal(c.nome)}-${dia}.txt`;
-      mkdirSync('dados/campanhas', { recursive: true });
-      writeFileSync(join('dados', 'campanhas', `${c.id}-${arquivo}`), texto);
-      db.prepare('UPDATE campanhas SET sessao_inicio = NULL WHERE id = ?').run(c.id);
+        // O chat do mapa guarda só as últimas mensagens, então o registro da sessão fica salvo em arquivo.
+        const dia = new Date(c.sessao_inicio).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+        const arquivo = `${nomeDeCanal(c.nome)}-${dia}-${c.sessao_inicio}.txt`;
+        mkdirSync('dados/campanhas', { recursive: true });
+        writeFileSync(join('dados', 'campanhas', `${c.id}-${arquivo}`), texto);
 
-      const resumo = new EmbedBuilder()
-        .setColor(COR)
-        .setTitle(`🏁 ${c.nome} · sessão encerrada`)
-        .setDescription(
-          `Mestre: <@${c.mestre_id}>\n` +
-            `⏱️ Duração: **${duracaoTexto(fim - c.sessao_inicio)}**\n` +
-            `💬 **${mensagens}** mensagens · 🎲 **${rolagens}** rolagens no mapa\n` +
-            'O registro do chat da sessão está no arquivo anexo. Até a próxima!',
-        )
-        .setFooter({ text: 'O mapa e os canais continuam aqui; /campanha iniciar abre a próxima sessão.' });
-      const canal = c.canal_id ? await i.client.channels.fetch(c.canal_id).catch(() => null) : null;
-      let postou = false;
-      if (canal?.isTextBased() && 'send' in canal) {
-        postou = await canal
-          .send({ embeds: [resumo], files: [new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: arquivo })], allowedMentions: { parse: [] } })
-          .then(() => true)
-          .catch(() => false);
+        const resumo = new EmbedBuilder()
+          .setColor(COR)
+          .setTitle(`🏁 ${c.nome} · sessão encerrada`)
+          .setDescription(
+            `Mestre: <@${c.mestre_id}>\n` +
+              `⏱️ Duração: **${duracaoTexto(fim - c.sessao_inicio)}**\n` +
+              `💬 **${mensagens}** mensagens · 🎲 **${rolagens}** rolagens no mapa\n` +
+              'O registro do chat da sessão está no arquivo anexo. Até a próxima!',
+          )
+          .setFooter({ text: 'Resumos preservados; /campanha iniciar cria as salas da próxima sessão. O mapa continua disponível.' });
+        const canal = await prepararResumos(i.guild!, c);
+        // Em sessões anteriores à migração, reconhece o canal pelo tópico criado pelo próprio bot.
+        const legado = await buscarCanal(i.guild!, c.canal_id);
+        const topico = `Campanha ${c.nome} (${SISTEMAS[c.sistema].nome}): o que se escreve aqui aparece no chat do mapa e vice-versa. /campanha mapa abre o mapa.`;
+        const textoId = c.canal_sessao_id ?? (legado?.type === ChannelType.GuildText && legado.topic === topico ? legado.id : null);
+        const ids = [...new Set([textoId, c.canal_voz_id].filter((id): id is string => !!id && id !== canal.id))];
+        const falhas = await encerrarSalas(
+          async () => {
+            await canal.send({ embeds: [resumo], files: [new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: arquivo })], allowedMentions: { parse: [] } });
+          },
+          () => {
+            db.prepare('UPDATE campanhas SET sessao_inicio = NULL WHERE id = ?').run(c.id);
+            encerrada = true;
+          },
+          ids.map((id) => ({ id, apagar: async () => {
+            // Sala que alguém já apagou à mão conta como apagada (o ID é limpo e não vira aviso toda sessão).
+            const sala = await buscarCanal(i.guild!, id);
+            if (sala) await sala.delete(`/campanha finalizar ${c.nome}`).catch((erro) => { if (!semCanal(erro)) throw erro; });
+            db.prepare(`UPDATE campanhas SET
+              canal_id = CASE WHEN canal_id = ? THEN NULL ELSE canal_id END,
+              canal_sessao_id = CASE WHEN canal_sessao_id = ? THEN NULL ELSE canal_sessao_id END,
+              canal_voz_id = CASE WHEN canal_voz_id = ? THEN NULL ELSE canal_voz_id END WHERE id = ?`).run(id, id, id, c.id);
+          } })),
+        );
+        return i.editReply({ content:
+          `🏁 Sessão de **${c.nome}** encerrada. Resumo e registro enviados para ${canal}.` +
+          (falhas.length ? `\n⚠️ Não consegui apagar estas salas: ${falhas.map((id) => `<#${id}>`).join(', ')}. Verifique a permissão **Gerenciar Canais**.`
+            : '\nOs canais temporários de texto e voz foram apagados. /campanha iniciar cria os da próxima sessão.'),
+        });
+      } catch (erro) {
+        console.error('[campanha] finalizar:', erro);
+        return i.editReply({ content: encerrada
+          ? 'A sessão foi encerrada e o resumo foi enviado, mas houve um erro ao informar o resultado. Confira o canal de resumos e as salas da campanha.'
+          : 'Não consegui concluir o envio do resumo e o encerramento. A sessão continua aberta e nenhuma sala foi apagada. Verifique as permissões do bot para gerenciar canais, enviar mensagens, inserir links e anexar arquivos; depois tente novamente. O registro também ficou salvo no servidor.' });
+      } finally {
+        finalizando.delete(c.id);
       }
-      return i.editReply({
-        content: postou
-          ? `🏁 Sessão de **${c.nome}** encerrada. O resumo e o registro do chat foram para ${canal}.`
-          : `🏁 Sessão de **${c.nome}** encerrada. Não consegui postar no canal da campanha; o registro ficou salvo no servidor do bot.`,
-        embeds: postou ? [] : [resumo],
-        files: postou ? [] : [new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: arquivo })],
-      });
     }
 
     if (sub === 'canal') {
