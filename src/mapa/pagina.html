@@ -147,6 +147,7 @@ let estado = null, imagem = null, versaoImagem = -1;
 let cam = { x: 0, y: 0, z: 1 }, ajustou = false;
 let selecionada = null, arrasto = null;
 let chat = [], ultimoChat = 0, novas = 0;
+let sigEstado = '', sigChat = ''; // para não redesenhar à toa quando nada mudou
 const avatares = new Map();
 const CORES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
 
@@ -158,6 +159,8 @@ async function post(p, corpo, opcoes = {}) {
   const r = await fetch(api(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo === undefined ? undefined : JSON.stringify(corpo), ...opcoes });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { mostrarErro(j.erro || 'Não deu certo.'); throw new Error(j.erro); }
+  // Não espera o aviso em tempo real (alguns túneis não entregam): puxa o que mudou na hora.
+  if (p !== 'mover') { carregar().catch(() => {}); carregarChat().catch(() => {}); }
   return j;
 }
 async function pegar(p) {
@@ -171,6 +174,9 @@ async function pegar(p) {
 
 async function carregar() {
   const novo = await pegar('estado');
+  const sig = JSON.stringify(novo);
+  if (estado && sig === sigEstado) return;
+  sigEstado = sig;
   // Quem está arrastando não perde a peça por causa de um aviso de outro jogador.
   if (arrasto && arrasto.peca) { const p = novo.pecas.find((q) => q.id === arrasto.peca.id); if (p) { p.x = arrasto.peca.x; p.y = arrasto.peca.y; arrasto.peca = p; } }
   const primeira = !estado;
@@ -469,6 +475,9 @@ function desenharChat() {
 
 async function carregarChat() {
   const novo = await pegar('chat');
+  const sig = JSON.stringify(novo);
+  if (sig === sigChat) return;
+  sigChat = sig;
   const ultimo = novo.length ? novo[novo.length - 1].id : 0;
   if (ultimoChat && ultimo > ultimoChat && !$('aba-chat').classList.contains('ativa')) { novas += novo.filter((m) => m.id > ultimoChat).length; contador(); }
   ultimoChat = ultimo; chat = novo; desenharChat();
@@ -478,6 +487,8 @@ function conectar() {
   const es = new EventSource(api('eventos'));
   es.onmessage = (e) => { (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {}); };
   es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };
+  // Plano B: o aviso em tempo real pode não chegar (túnel, rede da empresa). A cada 3 s confere o que mudou.
+  setInterval(() => { if (!document.hidden) { carregar().catch(() => {}); carregarChat().catch(() => {}); } }, 3000);
 }
 Promise.all([carregar(), carregarChat()]).then(() => { rolarParaFim(); conectar(); }).catch(() => {});
 </script>

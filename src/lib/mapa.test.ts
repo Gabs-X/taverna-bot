@@ -10,6 +10,7 @@ import {
   lerCookies,
   lerLink,
   lerSessao,
+  textoParaDiscord,
   limitar,
   posicaoInicial,
   rolarEntrada,
@@ -128,4 +129,16 @@ test('rolagem escondida só chega ao mestre; revelada chega a todos', () => {
   assert.equal(chatVisivel(linhas, true)[1].secreta, true);
   assert.equal(chatVisivel(linhas, false)[1].revelada, true);
   assert.equal(chatVisivel(linhas, false)[0].resultado?.tipo, 'dados');
+});
+
+test('texto que vai para o Discord: mensagem, dados e dualidade', () => {
+  assert.equal(textoParaDiscord('Aria (Gabs)', 'msg', 'Vou pela esquerda', null), '🗺️ **Aria (Gabs):** Vou pela esquerda');
+  assert.equal(textoParaDiscord('Aria', 'dados', 'ataque', { tipo: 'dados', expressao: '1d20+5', total: 17, pedacos: [] }), '🎲 **Aria** rolou `1d20+5` · ataque: **17**');
+  const dualidade = { tipo: 'dualidade' as const, vantagem: 1 as const, esperanca: 9, medo: 4, d6: 3, modificador: 2, total: 18, resultado: 'esperanca' as const };
+  assert.equal(
+    textoParaDiscord('Aria', 'dualidade', '', dualidade),
+    '🌗 **Aria** rolou dualidade (vantagem): Esperança [9] · Medo [4] = **18** com Esperança',
+  );
+  // Marcas de formatação no nome não quebram a mensagem.
+  assert.equal(textoParaDiscord('**Ar_ia**', 'msg', 'oi', null), '🗺️ **Aria:** oi');
 });

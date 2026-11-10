@@ -9,7 +9,7 @@ import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, sel
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
 import { campanha } from './recursos/campanha.ts';
-import { iniciarMapa } from './recursos/mapa.ts';
+import { aoMensagemDiscord, iniciarMapa } from './recursos/mapa.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { comandosCampeoes, vitimas } from './recursos/campeoes.ts';
 import { botaoCargo } from './recursos/cargos.ts';
@@ -164,6 +164,7 @@ client.on(Events.PresenceUpdate, (antes, depois) => aoMudarPresenca(antes, depoi
 client.on(Events.MessageReactionAdd, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageReactionRemove, (r) => aoReagir(r).catch((e) => console.error('[hall da fama]', e)));
 client.on(Events.MessageCreate, (m) => aoMensagem(m).catch((e) => console.error('[atividade]', e)));
+client.on(Events.MessageCreate, (m) => aoMensagemDiscord(m).catch((e) => console.error('[mapa]', e)));
 client.on(Events.GuildMemberAdd, (m) => aoEntrar(m).catch((e) => console.error('[boas-vindas]', e)));
 client.on(Events.GuildMemberUpdate, (antes, depois) => aoMudarMembro(antes, depois).catch((e) => console.error('[aniversário]', e)));
 client.on(Events.GuildMemberRemove, (m) => aoSair(m).catch((e) => console.error('[saída]', e)));

@@ -150,6 +150,17 @@ export function rolarEntrada(e: Exclude<Entrada, { tipo: 'msg' }>, rng?: Aleator
   return { tipo: 'dualidade', vantagem: e.vantagem, ...rolarDualidade(e.modificador, e.vantagem, rng) };
 }
 
+/** Texto que vai para o canal do Discord quando algo é dito no chat do mapa (rolagem escondida nunca chega aqui). */
+export function textoParaDiscord(autor: string, tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoChat | null) {
+  const nome = autor.replace(/[*_~`|\\>]/g, '');
+  if (tipo === 'msg' || !resultado) return `🗺️ **${nome}:** ${texto}`;
+  const motivo = texto ? ` · ${texto}` : '';
+  if (resultado.tipo === 'dados') return `🎲 **${nome}** rolou \`${resultado.expressao}\`${motivo}: **${resultado.total}**`;
+  const sorte = { critico: '✨ sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[resultado.resultado];
+  const vantagem = resultado.vantagem === 1 ? ' (vantagem)' : resultado.vantagem === -1 ? ' (desvantagem)' : '';
+  return `🌗 **${nome}** rolou dualidade${vantagem}${motivo}: Esperança [${resultado.esperanca}] · Medo [${resultado.medo}] = **${resultado.total}** ${sorte}`;
+}
+
 export type LinhaChat = { id: number; user_id: string; autor: string; tipo: 'msg' | 'dados' | 'dualidade'; texto: string; resultado: string | null; secreta: number; revelada: number; criada_em: number };
 
 /** O que cada um recebe do histórico: rolagem escondida só chega ao mestre, nem pelo histórico os jogadores a veem. */

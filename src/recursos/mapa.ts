@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { Client } from 'discord.js';
+import type { Client, Message } from 'discord.js';
 import { db } from '../db.ts';
 import {
   assinarLink,
@@ -13,11 +13,14 @@ import {
   lerCookies,
   lerLink,
   lerSessao,
+  LIMITE_TEXTO,
   limitar,
   posicaoInicial,
   rolarEntrada,
+  textoParaDiscord,
   tipoImagem,
   type LinhaChat,
+  type ResultadoChat,
 } from '../lib/mapa.ts';
 
 // Mapa da campanha, estilo Roll20: um site embutido no bot. O /campanha mapa entrega a cada um um link pessoal
@@ -32,7 +35,7 @@ const PASTA = 'dados/mapas';
 const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
-type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string };
+type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null };
 type Mapa = { campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number };
 type Peca = { id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number };
 
@@ -159,6 +162,41 @@ async function autorDe(c: Campanha, userId: string) {
   if (c.mestre_id === userId) return `🐉 ${nome} (mestre)`;
   const personagem = fichaDe(c, userId)?.nome;
   return personagem ? `${personagem} (${nome})` : nome;
+}
+
+/** Manda ao canal do Discord ligado à campanha (se houver) o que foi dito no chat do mapa. */
+async function espelharNoDiscord(c: Campanha, conteudo: string) {
+  if (!c.canal_id) return;
+  const canal = await discord?.channels.fetch(c.canal_id).catch(() => null);
+  if (!canal?.isTextBased() || !('send' in canal)) return;
+  await canal.send({ content: conteudo.slice(0, 1900), allowedMentions: { parse: [] } }).catch((e: Error) => console.error('[mapa] não consegui escrever no canal do Discord:', e.message));
+}
+
+/** Grava uma linha no chat da mesa, avisa as telas abertas e (se não for escondida) repete no canal do Discord. */
+function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat['tipo'], texto: string, resultado: ResultadoChat | null, secreta: boolean, paraDiscord = true) {
+  db.prepare('INSERT INTO mapa_chat (campanha_id, user_id, autor, tipo, texto, resultado, secreta, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    c.id,
+    userId,
+    autor,
+    tipo,
+    texto,
+    resultado ? JSON.stringify(resultado) : null,
+    secreta ? 1 : 0,
+    Date.now(),
+  );
+  // Guarda só as últimas mensagens de cada mesa.
+  db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ? AND id <= (SELECT id FROM mapa_chat WHERE campanha_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)').run(c.id, c.id, HISTORICO * 2);
+  avisar(c.id, 'chat', secreta);
+  if (paraDiscord && !secreta) void espelharNoDiscord(c, textoParaDiscord(autor, tipo, texto, resultado));
+}
+
+/** Mensagem escrita no canal do Discord ligado a uma campanha: aparece no chat do mapa (só de quem está na mesa). */
+export async function aoMensagemDiscord(m: Message) {
+  if (m.author.bot || !m.inGuild() || !m.content) return;
+  const c = db.prepare('SELECT * FROM campanhas WHERE guild_id = ? AND canal_id = ?').get(m.guildId, m.channelId) as Campanha | undefined;
+  if (!c || (c.mestre_id !== m.author.id && !idsJogadores(c.id).includes(m.author.id))) return;
+  const texto = m.cleanContent.trim().slice(0, LIMITE_TEXTO);
+  if (texto) gravarChat(c, m.author.id, await autorDe(c, m.author.id), 'msg', texto, null, false, false);
 }
 
 // ---------- Servidor HTTP ----------
@@ -299,25 +337,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const secreta = entrada.tipo !== 'msg' && entrada.secreta;
     if (secreta && !souMestre) return json(res, 403, { erro: 'Só o mestre rola escondido. Use /r para rolar para a mesa.' });
-    const resultado = entrada.tipo === 'msg' ? null : JSON.stringify(rolarEntrada(entrada));
+    const resultado = entrada.tipo === 'msg' ? null : rolarEntrada(entrada);
     const txt = entrada.tipo === 'msg' ? entrada.texto : entrada.rotulo;
-    db.prepare('INSERT INTO mapa_chat (campanha_id, user_id, autor, tipo, texto, resultado, secreta, criada_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      c.id,
-      userId,
-      await autorDe(c, userId),
-      entrada.tipo,
-      txt,
-      resultado,
-      secreta ? 1 : 0,
-      Date.now(),
-    );
-    // Guarda só as últimas mensagens de cada mesa.
-    db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ? AND id <= (SELECT id FROM mapa_chat WHERE campanha_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)').run(
-      c.id,
-      c.id,
-      HISTORICO * 2,
-    );
-    avisar(c.id, 'chat', secreta);
+    gravarChat(c, userId, await autorDe(c, userId), entrada.tipo, txt, resultado, secreta);
     return json(res, 200, { ok: true });
   }
 
@@ -329,6 +351,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const r = db.prepare('UPDATE mapa_chat SET secreta = 0, revelada = 1 WHERE id = ? AND campanha_id = ? AND secreta = 1').run(Number(b.id), c.id);
     if (!r.changes) return json(res, 404, { erro: 'Essa rolagem já está à mostra.' });
     avisar(c.id, 'chat');
+    const l = db.prepare('SELECT * FROM mapa_chat WHERE id = ?').get(Number(b.id)) as LinhaChat | undefined;
+    if (l) void espelharNoDiscord(c, textoParaDiscord(l.autor, l.tipo, l.texto, l.resultado ? (JSON.parse(l.resultado) as ResultadoChat) : null).replace(/^(\S+)/, '$1 👁️'));
     return json(res, 200, { ok: true });
   }
 

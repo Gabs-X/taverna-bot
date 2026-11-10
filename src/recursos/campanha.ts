@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
   EmbedBuilder,
   InteractionContextType,
   MessageFlags,
@@ -33,6 +34,7 @@ export type Campanha = {
   sistema: Sistema;
   mestre_id: string;
   criada_em: number;
+  canal_id: string | null;
 };
 type FichaResumo = { nome: string; classe: string; nivel: number };
 
@@ -101,6 +103,13 @@ export const campanha: Comando = {
         .setName('mapa')
         .setDescription('Abre o mapa da campanha: cada um move o seu personagem e rola no chat da mesa')
         .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true)),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('canal')
+        .setDescription('Liga o chat do mapa a um canal do Discord (o que um escreve aparece no outro). Sem canal, desliga')
+        .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true))
+        .addChannelOption((o) => o.setName('canal').setDescription('Canal de texto da mesa').addChannelTypes(ChannelType.GuildText)),
     )
     .addSubcommand((s) =>
       s
@@ -207,6 +216,29 @@ export const campanha: Comando = {
       db.prepare('DELETE FROM campanha_personagens WHERE campanha_id = ? AND user_id = ?').run(c.id, jogador.id);
       avisarMapa(c.id);
       return i.reply({ content: `🚪 ${jogador} saiu de **${c.nome}**.`, embeds: [embedCampanha(c, g)] });
+    }
+
+    if (sub === 'canal') {
+      const canal = i.options.getChannel('canal');
+      if (!canal) {
+        db.prepare('UPDATE campanhas SET canal_id = NULL WHERE id = ?').run(c.id);
+        return i.reply({ content: `🔌 O chat do mapa de **${c.nome}** não está mais ligado a nenhum canal.`, flags: MessageFlags.Ephemeral });
+      }
+      const outra = db.prepare('SELECT nome FROM campanhas WHERE guild_id = ? AND canal_id = ? AND id != ?').get(g, canal.id, c.id) as { nome: string } | undefined;
+      if (outra) return i.reply({ content: `${canal} já está ligado à campanha **${outra.nome}**. Use outro canal.`, flags: MessageFlags.Ephemeral });
+      const alvo = i.guild!.channels.cache.get(canal.id);
+      const eu = i.guild!.members.me;
+      if (!alvo?.isTextBased() || !eu || !alvo.permissionsFor(eu).has(['ViewChannel', 'SendMessages'])) {
+        return i.reply({ content: `Não consigo escrever em ${canal}. Dê ao bot as permissões de ver e enviar mensagens nesse canal.`, flags: MessageFlags.Ephemeral });
+      }
+      db.prepare('UPDATE campanhas SET canal_id = ? WHERE id = ?').run(canal.id, c.id);
+      return i.reply({
+        content:
+          `🔗 Chat do mapa de **${c.nome}** ligado a ${canal}.\n` +
+          '• O que o mestre e os jogadores escreverem no mapa (e as rolagens públicas) aparece lá.\n' +
+          '• O que eles escreverem lá aparece no chat do mapa.\n' +
+          '• Rolagens escondidas do mestre nunca vão para o Discord; ao revelar, vão.',
+      });
     }
 
     if (sub === 'mestre') {

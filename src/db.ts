@@ -453,6 +453,10 @@ const MIGRACOES: (() => void)[] = [
       CREATE INDEX IF NOT EXISTS mapa_chat_campanha ON mapa_chat (campanha_id, id);
     `);
   },
+  // 13: canal do Discord ligado ao chat do mapa (o que se escreve lá aparece no mapa e vice-versa).
+  () => {
+    db.exec('ALTER TABLE campanhas ADD COLUMN canal_id TEXT');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
