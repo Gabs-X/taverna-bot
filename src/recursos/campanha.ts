@@ -286,9 +286,6 @@ export const campanha: Comando = {
         });
       }
       const jogadores = personagens(c.id);
-      if (!jogadores.length) {
-        return i.reply({ content: `**${c.nome}** ainda não tem personagens. Use \`/campanha adicionar\` antes.`, flags: MessageFlags.Ephemeral });
-      }
       await i.deferReply({ flags: MessageFlags.Ephemeral });
 
       // Canal de texto e call só da campanha (criados na primeira vez, reaproveitados nas próximas).
@@ -336,7 +333,9 @@ export const campanha: Comando = {
       }
       return i.editReply({
         content:
-          `🗺️ Convites de **${c.nome}** enviados no privado: ${enviados.length}/${jogadores.length}.` +
+          (jogadores.length
+            ? `🗺️ Convites de **${c.nome}** enviados no privado: ${enviados.length}/${jogadores.length}.`
+            : `🗺️ Sessão de **${c.nome}** aberta, por enquanto só com você: ainda não há jogadores (use \`/campanha adicionar\`; quem tem ficha entra e o próximo \`/campanha iniciar\` manda o convite).`) +
           (falharam.length
             ? `\n⚠️ Não consegui falar no privado com ${falharam.map((id) => `<@${id}>`).join(', ')} (DMs fechadas). Peça para usarem \`/campanha mapa\`.`
             : '') +
