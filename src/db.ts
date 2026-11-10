@@ -461,6 +461,10 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN canal_voz_id TEXT');
   },
+  // 15: início da sessão em andamento (preenchido pelo /campanha iniciar, limpo pelo /campanha finalizar).
+  () => {
+    db.exec('ALTER TABLE campanhas ADD COLUMN sessao_inicio INTEGER');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

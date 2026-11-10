@@ -11,6 +11,7 @@ import {
   lerCookies,
   lerLink,
   lerSessao,
+  registroDaSessao,
   textoParaDiscord,
   limitar,
   posicaoInicial,
@@ -152,4 +153,32 @@ test('link de convite vale mais que o link comum, mas continua assinado', () => 
   assert.equal(lerLink('segredo', 1, convite, agora + DURACAO_LINK + 1), '123456789012345678');
   assert.equal(lerLink('segredo', 1, convite, agora + DURACAO_CONVITE + 1), undefined);
   assert.equal(lerLink('segredo', 2, convite, agora + 10), undefined);
+});
+
+test('registro da sessão: mensagens e rolagens, sem as escondidas', () => {
+  const base = { user_id: '1', revelada: 0, secreta: 0 };
+  const t0 = Date.UTC(2026, 10, 10, 17, 0); // 14:00 em Brasília
+  const linhas = [
+    { ...base, id: 1, autor: 'Aria', tipo: 'msg' as const, texto: 'Vou pela esquerda', resultado: null, criada_em: t0 },
+    { ...base, id: 2, autor: 'Aria', tipo: 'dados' as const, texto: 'ataque', resultado: JSON.stringify({ tipo: 'dados', expressao: '1d20+5', total: 17, pedacos: [] }), criada_em: t0 + 60_000 },
+    { ...base, id: 3, autor: 'Mestre', tipo: 'dados' as const, texto: '', resultado: JSON.stringify({ tipo: 'dados', expressao: '2d6', total: 9, pedacos: [] }), secreta: 1, criada_em: t0 + 120_000 },
+    {
+      ...base,
+      id: 4,
+      autor: 'Mestre',
+      tipo: 'dualidade' as const,
+      texto: 'armadilha',
+      resultado: JSON.stringify({ tipo: 'dualidade', vantagem: 0, esperanca: 3, medo: 8, modificador: 1, total: 12, resultado: 'medo' }),
+      revelada: 1,
+      criada_em: t0 + 180_000,
+    },
+  ];
+  const texto = registroDaSessao('A Cripta', t0, t0 + 3_600_000, linhas);
+  assert.match(texto, /Campanha: A Cripta/);
+  assert.match(texto, /das 14:00 às 15:00/);
+  assert.match(texto, /\[14:00\] Aria: Vou pela esquerda/);
+  assert.match(texto, /\[14:01\] Aria rolou 1d20\+5 \(ataque\): 17/);
+  assert.doesNotMatch(texto, /2d6/);
+  assert.match(texto, /Esperança 3 · Medo 8 = 12, com Medo \[revelada pelo mestre\]/);
+  assert.match(registroDaSessao('X', t0, t0, []), /nada foi dito/);
 });

@@ -1,5 +1,8 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -15,8 +18,9 @@ import {
 } from 'discord.js';
 import { db } from '../db.ts';
 import { CANAIS } from '../config.ts';
-import { DURACAO_CONVITE } from '../lib/mapa.ts';
+import { DURACAO_CONVITE, registroDaSessao, type LinhaChat } from '../lib/mapa.ts';
 import { canalTexto, ehMestre } from '../lib/servidor.ts';
+import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
 import { apagarMapa, avisarMapa, linkDoMapa, mapaPublico } from './mapa.ts';
 
@@ -41,6 +45,7 @@ export type Campanha = {
   criada_em: number;
   canal_id: string | null;
   canal_voz_id: string | null;
+  sessao_inicio: number | null;
 };
 type FichaResumo = { nome: string; classe: string; nivel: number };
 
@@ -178,6 +183,12 @@ export const campanha: Comando = {
     )
     .addSubcommand((s) =>
       s
+        .setName('finalizar')
+        .setDescription('Encerra a sessão: posta o resumo e o registro do chat da sessão no canal da campanha (só o mestre)')
+        .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true)),
+    )
+    .addSubcommand((s) =>
+      s
         .setName('canal')
         .setDescription('Liga o chat do mapa a um canal do Discord (o que um escreve aparece no outro). Sem canal, desliga')
         .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true))
@@ -288,6 +299,9 @@ export const campanha: Comando = {
         console.error('[campanha] canais:', e);
       }
 
+      // Marca o começo da sessão (se já estava aberta, mantém o horário original).
+      db.prepare('UPDATE campanhas SET sessao_inicio = COALESCE(sessao_inicio, ?) WHERE id = ?').run(Date.now(), c.id);
+
       const enviados: string[] = [];
       const falharam: string[] = [];
       for (const id of jogadores) {
@@ -355,6 +369,52 @@ export const campanha: Comando = {
       db.prepare('DELETE FROM campanha_personagens WHERE campanha_id = ? AND user_id = ?').run(c.id, jogador.id);
       avisarMapa(c.id);
       return i.reply({ content: `🚪 ${jogador} saiu de **${c.nome}**.`, embeds: [embedCampanha(c, g)] });
+    }
+
+    if (sub === 'finalizar') {
+      if (!c.sessao_inicio) {
+        return i.reply({ content: `**${c.nome}** não tem sessão em andamento. Use \`/campanha iniciar\` para abrir uma.`, flags: MessageFlags.Ephemeral });
+      }
+      await i.deferReply({ flags: MessageFlags.Ephemeral });
+      const fim = Date.now();
+      const linhas = db.prepare('SELECT * FROM mapa_chat WHERE campanha_id = ? AND criada_em >= ? ORDER BY id').all(c.id, c.sessao_inicio) as LinhaChat[];
+      const publicas = linhas.filter((l) => !l.secreta);
+      const mensagens = publicas.filter((l) => l.tipo === 'msg').length;
+      const rolagens = publicas.length - mensagens;
+      const texto = registroDaSessao(c.nome, c.sessao_inicio, fim, linhas);
+
+      // O chat do mapa guarda só as últimas mensagens, então o registro da sessão fica salvo em arquivo.
+      const dia = new Date(c.sessao_inicio).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+      const arquivo = `${nomeDeCanal(c.nome)}-${dia}.txt`;
+      mkdirSync('dados/campanhas', { recursive: true });
+      writeFileSync(join('dados', 'campanhas', `${c.id}-${arquivo}`), texto);
+      db.prepare('UPDATE campanhas SET sessao_inicio = NULL WHERE id = ?').run(c.id);
+
+      const resumo = new EmbedBuilder()
+        .setColor(COR)
+        .setTitle(`🏁 ${c.nome} · sessão encerrada`)
+        .setDescription(
+          `Mestre: <@${c.mestre_id}>\n` +
+            `⏱️ Duração: **${duracaoTexto(fim - c.sessao_inicio)}**\n` +
+            `💬 **${mensagens}** mensagens · 🎲 **${rolagens}** rolagens no mapa\n` +
+            'O registro do chat da sessão está no arquivo anexo. Até a próxima!',
+        )
+        .setFooter({ text: 'O mapa e os canais continuam aqui; /campanha iniciar abre a próxima sessão.' });
+      const canal = c.canal_id ? await i.client.channels.fetch(c.canal_id).catch(() => null) : null;
+      let postou = false;
+      if (canal?.isTextBased() && 'send' in canal) {
+        postou = await canal
+          .send({ embeds: [resumo], files: [new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: arquivo })], allowedMentions: { parse: [] } })
+          .then(() => true)
+          .catch(() => false);
+      }
+      return i.editReply({
+        content: postou
+          ? `🏁 Sessão de **${c.nome}** encerrada. O resumo e o registro do chat foram para ${canal}.`
+          : `🏁 Sessão de **${c.nome}** encerrada. Não consegui postar no canal da campanha; o registro ficou salvo no servidor do bot.`,
+        embeds: postou ? [] : [resumo],
+        files: postou ? [] : [new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: arquivo })],
+      });
     }
 
     if (sub === 'canal') {

@@ -181,3 +181,28 @@ export function chatVisivel(linhas: LinhaChat[], souMestre: boolean) {
       em: l.criada_em,
     }));
 }
+
+// ---------- Registro da sessão (/campanha finalizar) ----------
+
+const horaBR = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+
+/** Uma linha do registro da sessão. Rolagem escondida que o mestre não revelou fica de fora. */
+export function linhaDeRegistro(l: LinhaChat) {
+  if (l.secreta) return undefined;
+  const hora = horaBR(l.criada_em);
+  if (l.tipo === 'msg' || !l.resultado) return `[${hora}] ${l.autor}: ${l.texto}`;
+  const r = JSON.parse(l.resultado) as ResultadoChat;
+  const motivo = l.texto ? ` (${l.texto})` : '';
+  const revelada = l.revelada ? ' [revelada pelo mestre]' : '';
+  if (r.tipo === 'dados') return `[${hora}] ${l.autor} rolou ${r.expressao}${motivo}: ${r.total}${revelada}`;
+  const sorte = { critico: 'sucesso crítico', esperanca: 'com Esperança', medo: 'com Medo' }[r.resultado];
+  return `[${hora}] ${l.autor} rolou dualidade${motivo}: Esperança ${r.esperanca} · Medo ${r.medo} = ${r.total}, ${sorte}${revelada}`;
+}
+
+/** Texto do arquivo que fica guardado (e vai para o canal) quando o mestre encerra a sessão. */
+export function registroDaSessao(nome: string, inicio: number, fim: number, linhas: LinhaChat[]) {
+  const corpo = linhas.map(linhaDeRegistro).filter((l): l is string => !!l);
+  const dia = new Date(inicio).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const cabecalho = `Campanha: ${nome}\nSessão de ${dia}, das ${horaBR(inicio)} às ${horaBR(fim)}\n${'-'.repeat(40)}\n`;
+  return cabecalho + (corpo.length ? corpo.join('\n') : '(nada foi dito no chat do mapa)') + '\n';
+}
