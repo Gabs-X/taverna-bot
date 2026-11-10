@@ -217,6 +217,12 @@
     <div class="tracos" id="tracos"></div>
     <div class="rotulo-sec">Ficha</div>
     <dl id="ficha"></dl>
+    <div id="gestao" hidden>
+      <div class="rotulo-sec">Mestre</div>
+      <div class="linha"><span class="mudo" style="flex:1">Tamanho no mapa</span><button class="btn sec" id="tam-menos" title="Diminuir">−</button><b id="tam-valor" style="min-width:34px;text-align:center">1×</b><button class="btn sec" id="tam-mais" title="Aumentar">＋</button></div>
+      <div class="linha" id="linha-npc-img"><label class="btn sec" for="arquivo-npc">🖼️ Imagem do NPC</label><input id="arquivo-npc" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button class="btn sec" id="tirar-imagem">Tirar</button></div>
+      <div class="linha"><button id="rolar-como" class="btn" hidden>🎲 Rolar como este NPC</button></div>
+    </div>
     <div class="linha"><button id="remover-npc" class="btn perigo" hidden>Remover NPC</button></div>
   </div>
 
@@ -248,6 +254,7 @@
         </select>
         <label class="escondida" id="rotulo-escondida" hidden><input type="checkbox" id="escondida"> 🔒 Escondida</label>
       </div>
+      <div class="linha" id="linha-como" hidden><label class="mudo" for="como" style="white-space:nowrap">🎭 Falar como</label><select id="como"></select></div>
       <div class="linha">
         <input id="texto" type="text" maxlength="500" placeholder="Mensagem ou /r 1d20+5 # Ataque" autocomplete="off">
         <button class="btn" id="enviar" title="Enviar (Enter)">➤</button>
@@ -399,6 +406,16 @@ function painel() {
   }
   if (!estado.pecas.length) lista.append(el('span', 'mudo', 'Nenhum personagem na campanha ainda.'));
 
+  // "Falar como": o mestre escolhe se o chat e as rolagens saem em nome dele ou de um NPC.
+  const temNpc = estado.pecas.some((p) => p.npc);
+  $('linha-como').hidden = !(estado.voce.mestre && temNpc);
+  if (estado.voce.mestre) {
+    const sel = $('como'), atual = sel.value; sel.textContent = '';
+    sel.append(new Option('Eu (mestre)', ''));
+    for (const p of estado.pecas) if (p.npc) sel.append(new Option(p.nome, String(p.id)));
+    sel.value = [...sel.options].some((o) => o.value === atual) ? atual : '';
+  }
+
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
   const bandeja = $('bandeja'); bandeja.textContent = '';
   const visiveis = estado.pecas.filter((p) => !p.npc || estado.voce.mestre);
@@ -457,6 +474,12 @@ function fichaCard() {
   }
   if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? 'NPC do mestre.' : 'Sem ficha.'));
   $('remover-npc').hidden = !(p.npc && estado.voce.mestre);
+  // Só o mestre mexe no tamanho (de qualquer peça) e na imagem e nas rolagens dos NPCs.
+  $('gestao').hidden = !estado.voce.mestre;
+  $('tam-valor').textContent = String(p.tamanho || 1).replace('.', ',') + '×';
+  $('linha-npc-img').hidden = !p.npc;
+  $('tirar-imagem').hidden = !(p.npc && p.avatar);
+  $('rolar-como').hidden = !p.npc;
 }
 $('fechar-ficha').onclick = () => { selecionada = null; painel(); desenhar(); };
 
@@ -498,15 +521,17 @@ function pintar() {
   }
   ctx.strokeStyle = 'rgba(166,108,255,.7)'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
 
-  const r = grade * 0.42, px = 1 / cam.z;
-  for (const p of estado.pecas) {
+  const px = 1 / cam.z;
+  // As maiores primeiro, para as pequenas ficarem por cima.
+  for (const p of [...estado.pecas].sort((a, b) => (b.tamanho || 1) - (a.tamanho || 1))) {
+    const r = grade * 0.42 * (p.tamanho || 1);
     const cor = corDe(p), sel = p.id === selecionada;
     // sombra e halo
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10 * px; ctx.shadowOffsetY = 3 * px;
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = cor; ctx.fill(); ctx.restore();
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.clip();
     const av = avatarDe(p.avatar);
-    if (av) ctx.drawImage(av, p.x - r, p.y - r, r * 2, r * 2);
+    if (av) { const lado = Math.min(av.naturalWidth, av.naturalHeight); ctx.drawImage(av, (av.naturalWidth - lado) / 2, (av.naturalHeight - lado) / 2, lado, lado, p.x - r, p.y - r, r * 2, r * 2); } // recorta ao centro, sem esticar
     else { ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.95}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(iniciais(p.nome), p.x, p.y + r * 0.04); }
     ctx.restore();
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -548,8 +573,13 @@ function pintar() {
 
 const mundo = (e) => { const b = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1; return { x: ((e.clientX - b.left) * dpr - cam.x) / cam.z, y: ((e.clientY - b.top) * dpr - cam.y) / cam.z }; };
 function pecaEm(pt) {
-  const r = estado.mapa.grade * 0.42;
-  return [...estado.pecas].reverse().find((p) => Math.hypot(p.x - pt.x, p.y - pt.y) <= r);
+  const g = estado.mapa.grade * 0.42;
+  return [...estado.pecas].sort((a, b) => (a.tamanho || 1) - (b.tamanho || 1)).find((p) => Math.hypot(p.x - pt.x, p.y - pt.y) <= g * (p.tamanho || 1));
+}
+// Peça de tamanho par (2×, 4×...) encaixa no cruzamento das casas; as outras, no centro da casa.
+function encaixe(v, g, t, max) {
+  const par = t >= 1 && Math.round(t) % 2 === 0;
+  return Math.min(max, par ? Math.round(v / g) * g : (Math.floor(v / g) + 0.5) * g);
 }
 
 let ultimoEnvio = 0;
@@ -581,7 +611,7 @@ cv.addEventListener('pointermove', (e) => {
 function soltar() {
   if (arrasto && arrasto.peca) {
     const g = estado.mapa.grade, p = arrasto.peca; // encaixa no centro da casa
-    if (prefs.encaixar) { p.x = Math.min(estado.mapa.largura, (Math.floor(p.x / g) + 0.5) * g); p.y = Math.min(estado.mapa.altura, (Math.floor(p.y / g) + 0.5) * g); }
+    if (prefs.encaixar) { p.x = encaixe(p.x, g, p.tamanho || 1, estado.mapa.largura); p.y = encaixe(p.y, g, p.tamanho || 1, estado.mapa.altura); }
     enviarMover(p, true);
   }
   arrasto = null; cv.classList.remove('arrastando'); desenhar();
@@ -670,6 +700,44 @@ addEventListener('dragleave', () => { arrastosArquivo = Math.max(0, arrastosArqu
 addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); arrastosArquivo = 0; $('solte').classList.remove('on'); if (estado && estado.voce.mestre && e.dataTransfer.files[0]) importarMapa(e.dataTransfer.files[0]); });
 
+// ---------- Tamanho e imagem das peças (só o mestre) ----------
+function mudarTamanho(passo) {
+  const p = estado && estado.pecas.find((q) => q.id === selecionada); if (!p) return;
+  const novo = Math.min(6, Math.max(0.5, (p.tamanho || 1) + passo));
+  if (novo !== (p.tamanho || 1)) post('peca/tamanho', { peca: p.id, tamanho: novo }).catch(() => {});
+}
+$('tam-menos').onclick = () => mudarTamanho(-0.5);
+$('tam-mais').onclick = () => mudarTamanho(0.5);
+
+/** Reduz a imagem do NPC para no máximo 512 px (a ficha de um token não precisa de mais). */
+async function reduzirImagem(arquivo, lado) {
+  const { i, url } = await carregarImagem(arquivo);
+  try {
+    const e = Math.min(1, lado / Math.max(i.naturalWidth, i.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(i.naturalWidth * e)); c.height = Math.max(1, Math.round(i.naturalHeight * e));
+    c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
+    return await new Promise((r) => c.toBlob(r, 'image/webp', 0.9));
+  } finally { URL.revokeObjectURL(url); }
+}
+$('arquivo-npc').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !selecionada) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.');
+  try {
+    const blob = await reduzirImagem(f, 512);
+    await post('npc/imagem?peca=' + selecionada, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
+    aviso('Imagem do NPC atualizada.', 'ok');
+  } catch (err) { if (err && err.message && !/^(Não deu|Só o|Use uma|Imagem)/.test(err.message)) mostrarErro(err.message); }
+};
+$('tirar-imagem').onclick = () => { if (selecionada) post('npc/imagem/remover', { peca: selecionada }).catch(() => {}); };
+$('rolar-como').onclick = () => {
+  if (!selecionada) return;
+  $('como').value = String(selecionada);
+  if (!prefs.painel) alternar('painel');
+  abrirAba('chat');
+  const t = $('texto'); if (!t.value) t.value = '/r 1d20';
+  t.focus();
+};
+
 $('salvar-grade').onclick = () => post('grade', { grade: Number($('grade').value) }).then(() => aviso('Grade atualizada.', 'ok')).catch(() => {});
 $('add-npc').onclick = () => { post('npc', { nome: $('npc-nome').value }).then(() => ($('npc-nome').value = '')).catch(() => {}); };
 $('remover-npc').onclick = () => { if (selecionada) post('npc/remover', { peca: selecionada }).then(() => { selecionada = null; }).catch(() => {}); };
@@ -728,7 +796,8 @@ function montarBarra() {
 async function enviar(texto) {
   let t = texto.trim(); if (!t) return;
   if (escondida()) t = t.replace(/^\/(r|roll|rolar)(\s|$)/i, '/gr$2').replace(/^\/(dh|dualidade)(\s|$)/i, '/gdh$2');
-  await post('chat', { texto: t });
+  const como = estado && estado.voce.mestre && $('como').value ? Number($('como').value) : undefined;
+  await post('chat', { texto: t, como });
   if (!prefs.painel) alternar('painel');
   abrirAba('chat');
 }

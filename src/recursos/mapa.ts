@@ -32,12 +32,13 @@ const PORTA = Number(process.env.MAPA_PORTA) || 53135;
 const ENDERECO = (process.env.MAPA_URL?.trim() || `http://localhost:${PORTA}`).replace(/\/+$/, '');
 export const mapaPublico = () => !!process.env.MAPA_URL?.trim();
 const PASTA = 'dados/mapas';
+const LIMITE_IMAGEM_NPC = 3 * 1024 * 1024;
 const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
 type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null };
 type Mapa = { campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number };
-type Peca = { id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number };
+type Peca = { id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number };
 
 /** Segredo que assina os links e as sessões do mapa: sorteado na primeira vez e guardado no banco. */
 function segredo() {
@@ -144,7 +145,8 @@ async function montarEstado(c: Campanha, userId: string) {
         meu,
         podeMover: souMestre || meu,
         jogador: p.user_id ? (donos.get(p.user_id)?.nome ?? null) : null,
-        avatar: p.user_id ? (donos.get(p.user_id)?.avatar ?? null) : null,
+        tamanho: p.tamanho,
+        avatar: p.user_id ? (donos.get(p.user_id)?.avatar ?? null) : p.imagem ? `/api/m/${c.id}/peca-imagem/${p.id}?v=${p.versao_img}` : null,
         ficha: dadosFicha ?? null,
       };
     }),
@@ -243,7 +245,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if (rota === '/') return texto(res, 200, '🗺️ Mapas da Taverna', ABRA_DE_NOVO);
 
   const pagina = rota.match(/^\/m\/(\d+)$/);
-  const api = rota.match(/^\/api\/m\/(\d+)\/([a-z/]+)$/);
+  const api = rota.match(/^\/api\/m\/(\d+)\/([a-z0-9/-]+)$/);
   if (!pagina && !api) return texto(res, 404, 'Não achei', 'Esse endereço não existe.');
   const campanhaId = Number((pagina ?? api)![1]);
 
@@ -310,6 +312,20 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
         return json(res, 404, { erro: 'Sem imagem.' });
       }
     }
+    const pecaImg = acao.match(/^peca-imagem\/(\d+)$/);
+    if (pecaImg) {
+      const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(pecaImg[1]), c.id) as Peca | undefined;
+      if (!p?.imagem) return json(res, 404, { erro: 'Sem imagem.' });
+      try {
+        const dados = readFileSync(`${PASTA}/${p.imagem}`);
+        const tipo = tipoImagem(dados);
+        if (!tipo) throw new Error('arquivo inválido');
+        res.writeHead(200, { 'Content-Type': tipo.mime, 'Cache-Control': 'private, max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
+        return void res.end(dados);
+      } catch {
+        return json(res, 404, { erro: 'Sem imagem.' });
+      }
+    }
     return json(res, 404, { erro: 'Não achei.' });
   }
 
@@ -328,7 +344,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
   // Chat da mesa: mensagem ou rolagem. Quem rola é o servidor; escondida só o mestre pode.
   if (acao === 'chat') {
-    const b = await lerJson<{ texto: string }>(req);
+    const b = await lerJson<{ texto: string; como: number | null }>(req);
     let entrada;
     try {
       entrada = interpretarEntrada(String(b.texto ?? ''));
@@ -339,7 +355,15 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (secreta && !souMestre) return json(res, 403, { erro: 'Só o mestre rola escondido. Use /r para rolar para a mesa.' });
     const resultado = entrada.tipo === 'msg' ? null : rolarEntrada(entrada);
     const txt = entrada.tipo === 'msg' ? entrada.texto : entrada.rotulo;
-    gravarChat(c, userId, await autorDe(c, userId), entrada.tipo, txt, resultado, secreta);
+    // O mestre pode falar e rolar pelos NPCs dele: o chat mostra o nome do NPC.
+    let autor = await autorDe(c, userId);
+    if (b.como !== undefined && b.como !== null) {
+      if (!souMestre) return json(res, 403, { erro: 'Só o mestre fala por um NPC.' });
+      const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.como), c.id) as Peca | undefined;
+      if (!npc) return json(res, 404, { erro: 'Esse NPC não está mais no mapa.' });
+      autor = `🎭 ${npc.nome} (NPC)`;
+    }
+    gravarChat(c, userId, autor, entrada.tipo, txt, resultado, secreta);
     return json(res, 200, { ok: true });
   }
 
@@ -385,7 +409,45 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
-  const b = await lerJson<{ grade: number; nome: string; peca: number }>(req);
+  if (acao === 'npc/imagem') {
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(url.searchParams.get('peca')), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'NPC não encontrado.' });
+    let dados: Buffer;
+    try {
+      dados = await lerCorpo(req, LIMITE_IMAGEM_NPC);
+    } catch {
+      return json(res, 413, { erro: `Imagem grande demais para um NPC (máximo ${LIMITE_IMAGEM_NPC / 1024 / 1024} MB).` });
+    }
+    const tipo = tipoImagem(dados);
+    if (!tipo) return json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
+    mkdirSync(PASTA, { recursive: true });
+    const arquivo = `npc-${c.id}-${p.id}-${Date.now()}.${tipo.ext}`;
+    writeFileSync(`${PASTA}/${arquivo}`, dados);
+    if (p.imagem) rmSync(`${PASTA}/${p.imagem}`, { force: true });
+    db.prepare('UPDATE mapa_pecas SET imagem = ?, versao_img = versao_img + 1 WHERE id = ?').run(arquivo, p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  const b = await lerJson<{ grade: number; nome: string; peca: number; tamanho: number }>(req);
+
+  // Tamanho em casas (0,5 a 6, de meio em meio): o mestre aumenta monstros e diminui familiares.
+  if (acao === 'peca/tamanho') {
+    const tamanho = Math.round(limitar(b.tamanho, 0.5, 6, 1) * 2) / 2;
+    const r = db.prepare('UPDATE mapa_pecas SET tamanho = ? WHERE id = ? AND campanha_id = ?').run(tamanho, Number(b.peca), c.id);
+    if (!r.changes) return json(res, 404, { erro: 'Peça não encontrada.' });
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'npc/imagem/remover') {
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.peca), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'NPC não encontrado.' });
+    if (p.imagem) rmSync(`${PASTA}/${p.imagem}`, { force: true });
+    db.prepare('UPDATE mapa_pecas SET imagem = NULL, versao_img = versao_img + 1 WHERE id = ?').run(p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
 
   if (acao === 'grade') {
     db.prepare('UPDATE mapas SET grade = ?, versao = versao + 1 WHERE campanha_id = ?').run(Math.round(limitar(b.grade, 10, 400, 50)), c.id);
@@ -404,6 +466,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (acao === 'npc/remover') {
+    const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.peca), c.id) as Peca | undefined;
+    if (npc?.imagem) rmSync(`${PASTA}/${npc.imagem}`, { force: true });
     db.prepare('DELETE FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').run(Number(b.peca), c.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
@@ -416,6 +480,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 export function apagarMapa(campanhaId: number) {
   const m = db.prepare('SELECT imagem FROM mapas WHERE campanha_id = ?').get(campanhaId) as { imagem: string | null } | undefined;
   if (m?.imagem) rmSync(`${PASTA}/${m.imagem}`, { force: true });
+  for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) rmSync(`${PASTA}/${p.imagem}`, { force: true });
   db.prepare('DELETE FROM mapa_pecas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);

@@ -465,6 +465,14 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN sessao_inicio INTEGER');
   },
+  // 16: imagem e tamanho das peças (o mestre põe a cara do NPC e aumenta monstros grandes; tamanho em casas, 1 = uma casa).
+  () => {
+    db.exec(`
+      ALTER TABLE mapa_pecas ADD COLUMN imagem TEXT;
+      ALTER TABLE mapa_pecas ADD COLUMN versao_img INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapa_pecas ADD COLUMN tamanho REAL NOT NULL DEFAULT 1;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
