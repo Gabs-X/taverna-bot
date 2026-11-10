@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.9.1 (10/11/2026)
+
+- Mapa da campanha: quando o Mestre fala ou rola como um NPC, o chat mostra a foto do NPC
+
 ## v1.9.0 (10/11/2026)
 
 - Mapa da campanha: o Mestre agora pode pôr imagem nos NPCs, rolar e falar em nome deles e mudar o tamanho das peças
