@@ -1,5 +1,13 @@
 # Novidades do Taverneiro
 
+## v1.8.0 (10/11/2026)
+
+- Campanhas: o Mestre abre a sessão com /campanha iniciar, que cria o canal de texto e a call da mesa (só para quem joga) e manda o link do mapa no privado de cada jogador
+- Campanhas: /campanha finalizar encerra a sessão e posta no canal da mesa o resumo e o registro do chat
+- O chat do mapa agora conversa com o canal da campanha no Discord: o que se escreve num aparece no outro
+- Mapa da campanha com visual novo: barra de ferramentas, bandeja do grupo com PV, régua, grade e importação arrastando a imagem
+- Mapa: mapas grandes são reduzidos sozinhos na importação, e o chat e o mapa atualizam sem precisar recarregar a página
+
 ## v1.7.0 (10/11/2026)
 
 - Novo /campanha: o Mestre monta a mesa de RPG com as fichas dos jogadores (criar, adicionar, remover e passar o mestre)
