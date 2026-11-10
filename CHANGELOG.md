@@ -1,5 +1,12 @@
 # Novidades do Taverneiro
 
+## v1.7.0 (10/11/2026)
+
+- Novo /campanha: o Mestre monta a mesa de RPG com as fichas dos jogadores (criar, adicionar, remover e passar o mestre)
+- Novo /campanha mapa: abre um mapa estilo Roll20 no navegador, o Mestre importa a imagem, cada jogador move o seu personagem e todo mundo vê na hora
+- Chat da mesa no mapa, com histórico, rolagens de dados e de Daggerheart; o Mestre pode rolar escondido e revelar depois
+- Daggerheart: as experiências aceitam bônus maiores, como +10
+
 ## v1.6.0 (23/10/2026)
 
 - 💀 As góticas agora podem morrer de fome: 24 h com a barriga zerada e ela se vai. O cartão avisa antes quando ela está morrendo.
