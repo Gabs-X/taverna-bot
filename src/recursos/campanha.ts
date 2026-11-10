@@ -6,13 +6,17 @@ import {
   EmbedBuilder,
   InteractionContextType,
   MessageFlags,
+  PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
+  type Guild,
   type GuildMember,
+  type OverwriteResolvable,
 } from 'discord.js';
 import { db } from '../db.ts';
+import { CANAIS } from '../config.ts';
 import { DURACAO_CONVITE } from '../lib/mapa.ts';
-import { ehMestre } from '../lib/servidor.ts';
+import { canalTexto, ehMestre } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { apagarMapa, avisarMapa, linkDoMapa, mapaPublico } from './mapa.ts';
 
@@ -36,6 +40,7 @@ export type Campanha = {
   mestre_id: string;
   criada_em: number;
   canal_id: string | null;
+  canal_voz_id: string | null;
 };
 type FichaResumo = { nome: string; classe: string; nivel: number };
 
@@ -63,6 +68,66 @@ function embedCampanha(c: Campanha, g: string) {
     .setTitle(`🐉 ${c.nome}`)
     .setDescription(`Sistema: **${SISTEMAS[c.sistema].nome}** · Mestre: <@${c.mestre_id}>`)
     .addFields({ name: `Personagens (${linhas.length})`, value: linhas.length ? linhas.join('\n') : '_nenhum ainda: use `/campanha adicionar`_' });
+}
+
+// ---------- Canais da campanha (criados pelo /campanha iniciar) ----------
+
+const nomeDeCanal = (t: string) =>
+  t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'campanha';
+
+/**
+ * Garante o canal de texto e a call da campanha, só para o mestre e os jogadores (o resto do servidor não vê).
+ * Se já existem (de uma sessão anterior), só confere quem tem acesso. O canal de texto vira o canal ligado ao chat do mapa.
+ */
+async function prepararCanais(guild: Guild, c: Campanha, jogadores: string[]) {
+  const { ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak, ManageChannels } = PermissionFlagsBits;
+  const eu = guild.members.me;
+  if (!eu) throw new Error('bot fora do servidor');
+  // Quem saiu do servidor não pode entrar nas permissões.
+  const gente = (
+    await Promise.all([...new Set([c.mestre_id, ...jogadores])].map((id) => guild.members.fetch(id).then(() => id).catch(() => null)))
+  ).filter((id): id is string => !!id);
+
+  const regras = (permitido: bigint[]): OverwriteResolvable[] => [
+    { id: guild.roles.everyone.id, deny: [ViewChannel] },
+    { id: eu.id, allow: [ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak, ManageChannels] },
+    ...gente.map((id) => ({ id, allow: permitido })),
+  ];
+  const pai = canalTexto(guild, c.sistema === 'dh' ? CANAIS.mesaDhTexto : CANAIS.mesaRpgTexto)?.parentId ?? undefined;
+  const nome = nomeDeCanal(c.nome);
+  const novos: string[] = [];
+
+  let texto = c.canal_id ? await guild.channels.fetch(c.canal_id).catch(() => null) : null;
+  if (texto?.type !== ChannelType.GuildText) {
+    texto = await guild.channels.create({
+      name: `🗺️・${nome}`,
+      type: ChannelType.GuildText,
+      parent: pai,
+      topic: `Campanha ${c.nome} (${SISTEMAS[c.sistema].nome}): o que se escreve aqui aparece no chat do mapa e vice-versa. /campanha mapa abre o mapa.`,
+      permissionOverwrites: regras([ViewChannel, SendMessages, ReadMessageHistory]),
+      reason: `/campanha iniciar ${c.nome}`,
+    });
+    novos.push('texto');
+  } else {
+    for (const id of gente) await texto.permissionOverwrites.edit(id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(() => {});
+  }
+
+  let voz = c.canal_voz_id ? await guild.channels.fetch(c.canal_voz_id).catch(() => null) : null;
+  if (voz?.type !== ChannelType.GuildVoice) {
+    voz = await guild.channels.create({
+      name: `🔊・${nome}`,
+      type: ChannelType.GuildVoice,
+      parent: pai,
+      permissionOverwrites: regras([ViewChannel, Connect, Speak]),
+      reason: `/campanha iniciar ${c.nome}`,
+    });
+    novos.push('call');
+  } else {
+    for (const id of gente) await voz.permissionOverwrites.edit(id, { ViewChannel: true, Connect: true, Speak: true }).catch(() => {});
+  }
+
+  db.prepare('UPDATE campanhas SET canal_id = ?, canal_voz_id = ? WHERE id = ?').run(texto.id, voz.id, c.id);
+  return { texto, voz, novos };
 }
 
 export const campanha: Comando = {
@@ -215,6 +280,14 @@ export const campanha: Comando = {
       }
       await i.deferReply({ flags: MessageFlags.Ephemeral });
 
+      // Canal de texto e call só da campanha (criados na primeira vez, reaproveitados nas próximas).
+      let salas: Awaited<ReturnType<typeof prepararCanais>> | undefined;
+      try {
+        salas = await prepararCanais(i.guild!, c, jogadores);
+      } catch (e) {
+        console.error('[campanha] canais:', e);
+      }
+
       const enviados: string[] = [];
       const falharam: string[] = [];
       for (const id of jogadores) {
@@ -226,6 +299,7 @@ export const campanha: Comando = {
           .setDescription(
             `<@${c.mestre_id}> abriu o mapa da campanha.\n` +
               (ficha ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n` : '') +
+              (salas ? `Sala da mesa: ${salas.texto} · call: ${salas.voz}\n` : '') +
               'Clique em **Entrar no mapa**: o link é só seu e vale por 12 horas. Não compartilhe.',
           )
           .setFooter({ text: `${SISTEMAS[c.sistema].nome} · se o botão vencer, use /campanha mapa` });
@@ -240,7 +314,7 @@ export const campanha: Comando = {
 
       // O mestre entra pelo botão desta resposta; se o canal da mesa estiver ligado, avisa lá que a sessão começou.
       const botaoMestre = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Abrir o mapa').setEmoji('🗺️').setURL(linkDoMapa(c.id, c.mestre_id, DURACAO_CONVITE));
-      const canal = c.canal_id ? await i.client.channels.fetch(c.canal_id).catch(() => null) : null;
+      const canal = salas?.texto ?? (c.canal_id ? await i.client.channels.fetch(c.canal_id).catch(() => null) : null);
       if (canal?.isTextBased() && 'send' in canal) {
         await canal
           .send({ content: `🗺️ **${c.nome}**: a sessão começou! Os links do mapa foram enviados no privado. Não recebeu? Use \`/campanha mapa\`.`, allowedMentions: { parse: [] } })
@@ -252,6 +326,9 @@ export const campanha: Comando = {
           (falharam.length
             ? `\n⚠️ Não consegui falar no privado com ${falharam.map((id) => `<@${id}>`).join(', ')} (DMs fechadas). Peça para usarem \`/campanha mapa\`.`
             : '') +
+          (salas
+            ? `\n📁 ${salas.novos.length ? `Criei ${salas.novos.map((n) => (n === 'texto' ? 'o canal de texto' : 'a call')).join(' e ')}` : 'Canais da campanha'}: ${salas.texto} e ${salas.voz} (só o mestre e os jogadores veem). O chat do mapa está ligado ao canal de texto.`
+            : '\n⚠️ Não consegui criar o canal e a call da campanha (o bot precisa da permissão **Gerenciar Canais**).') +
           '\nSeu link de mestre está no botão abaixo.',
         components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botaoMestre)],
       });
@@ -332,7 +409,7 @@ export const campanha: Comando = {
       }
       avisarMapa(c.id);
       apagarMapa(c.id);
-      return i.reply({ content: `🗑️ Campanha **${c.nome}** apagada. As fichas dos jogadores continuam salvas.`, flags: MessageFlags.Ephemeral });
+      return i.reply({ content: `🗑️ Campanha **${c.nome}** apagada. As fichas dos jogadores continuam salvas.${c.canal_id || c.canal_voz_id ? ' O canal de texto e a call da campanha continuam no servidor: apague à mão se quiser.' : ''}`, flags: MessageFlags.Ephemeral });
     }
   },
 };

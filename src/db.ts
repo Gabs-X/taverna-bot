@@ -457,6 +457,10 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN canal_id TEXT');
   },
+  // 14: call da campanha (o canal de texto é o canal_id; os dois nascem no /campanha iniciar).
+  () => {
+    db.exec('ALTER TABLE campanhas ADD COLUMN canal_voz_id TEXT');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
