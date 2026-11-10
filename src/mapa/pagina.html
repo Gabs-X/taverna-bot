@@ -4,99 +4,234 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#120a1c">
 <title>🗺️ Mapa da campanha</title>
 <style>
+  :root {
+    --bg: #110a1b; --painel: #1b1028; --painel2: #251637; --painel3: #301d47; --borda: #3b2655;
+    --texto: #f2ebfa; --mudo: #a899c0; --acento: #a66cff; --acento2: #e0609a; --ouro: #f5c451;
+    --ok: #3ecf8e; --perigo: #ff5d6c; --vidro: rgba(24, 14, 36, .82);
+    --sombra: 0 8px 28px rgba(0, 0, 0, .45);
+  }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; height: 100vh; display: flex; font-family: system-ui, sans-serif; background: #150c1f; color: #eee; overflow: hidden; }
-  #palco { flex: 1; position: relative; min-width: 0; }
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--texto); overflow: hidden; }
+  button, input, select { font: inherit; color: inherit; }
+  small, .mudo { color: var(--mudo); font-size: 12px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: var(--borda); border-radius: 8px; } ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- Palco (mapa) ---------- */
+  #palco { flex: 1; position: relative; min-width: 0; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   canvas.arrastando { cursor: grabbing; }
-  aside { width: 360px; background: #22132f; border-left: 1px solid #3a2550; display: flex; flex-direction: column; min-height: 0; }
-  aside > section { padding: 12px 14px; border-bottom: 1px solid #3a2550; }
-  h1 { font-size: 17px; margin: 0 0 2px; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #b99be0; margin: 0 0 8px; }
-  small, .mudo { color: #a99bbd; font-size: 12px; }
-  .voce { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; }
-  .voce img, .item img { width: 26px; height: 26px; border-radius: 50%; background: #3a2550; object-fit: cover; }
-  .abas { display: flex; border-bottom: 1px solid #3a2550; }
-  .abas button { flex: 1; border-radius: 0; background: transparent; padding: 10px; color: #a99bbd; position: relative; }
-  .abas button.ativa { color: #fff; box-shadow: inset 0 -2px #b07ce8; }
-  .abas .contador { background: #e74c3c; color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+  canvas.regua { cursor: crosshair; }
+  .vidro { background: var(--vidro); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--borda); box-shadow: var(--sombra); }
+
+  #topo { position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border-radius: 14px; max-width: calc(100% - 90px); }
+  #topo .ico { font-size: 22px; }
+  #topo h1 { margin: 0; font-size: 15px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #topo small { display: block; line-height: 1.2; }
+  .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 3px rgba(255, 93, 108, .2); flex: none; }
+  .ponto.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(62, 207, 142, .2); }
+
+  #ferramentas { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 14px; }
+  .ferr { width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 17px; display: grid; place-items: center; position: relative; transition: background .15s, transform .1s; }
+  .ferr:hover { background: var(--painel3); }
+  .ferr:active { transform: scale(.94); }
+  .ferr.on { background: var(--acento); color: #fff; }
+  .ferr::after { content: attr(data-dica); position: absolute; right: 46px; top: 50%; transform: translateY(-50%); background: #000d; padding: 4px 9px; border-radius: 7px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+  .ferr:hover::after { opacity: 1; }
+  .sep { height: 1px; background: var(--borda); margin: 2px 4px; }
+
+  #bandeja { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; border-radius: 16px; max-width: calc(100% - 28px); overflow-x: auto; }
+  .card { width: 108px; flex: none; padding: 7px 8px; border-radius: 11px; background: var(--painel2); border: 1px solid transparent; cursor: pointer; display: flex; flex-direction: column; gap: 5px; transition: transform .12s, border-color .12s, background .12s; }
+  .card:hover { background: var(--painel3); transform: translateY(-2px); }
+  .card.sel { border-color: var(--ouro); }
+  .card.meu .nome::after { content: ' ★'; color: var(--ouro); }
+  .card .linha1 { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .card .nome { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #fff; background-size: cover; background-position: center; border: 2px solid var(--cor, var(--borda)); }
+  .barra-pv { height: 5px; background: #0006; border-radius: 4px; overflow: hidden; }
+  .barra-pv > i { display: block; height: 100%; border-radius: 4px; background: var(--ok); transition: width .3s; }
+  .barra-pv.baixo > i { background: var(--perigo); } .barra-pv.medio > i { background: var(--ouro); }
+  .card small { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  #vazio { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  #vazio > div { pointer-events: auto; text-align: center; padding: 22px 26px; border-radius: 18px; max-width: 340px; }
+  #vazio h2 { margin: 6px 0; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--texto); }
+  #vazio p { margin: 0 0 12px; color: var(--mudo); font-size: 13px; line-height: 1.4; }
+  #vazio .grande { font-size: 40px; }
+
+  #solte { position: absolute; inset: 10px; border: 3px dashed var(--acento); border-radius: 18px; background: rgba(166, 108, 255, .14); display: none; place-items: center; font-size: 18px; font-weight: 600; pointer-events: none; z-index: 8; }
+  #solte.on { display: grid; }
+
+  #ficha-card { position: absolute; left: 14px; top: 76px; width: 300px; max-height: calc(100% - 190px); overflow-y: auto; border-radius: 16px; padding: 14px; display: none; z-index: 4; }
+  #ficha-card.aberta { display: block; animation: entra .18s ease-out; }
+  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  #ficha-card .cab { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding-right: 26px; }
+  #ficha-card .cab .avatar { width: 46px; height: 46px; font-size: 18px; }
+  #ficha-card h2 { margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--texto); }
+  #ficha-card .fechar { position: absolute; right: 10px; top: 10px; width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--mudo); cursor: pointer; }
+  #ficha-card .fechar:hover { background: var(--painel3); color: #fff; }
+  .rotulo-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--mudo); margin: 12px 0 6px; font-weight: 700; }
+  .tracos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tracos button { padding: 7px 9px; border-radius: 10px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: 12.5px; transition: background .12s, border-color .12s; text-align: left; }
+  .tracos button:hover { background: var(--painel3); border-color: var(--acento); }
+  .tracos button b { color: var(--ouro); font-size: 14px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  dt { color: var(--mudo); } dd { margin: 0; word-break: break-word; }
+
+  #dica-mapa { position: absolute; left: 14px; bottom: 14px; padding: 7px 12px; border-radius: 10px; font-size: 12px; color: var(--mudo); max-width: 260px; line-height: 1.35; }
+  #toasts { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 9; pointer-events: none; width: min(92%, 440px); }
+  .toast { pointer-events: auto; padding: 10px 16px; border-radius: 12px; font-size: 13px; box-shadow: var(--sombra); animation: entra .2s ease-out; border: 1px solid var(--borda); background: var(--painel); max-width: 100%; }
+  .toast.erro { background: #5c1a26; border-color: var(--perigo); }
+  .toast.ok { background: #163a2b; border-color: var(--ok); }
+  .toast.dado { background: var(--painel2); border-color: var(--acento); }
+
+  /* ---------- Painel lateral ---------- */
+  aside { width: 372px; background: var(--painel); border-left: 1px solid var(--borda); display: flex; flex-direction: column; min-height: 0; transition: margin .22s ease; }
+  body.recolhido aside { margin-right: -372px; }
+  .cabeca { padding: 14px 16px 12px; background: linear-gradient(135deg, #2c1745, #1b1028 70%); border-bottom: 1px solid var(--borda); }
+  .cabeca h1 { font-size: 17px; margin: 0 0 2px; }
+  .voce { display: flex; align-items: center; gap: 9px; margin-top: 10px; font-size: 13px; }
+  .voce .avatar { width: 30px; height: 30px; }
+  .voce .papel { margin-left: auto; font-size: 11px; padding: 2px 9px; border-radius: 99px; background: var(--painel3); color: var(--ouro); }
+  .abas { display: flex; border-bottom: 1px solid var(--borda); background: var(--painel); }
+  .abas button { flex: 1; background: transparent; border: 0; padding: 11px 8px; color: var(--mudo); cursor: pointer; position: relative; font-weight: 600; font-size: 13px; }
+  .abas button:hover { color: #fff; }
+  .abas button.ativa { color: #fff; box-shadow: inset 0 -2px var(--acento); }
+  .contador { background: var(--acento2); color: #fff; border-radius: 99px; padding: 0 7px; font-size: 11px; margin-left: 5px; }
   .aba { flex: 1; min-height: 0; display: none; flex-direction: column; }
   .aba.ativa { display: flex; }
   #aba-mesa { overflow-y: auto; }
-  #aba-mesa section { padding: 12px 14px; border-bottom: 1px solid #3a2550; }
-  .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
-  .item:hover, .item.sel { background: #33204a; }
+  #aba-mesa section { padding: 14px 16px; border-bottom: 1px solid var(--borda); }
+  #aba-mesa h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--mudo); margin: 0 0 10px; }
+
+  button.btn, label.btn { background: var(--acento); color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; transition: filter .12s, transform .08s; }
+  button.btn:hover, label.btn:hover { filter: brightness(1.12); }
+  button.btn:active, label.btn:active { transform: scale(.97); }
+  button.btn.sec, label.btn.sec { background: var(--painel3); }
+  button.btn.perigo { background: #6b2231; }
+  input[type=text], input[type=number], select { width: 100%; background: var(--bg); border: 1px solid var(--borda); border-radius: 10px; color: var(--texto); padding: 8px 10px; font-size: 13px; outline: none; }
+  input:focus, select:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(166, 108, 255, .2); }
+  .linha { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 10px; cursor: pointer; }
+  .item:hover, .item.sel { background: var(--painel3); }
   .item .nome { font-weight: 600; font-size: 14px; }
-  button, .botao { background: #8e44ad; color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; display: inline-block; }
-  button.sec, .botao.sec { background: #3a2550; }
-  button:hover, .botao:hover { filter: brightness(1.15); }
-  input[type=text], input[type=number], select { width: 100%; background: #150c1f; border: 1px solid #3a2550; border-radius: 8px; color: #eee; padding: 7px 9px; font: inherit; font-size: 13px; }
-  .linha { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
 
-  /* Chat */
-  #mensagens { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-  .msg { background: #2b1a3d; border-radius: 10px; padding: 7px 10px; font-size: 13px; line-height: 1.35; }
-  .msg .topo { display: flex; justify-content: space-between; gap: 8px; color: #c9b3ea; font-weight: 600; font-size: 12px; margin-bottom: 3px; }
-  .msg .topo time { color: #7f6f95; font-weight: 400; }
-  .msg .corpo { white-space: pre-wrap; word-break: break-word; }
-  .msg.secreta { background: #1d2a3d; outline: 1px dashed #5d7fb0; }
-  .selo { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 9px; background: #5d7fb0; color: #fff; margin: 4px 6px 0 0; }
+  /* ---------- Chat ---------- */
+  #mensagens { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+  .vazio-chat { margin: auto; text-align: center; color: var(--mudo); font-size: 13px; line-height: 1.5; }
+  .vazio-chat .grande { font-size: 34px; display: block; margin-bottom: 4px; }
+  .msg { display: flex; gap: 9px; align-items: flex-start; }
+  .msg .avatar { width: 30px; height: 30px; margin-top: 1px; }
+  .msg .conteudo { min-width: 0; flex: 1; }
+  .msg .topo { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+  .msg .topo b { color: #d9c6f5; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg .topo time { color: #75668c; font-size: 11px; margin-left: auto; flex: none; }
+  .msg.minha .topo b { color: var(--ouro); }
+  .msg .corpo { white-space: pre-wrap; word-break: break-word; font-size: 13.5px; line-height: 1.4; margin-top: 2px; }
+  .cartao { margin-top: 5px; background: var(--painel2); border-radius: 12px; border-left: 4px solid var(--acento); padding: 8px 11px; }
+  .cartao.dualidade { border-left-color: var(--ouro); }
+  .cartao.critico { border-left-color: var(--ok); box-shadow: 0 0 0 1px rgba(62, 207, 142, .35), 0 0 18px rgba(62, 207, 142, .18); }
+  .cartao.secreta { border-left-color: #5d9bff; background: #172540; border-style: dashed; }
+  .cartao .rotulo { font-weight: 600; font-size: 13px; }
+  .cartao .expr { color: var(--mudo); font-size: 12px; }
+  .dados { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 6px 0 4px; }
+  .dado { min-width: 27px; height: 27px; padding: 0 6px; border-radius: 7px; background: var(--painel3); display: inline-grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .dado.max { background: #1d7a4a; } .dado.um { background: #9b2c3a; }
+  .dado.fora { opacity: .35; text-decoration: line-through; }
+  .dado.esperanca { background: #a87408; } .dado.medo { background: #5b2a96; }
+  .op { color: var(--mudo); font-weight: 700; }
+  .total { font-size: 26px; font-weight: 800; line-height: 1; }
+  .resultado { font-size: 12.5px; font-weight: 700; margin-left: 8px; }
+  .resultado.critico { color: var(--ok); } .resultado.esperanca { color: var(--ouro); } .resultado.medo { color: #c9a2ff; }
+  .selo { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #3a5f99; color: #fff; margin: 6px 6px 0 0; }
   .selo.revelada { background: #6c5a2a; }
-  .rolagem .rotulo { font-weight: 600; }
-  .rolagem .expr { color: #a99bbd; font-size: 12px; }
-  .dados { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 5px 0; }
-  .dado { min-width: 26px; height: 26px; padding: 0 5px; border-radius: 6px; background: #3a2550; display: inline-grid; place-items: center; font-weight: 700; font-size: 13px; }
-  .dado.max { background: #1e7a46; } .dado.um { background: #9b2c2c; }
-  .dado.fora { opacity: .4; text-decoration: line-through; }
-  .dado.esperanca { background: #b8860b; } .dado.medo { background: #5b2a86; }
-  .op { color: #a99bbd; font-weight: 700; }
-  .total { font-size: 22px; font-weight: 800; }
-  .resultado { font-size: 12px; font-weight: 600; margin-left: 6px; }
-  .resultado.critico { color: #2ecc71; } .resultado.esperanca { color: #f1c40f; } .resultado.medo { color: #c39bff; }
-  #barra { border-top: 1px solid #3a2550; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .botoes-dado { display: flex; flex-wrap: wrap; gap: 4px; }
-  .botoes-dado button { padding: 5px 8px; font-size: 12px; background: #3a2550; }
-  .botoes-dado button.dh { background: linear-gradient(90deg, #b8860b, #5b2a86); }
-  #barra .linha { margin-top: 0; }
-  #mod { width: 64px; flex: none; }
-  #vantagem { width: auto; flex: 1; }
-  label.escondida { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #9fc1f0; white-space: nowrap; cursor: pointer; }
 
-  /* Ficha flutuante sobre o mapa */
-  #ficha-card { position: absolute; left: 12px; top: 12px; width: 280px; max-height: calc(100% - 60px); overflow-y: auto; background: #22132fee; border: 1px solid #3a2550; border-radius: 12px; padding: 12px 14px; display: none; }
-  #ficha-card.aberta { display: block; }
-  #ficha-card .fechar { position: absolute; right: 8px; top: 6px; background: transparent; padding: 4px 8px; color: #a99bbd; }
-  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
-  dt { color: #a99bbd; } dd { margin: 0; word-break: break-word; }
-  .tracos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0; }
-  .tracos button { padding: 5px 6px; font-size: 12px; background: #3a2550; display: flex; justify-content: space-between; gap: 4px; white-space: nowrap; overflow: hidden; }
-  #aviso { position: absolute; left: 12px; bottom: 12px; background: #000a; padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
-  #erro { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: #c0392b; padding: 8px 14px; border-radius: 8px; display: none; font-size: 13px; max-width: 80%; z-index: 5; }
-  @media (max-width: 760px) { body { flex-direction: column; } aside { width: 100%; height: 50vh; border-left: 0; border-top: 1px solid #3a2550; } #ficha-card { width: calc(100% - 24px); } }
+  #barra { border-top: 1px solid var(--borda); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--painel); }
+  .botoes-dado { display: flex; flex-wrap: wrap; gap: 5px; }
+  .botoes-dado button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; font-size: 12.5px; font-weight: 600; transition: background .12s, border-color .12s, transform .08s; }
+  .botoes-dado button:hover { background: var(--painel3); border-color: var(--acento); }
+  .botoes-dado button:active { transform: scale(.94); }
+  .botoes-dado button.d20 { background: linear-gradient(135deg, #5b2a96, #a66cff); border-color: transparent; }
+  .botoes-dado button.dh { background: linear-gradient(90deg, #a87408, #5b2a96); border-color: transparent; }
+  #barra .linha { margin-top: 0; }
+  #mod { width: 66px; flex: none; }
+  #vantagem { flex: 1; }
+  label.escondida { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #9fc1f0; white-space: nowrap; cursor: pointer; }
+  #texto { flex: 1; }
+  #enviar { width: 42px; padding: 8px 0; justify-content: center; }
+
+  @media (max-width: 820px) {
+    body { flex-direction: column; }
+    aside { width: 100%; height: 48vh; border-left: 0; border-top: 1px solid var(--borda); }
+    body.recolhido aside { margin-right: 0; margin-bottom: -48vh; }
+    #ficha-card { width: calc(100% - 28px); top: 70px; }
+    #bandeja { bottom: 10px; }
+    .ferr::after { display: none; }
+    #dica-mapa { display: none; }
+  }
 </style>
 </head>
 <body>
 <div id="palco">
   <canvas id="c"></canvas>
-  <div id="ficha-card">
-    <button class="fechar" id="fechar-ficha" title="Fechar">✕</button>
-    <h2 id="ficha-titulo">Ficha</h2>
-    <div class="tracos" id="tracos"></div>
-    <dl id="ficha"></dl>
-    <div class="linha"><button id="remover-npc" class="sec" hidden>Remover NPC</button></div>
+
+  <div id="topo" class="vidro">
+    <span class="ico">🗺️</span>
+    <div style="min-width:0"><h1 id="titulo">Carregando…</h1><small id="sub"></small></div>
+    <span class="ponto" id="ponto" title="Conexão com a mesa"></span>
   </div>
-  <div id="aviso">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem para mover</div>
-  <div id="erro"></div>
+
+  <div id="ferramentas" class="vidro">
+    <button class="ferr" id="f-enquadrar" data-dica="Enquadrar o mapa (F)">⛶</button>
+    <button class="ferr" id="f-mais" data-dica="Aproximar">＋</button>
+    <button class="ferr" id="f-menos" data-dica="Afastar">－</button>
+    <div class="sep"></div>
+    <button class="ferr on" id="f-grade" data-dica="Mostrar grade (G)">▦</button>
+    <button class="ferr on" id="f-encaixar" data-dica="Encaixar na casa ao soltar">🧲</button>
+    <button class="ferr" id="f-regua" data-dica="Régua: arraste para medir (R)">📏</button>
+    <div class="sep"></div>
+    <button class="ferr" id="f-painel" data-dica="Mostrar/esconder o painel (P)">◧</button>
+  </div>
+
+  <div id="vazio" hidden>
+    <div class="vidro">
+      <div class="grande">🖼️</div>
+      <h2>Falta o mapa da aventura</h2>
+      <p>Escolha uma imagem (PNG, JPG, WEBP ou GIF) ou arraste um arquivo para cá. Imagens grandes são reduzidas sozinhas.</p>
+      <label class="btn" for="arquivo">🖼️ Importar mapa</label>
+    </div>
+  </div>
+  <div id="aviso-espera" class="vidro" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;border-radius:14px;text-align:center">
+    <div style="font-size:30px">⏳</div><div style="margin-top:4px">O mestre ainda vai importar o mapa…</div>
+  </div>
+
+  <div id="ficha-card" class="vidro">
+    <button class="fechar" id="fechar-ficha" title="Fechar (Esc)">✕</button>
+    <div class="cab"><div class="avatar" id="ficha-avatar"></div><div><h2 id="ficha-titulo">Ficha</h2><small id="ficha-sub"></small></div></div>
+    <div id="ficha-pv"></div>
+    <div class="rotulo-sec" id="rotulo-tracos">Rolar</div>
+    <div class="tracos" id="tracos"></div>
+    <div class="rotulo-sec">Ficha</div>
+    <dl id="ficha"></dl>
+    <div class="linha"><button id="remover-npc" class="btn perigo" hidden>Remover NPC</button></div>
+  </div>
+
+  <div id="bandeja" class="vidro" hidden></div>
+  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem para mover</div>
+  <div id="solte">🖼️ Solte a imagem aqui para usar como mapa</div>
+  <div id="toasts"></div>
 </div>
+
 <aside>
-  <section>
-    <h1 id="titulo">Carregando…</h1>
-    <small id="sub"></small>
-    <div class="voce"><img id="eu-avatar" alt=""><span id="eu-nome"></span></div>
-  </section>
+  <div class="cabeca">
+    <h1 id="titulo2">🐉 …</h1>
+    <small id="sub2"></small>
+    <div class="voce"><div class="avatar" id="eu-avatar"></div><span id="eu-nome"></span><span class="papel" id="eu-papel"></span></div>
+  </div>
   <div class="abas">
     <button id="tab-chat" class="ativa">💬 Chat<span id="novas" class="contador" hidden></span></button>
     <button id="tab-mesa">🧙 Mesa</button>
@@ -115,7 +250,7 @@
       </div>
       <div class="linha">
         <input id="texto" type="text" maxlength="500" placeholder="Mensagem ou /r 1d20+5 # Ataque" autocomplete="off">
-        <button id="enviar">➤</button>
+        <button class="btn" id="enviar" title="Enviar (Enter)">➤</button>
       </div>
       <small id="dica"></small>
     </div>
@@ -124,12 +259,12 @@
   <div id="aba-mesa" class="aba">
     <section id="painel-mestre" hidden>
       <h2>Mestre</h2>
-      <label class="botao sec" for="arquivo">🖼️ Importar mapa</label>
+      <label class="btn sec" for="arquivo">🖼️ Importar mapa</label>
       <input id="arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
-      <div class="mudo" style="margin-top:6px">PNG, JPG, WEBP ou GIF, até 12 MB.</div>
-      <div class="linha"><input id="grade" type="number" min="10" max="400" placeholder="Grade (px)"><button id="salvar-grade" class="sec">Grade</button></div>
-      <div class="linha"><input id="npc-nome" type="text" maxlength="40" placeholder="Nome do NPC / monstro"><button id="add-npc" class="sec">+ NPC</button></div>
-      <div class="linha"><button id="limpar-chat" class="sec">🧹 Limpar o chat</button></div>
+      <div class="mudo" style="margin-top:6px">PNG, JPG, WEBP ou GIF. Também dá para arrastar o arquivo para o mapa. Imagens muito grandes são reduzidas.</div>
+      <div class="linha"><input id="grade" type="number" min="10" max="400" placeholder="Tamanho da casa (px)"><button id="salvar-grade" class="btn sec">Aplicar</button></div>
+      <div class="linha"><input id="npc-nome" type="text" maxlength="40" placeholder="Nome do NPC / monstro"><button id="add-npc" class="btn sec">+ NPC</button></div>
+      <div class="linha"><button id="limpar-chat" class="btn sec">🧹 Limpar o chat</button></div>
     </section>
     <section>
       <h2>Personagens</h2>
@@ -137,6 +272,7 @@
     </section>
   </div>
 </aside>
+
 <script>
 const ID = location.pathname.split('/').pop();
 const api = (p) => `/api/m/${ID}/${p}`;
@@ -145,16 +281,27 @@ const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) 
 const cv = $('c'), ctx = cv.getContext('2d');
 let estado = null, imagem = null, versaoImagem = -1;
 let cam = { x: 0, y: 0, z: 1 }, ajustou = false;
-let selecionada = null, arrasto = null;
-let chat = [], ultimoChat = 0, novas = 0;
+let selecionada = null, arrasto = null, regua = null, usandoRegua = false;
+let chat = [], ultimoChat = 0, novas = 0, primeiroChat = true;
 let sigEstado = '', sigChat = ''; // para não redesenhar à toa quando nada mudou
+let online = false;
 const avatares = new Map();
 const CORES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
 
-function mostrarErro(msg) {
-  const e = $('erro'); e.textContent = msg; e.style.display = 'block';
-  clearTimeout(mostrarErro.t); mostrarErro.t = setTimeout(() => (e.style.display = 'none'), 5000);
+// ---------- Preferências (ficam no navegador) ----------
+const prefs = Object.assign({ grade: true, encaixar: true, painel: true }, (() => { try { return JSON.parse(localStorage.getItem('mapa_prefs') || '{}'); } catch { return {}; } })());
+const salvarPrefs = () => { try { localStorage.setItem('mapa_prefs', JSON.stringify(prefs)); } catch {} };
+
+// ---------- Avisos ----------
+function aviso(msg, tipo = '', ms) {
+  if ([...$('toasts').children].some((t) => t.textContent === msg)) return; // não empilha o mesmo aviso
+  const t = el('div', 'toast ' + tipo, msg);
+  $('toasts').append(t);
+  setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms || (tipo === 'erro' ? 8000 : 3500));
+  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
 }
+const mostrarErro = (msg) => aviso(msg, 'erro');
+
 async function post(p, corpo, opcoes = {}) {
   const r = await fetch(api(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo === undefined ? undefined : JSON.stringify(corpo), ...opcoes });
   const j = await r.json().catch(() => ({}));
@@ -169,6 +316,23 @@ async function pegar(p) {
   if (!r.ok) { mostrarErro(j.erro || 'Não consegui carregar.'); throw new Error(j.erro); }
   return j;
 }
+
+// ---------- Utilidades de aparência ----------
+const corDoTexto = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 45%)`; };
+const iniciais = (nome) => (String(nome).replace(/[^\p{L}\p{N} ]/gu, '').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('') || '?').toUpperCase();
+function pintarAvatar(div, nome, url, cor) {
+  div.style.setProperty('--cor', cor || corDoTexto(nome));
+  div.style.backgroundColor = corDoTexto(nome);
+  if (url) { div.style.backgroundImage = `url("${String(url).replace(/"/g, '%22')}")`; div.textContent = ''; } else { div.style.backgroundImage = ''; div.textContent = iniciais(nome); }
+}
+function fracPV(p) {
+  const f = p.ficha; if (!f) return null;
+  if (typeof f.pv_max !== 'number' || f.pv_max <= 0) return null;
+  if (typeof f.pv_atual === 'number') return { frac: Math.max(0, Math.min(1, f.pv_atual / f.pv_max)), texto: `${f.pv_atual}/${f.pv_max} PV` };
+  if (typeof f.pv === 'number') return { frac: Math.max(0, Math.min(1, 1 - f.pv / f.pv_max)), texto: `${f.pv_max - f.pv}/${f.pv_max} PV livres` };
+  return null;
+}
+const classeBarra = (frac) => (frac <= 0.25 ? 'baixo' : frac <= 0.55 ? 'medio' : '');
 
 // ---------- Mapa ----------
 
@@ -192,7 +356,7 @@ async function carregar() {
 }
 
 function dimensionar() {
-  const dpr = devicePixelRatio || 1, w = cv.clientWidth * dpr, h = cv.clientHeight * dpr;
+  const dpr = devicePixelRatio || 1, w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
   if (cv.width === w && cv.height === h) return false;
   cv.width = w; cv.height = h; return true;
 }
@@ -200,31 +364,55 @@ function dimensionar() {
 function ajustar() {
   dimensionar();
   const { largura, altura } = estado.mapa;
-  const z = Math.min(cv.width / largura, cv.height / altura) * 0.95;
+  const z = Math.min(cv.width / largura, cv.height / altura) * 0.92;
   cam = { z, x: (cv.width - largura * z) / 2, y: (cv.height - altura * z) / 2 };
   ajustou = true;
 }
+function zoomCentro(f) {
+  const cx = cv.width / 2, cy = cv.height / 2, wx = (cx - cam.x) / cam.z, wy = (cy - cam.y) / cam.z;
+  cam.z = Math.min(6, Math.max(0.05, cam.z * f)); cam.x = cx - wx * cam.z; cam.y = cy - wy * cam.z; desenhar();
+}
 
 function painel() {
-  $('titulo').textContent = '🐉 ' + estado.campanha.nome;
-  $('sub').textContent = (estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D 3.5') + ' · mestre ' + estado.campanha.mestre;
-  $('eu-nome').textContent = estado.voce.nome + (estado.voce.mestre ? ' (mestre)' : '');
-  $('eu-avatar').hidden = !estado.voce.avatar;
-  if (estado.voce.avatar) $('eu-avatar').src = estado.voce.avatar;
+  const nomeCamp = estado.campanha.nome, sistema = estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D 3.5';
+  $('titulo').textContent = nomeCamp; $('sub').textContent = sistema + ' · mestre ' + estado.campanha.mestre;
+  $('titulo2').textContent = '🐉 ' + nomeCamp; $('sub2').textContent = sistema + ' · mestre ' + estado.campanha.mestre;
+  document.title = '🗺️ ' + nomeCamp;
+  $('eu-nome').textContent = estado.voce.nome; $('eu-papel').textContent = estado.voce.mestre ? '🐉 Mestre' : '⚔️ Jogador';
+  pintarAvatar($('eu-avatar'), estado.voce.nome, estado.voce.avatar);
   $('painel-mestre').hidden = !estado.voce.mestre;
   $('rotulo-escondida').hidden = !estado.voce.mestre;
   if (estado.voce.mestre && document.activeElement !== $('grade')) $('grade').value = estado.mapa.grade;
+  const semMapa = !estado.mapa.temImagem;
+  $('vazio').hidden = !(semMapa && estado.voce.mestre);
+  $('aviso-espera').hidden = !(semMapa && !estado.voce.mestre);
+
   const lista = $('lista'); lista.textContent = '';
   for (const p of estado.pecas) {
     const d = el('div', 'item' + (p.id === selecionada ? ' sel' : ''));
-    const im = el('img'); im.alt = ''; if (p.avatar) im.src = p.avatar; else im.style.visibility = 'hidden';
+    const av = el('div', 'avatar'); pintarAvatar(av, p.nome, p.avatar, corDe(p));
     const t = el('div');
     t.append(el('div', 'nome', p.nome + (p.meu ? ' (você)' : '')), el('small', '', p.npc ? 'NPC do mestre' : p.jogador));
-    d.append(im, t);
+    d.append(av, t);
     d.onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
     lista.append(d);
   }
   if (!estado.pecas.length) lista.append(el('span', 'mudo', 'Nenhum personagem na campanha ainda.'));
+
+  // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
+  const bandeja = $('bandeja'); bandeja.textContent = '';
+  const visiveis = estado.pecas.filter((p) => !p.npc || estado.voce.mestre);
+  bandeja.hidden = !visiveis.length;
+  for (const p of visiveis) {
+    const c = el('div', 'card' + (p.id === selecionada ? ' sel' : '') + (p.meu ? ' meu' : ''));
+    const l1 = el('div', 'linha1'); const av = el('div', 'avatar'); pintarAvatar(av, p.nome, p.avatar, corDe(p));
+    l1.append(av, el('div', 'nome', p.nome)); c.append(l1);
+    const pv = fracPV(p);
+    if (pv) { const b = el('div', 'barra-pv ' + classeBarra(pv.frac)); const i = el('i'); i.style.width = Math.round(pv.frac * 100) + '%'; b.append(i); c.append(b, el('small', '', pv.texto)); }
+    else c.append(el('small', '', p.npc ? 'NPC' : (p.ficha && p.ficha.classe) || p.jogador || ''));
+    c.onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
+    bandeja.append(c);
+  }
   fichaCard();
 }
 
@@ -242,9 +430,14 @@ function fichaCard() {
   const p = estado.pecas.find((q) => q.id === selecionada);
   $('ficha-card').classList.toggle('aberta', !!p);
   if (!p) return;
-  $('ficha-titulo').textContent = p.nome + (p.jogador ? ' · ' + p.jogador : '');
-  const tracos = $('tracos'); tracos.textContent = '';
   const f = p.ficha || {};
+  pintarAvatar($('ficha-avatar'), p.nome, p.avatar, corDe(p));
+  $('ficha-titulo').textContent = p.nome;
+  $('ficha-sub').textContent = p.npc ? 'NPC do mestre' : [f.classe, f.nivel ? 'nível ' + f.nivel : '', p.jogador].filter(Boolean).join(' · ');
+  const pvBox = $('ficha-pv'); pvBox.textContent = '';
+  const pv = fracPV(p);
+  if (pv) { const b = el('div', 'barra-pv ' + classeBarra(pv.frac)); b.style.height = '8px'; const i = el('i'); i.style.width = Math.round(pv.frac * 100) + '%'; b.append(i); pvBox.append(b, el('small', '', pv.texto)); }
+  const tracos = $('tracos'); tracos.textContent = '';
   // Botões que rolam direto no chat com o valor da ficha (só aparecem para o dono e o mestre, que veem a ficha toda).
   const botao = (rotulo, valor, comando) => {
     const b = el('button'); b.append(el('span', '', '🎲 ' + rotulo), el('b', '', sinal(valor)));
@@ -256,9 +449,10 @@ function fichaCard() {
     for (const k of ATRIBUTOS_DND) if (typeof f[k] === 'number') { const m = Math.floor((f[k] - 10) / 2); botao(NOMES[k] + ' ' + f[k], m, d20(m, NOMES[k])); }
     for (const k of ['fort', 'ref', 'von', 'bba']) if (typeof f[k] === 'number') botao(NOMES[k], f[k], d20(f[k], NOMES[k]));
   }
+  $('rotulo-tracos').hidden = !tracos.children.length;
   const dl = $('ficha'); dl.textContent = '';
   for (const [k, v] of Object.entries(f)) {
-    if (v === null || v === '' || k === 'nome' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
+    if (v === null || v === '' || k === 'nome' || k === 'classe' || k === 'nivel' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
     dl.append(el('dt', '', NOMES[k] || k.replaceAll('_', ' ')), el('dd', '', String(v)));
   }
   if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? 'NPC do mestre.' : 'Sem ficha.'));
@@ -273,31 +467,82 @@ function avatarDe(url) {
   if (!avatares.has(url)) { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = desenhar; i.src = url; avatares.set(url, i); }
   const i = avatares.get(url); return i.complete && i.naturalWidth ? i : null;
 }
+function rodada(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
-function desenhar() {
+// Vários pedidos de desenho no mesmo instante viram um só por quadro (arrastar não engasga).
+let quadro = 0;
+function desenhar() { if (!quadro) quadro = requestAnimationFrame(() => { quadro = 0; pintar(); }); }
+
+function pintar() {
   if (dimensionar() && estado && !ajustou) ajustar();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#150c1f'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const g = ctx.createRadialGradient(cv.width / 2, cv.height / 2, 0, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * 0.7);
+  g.addColorStop(0, '#1d1230'); g.addColorStop(1, '#0d0715');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+  // Pontinhos no fundo, andam junto com o mapa
+  const passo = 36 * (devicePixelRatio || 1), ox = ((cam.x % passo) + passo) % passo, oy = ((cam.y % passo) + passo) % passo;
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  for (let x = ox; x < cv.width; x += passo) for (let y = oy; y < cv.height; y += passo) ctx.fillRect(x, y, 2, 2);
   if (!estado) return;
   const { largura, altura, grade } = estado.mapa;
   ctx.setTransform(cam.z, 0, 0, cam.z, cam.x, cam.y);
+  // Sombra do mapa sem blur (blur em imagem grande deixa o arrastar pesado): três molduras escuras e suaves.
+  for (let k = 3; k >= 1; k--) { ctx.fillStyle = `rgba(0,0,0,${0.16 / k})`; const e = k * 9 / cam.z; ctx.fillRect(-e, -e, largura + 2 * e, altura + 2 * e); }
+  ctx.fillStyle = '#2a1a3c'; ctx.fillRect(0, 0, largura, altura);
   if (imagem) ctx.drawImage(imagem, 0, 0, largura, altura);
-  else { ctx.fillStyle = '#2a1a3c'; ctx.fillRect(0, 0, largura, altura); }
-  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
-  for (let x = 0; x <= largura; x += grade) { ctx.moveTo(x, 0); ctx.lineTo(x, altura); }
-  for (let y = 0; y <= altura; y += grade) { ctx.moveTo(0, y); ctx.lineTo(largura, y); }
-  ctx.stroke(); ctx.strokeStyle = '#b99be0'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
-  const r = grade * 0.42;
+  if (prefs.grade) {
+    ctx.strokeStyle = imagem ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.1)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
+    for (let x = 0; x <= largura; x += grade) { ctx.moveTo(x, 0); ctx.lineTo(x, altura); }
+    for (let y = 0; y <= altura; y += grade) { ctx.moveTo(0, y); ctx.lineTo(largura, y); }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(166,108,255,.7)'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
+
+  const r = grade * 0.42, px = 1 / cam.z;
   for (const p of estado.pecas) {
-    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = corDe(p); ctx.fill();
+    const cor = corDe(p), sel = p.id === selecionada;
+    // sombra e halo
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10 * px; ctx.shadowOffsetY = 3 * px;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = cor; ctx.fill(); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.clip();
     const av = avatarDe(p.avatar);
-    if (av) { ctx.clip(); ctx.drawImage(av, p.x - r, p.y - r, r * 2, r * 2); }
+    if (av) ctx.drawImage(av, p.x - r, p.y - r, r * 2, r * 2);
+    else { ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.95}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(iniciais(p.nome), p.x, p.y + r * 0.04); }
     ctx.restore();
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.lineWidth = (p.id === selecionada ? 4 : 2) / cam.z; ctx.strokeStyle = p.id === selecionada ? '#f1c40f' : p.meu ? '#fff' : '#000a'; ctx.stroke();
-    ctx.font = `bold ${Math.max(12, grade * 0.28)}px system-ui`; ctx.textAlign = 'center';
-    ctx.lineWidth = 3 / cam.z; ctx.strokeStyle = '#000'; ctx.strokeText(p.nome, p.x, p.y + r + grade * 0.32);
-    ctx.fillStyle = '#fff'; ctx.fillText(p.nome, p.x, p.y + r + grade * 0.32);
+    ctx.lineWidth = (sel ? 4.5 : 3) * px; ctx.strokeStyle = sel ? '#f5c451' : cor; ctx.stroke();
+    if (p.meu) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 4 * px, 0, Math.PI * 2); ctx.lineWidth = 1.6 * px; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(); }
+    if (sel) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 8 * px, 0, Math.PI * 2); ctx.lineWidth = 6 * px; ctx.strokeStyle = 'rgba(245,196,81,.25)'; ctx.stroke(); }
+    if (p.npc) { // selinho de NPC
+      ctx.fillStyle = '#111c'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.34}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N', p.x + r * 0.78, p.y - r * 0.76);
+    }
+    // barra de PV (só quem pode ver a ficha)
+    const pv = fracPV(p); let yBase = p.y + r + 5 * px;
+    if (pv) {
+      const w = r * 1.7, h = Math.max(4 * px, grade * 0.09), x0 = p.x - w / 2;
+      rodada(ctx, x0, yBase, w, h, h / 2); ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fill();
+      rodada(ctx, x0, yBase, Math.max(h, w * pv.frac), h, h / 2); ctx.fillStyle = pv.frac <= 0.25 ? '#ff5d6c' : pv.frac <= 0.55 ? '#f5c451' : '#3ecf8e'; ctx.fill();
+      yBase += h + 3 * px;
+    }
+    // nome em uma etiqueta
+    const fs = Math.max(12 * px, grade * 0.26);
+    ctx.font = `600 ${fs}px 'Segoe UI', system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const tw = ctx.measureText(p.nome).width + fs * 0.9, th = fs * 1.5;
+    rodada(ctx, p.x - tw / 2, yBase, tw, th, th / 2); ctx.fillStyle = 'rgba(12,6,20,.82)'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText(p.nome, p.x, yBase + fs * 0.22);
+  }
+
+  // Régua
+  if (regua) {
+    const { a, b } = regua, d = Math.hypot(b.x - a.x, b.y - a.y) / grade;
+    ctx.strokeStyle = '#f5c451'; ctx.lineWidth = 3 * px; ctx.setLineDash([10 * px, 7 * px]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+    for (const q of [a, b]) { ctx.beginPath(); ctx.arc(q.x, q.y, 5 * px, 0, Math.PI * 2); ctx.fillStyle = '#f5c451'; ctx.fill(); }
+    const txt = d.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + (Math.abs(d - 1) < 0.05 ? ' casa' : ' casas');
+    const fs = 14 * px; ctx.font = `700 ${fs}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 16 * px, w = ctx.measureText(txt).width + fs;
+    rodada(ctx, mx - w / 2, my - fs * 0.9, w, fs * 1.8, fs * 0.9); ctx.fillStyle = 'rgba(12,6,20,.9)'; ctx.fill();
+    ctx.fillStyle = '#f5c451'; ctx.fillText(txt, mx, my);
   }
 }
 
@@ -317,15 +562,18 @@ function enviarMover(p, forcar) {
 
 cv.addEventListener('pointerdown', (e) => {
   if (!estado) return; cv.setPointerCapture(e.pointerId);
-  const pt = mundo(e), p = pecaEm(pt);
+  const pt = mundo(e);
+  if (usandoRegua) { regua = { a: pt, b: pt }; arrasto = { regua: true }; desenhar(); return; }
+  const p = pecaEm(pt);
   if (p) {
     selecionada = p.id; painel();
     if (p.podeMover) arrasto = { peca: p, dx: p.x - pt.x, dy: p.y - pt.y };
   } else arrasto = { mapa: true, sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y };
-  cv.classList.add('arrastando'); desenhar();
+  cv.classList.add('arrastando'); esconderDica(); desenhar();
 });
 cv.addEventListener('pointermove', (e) => {
   if (!arrasto) return;
+  if (arrasto.regua) { regua.b = mundo(e); desenhar(); return; }
   if (arrasto.mapa) { const dpr = devicePixelRatio || 1; cam.x = arrasto.cx + (e.clientX - arrasto.sx) * dpr; cam.y = arrasto.cy + (e.clientY - arrasto.sy) * dpr; }
   else { const pt = mundo(e); arrasto.peca.x = Math.min(estado.mapa.largura, Math.max(0, pt.x + arrasto.dx)); arrasto.peca.y = Math.min(estado.mapa.altura, Math.max(0, pt.y + arrasto.dy)); enviarMover(arrasto.peca, false); }
   desenhar();
@@ -333,7 +581,7 @@ cv.addEventListener('pointermove', (e) => {
 function soltar() {
   if (arrasto && arrasto.peca) {
     const g = estado.mapa.grade, p = arrasto.peca; // encaixa no centro da casa
-    p.x = Math.min(estado.mapa.largura, (Math.floor(p.x / g) + 0.5) * g); p.y = Math.min(estado.mapa.altura, (Math.floor(p.y / g) + 0.5) * g);
+    if (prefs.encaixar) { p.x = Math.min(estado.mapa.largura, (Math.floor(p.x / g) + 0.5) * g); p.y = Math.min(estado.mapa.altura, (Math.floor(p.y / g) + 0.5) * g); }
     enviarMover(p, true);
   }
   arrasto = null; cv.classList.remove('arrastando'); desenhar();
@@ -346,17 +594,83 @@ cv.addEventListener('wheel', (e) => {
   cam.x = (e.clientX - b.left) * dpr - pt.x * cam.z; cam.y = (e.clientY - b.top) * dpr - pt.y * cam.z; desenhar();
 }, { passive: false });
 addEventListener('resize', desenhar);
+function esconderDica() { const d = $('dica-mapa'); if (d && !d.hidden) d.hidden = true; try { localStorage.setItem('mapa_dica', '1'); } catch {} }
+try { if (localStorage.getItem('mapa_dica')) $('dica-mapa').hidden = true; } catch {}
 
-$('arquivo').onchange = async (e) => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  const url = URL.createObjectURL(f), i = new Image();
-  i.onload = async () => {
-    try { await post(`mapa?l=${i.naturalWidth}&a=${i.naturalHeight}`, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: f }); }
-    catch {} finally { URL.revokeObjectURL(url); }
-  };
-  i.onerror = () => mostrarErro('Não consegui ler essa imagem.'); i.src = url;
-};
-$('salvar-grade').onclick = () => post('grade', { grade: Number($('grade').value) }).catch(() => {});
+// ---------- Ferramentas ----------
+function aplicarPrefs() {
+  $('f-grade').classList.toggle('on', prefs.grade);
+  $('f-encaixar').classList.toggle('on', prefs.encaixar);
+  $('f-regua').classList.toggle('on', usandoRegua);
+  cv.classList.toggle('regua', usandoRegua);
+  document.body.classList.toggle('recolhido', !prefs.painel);
+  $('f-painel').classList.toggle('on', prefs.painel);
+  setTimeout(desenhar, 260);
+}
+const alternar = (k) => { prefs[k] = !prefs[k]; salvarPrefs(); aplicarPrefs(); desenhar(); };
+$('f-enquadrar').onclick = () => { if (estado) { ajustar(); desenhar(); } };
+$('f-mais').onclick = () => zoomCentro(1.25);
+$('f-menos').onclick = () => zoomCentro(1 / 1.25);
+$('f-grade').onclick = () => alternar('grade');
+$('f-encaixar').onclick = () => alternar('encaixar');
+$('f-painel').onclick = () => alternar('painel');
+$('f-regua').onclick = () => { usandoRegua = !usandoRegua; if (!usandoRegua) regua = null; aplicarPrefs(); desenhar(); };
+aplicarPrefs();
+
+addEventListener('keydown', (e) => {
+  const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (e.key === 'Escape') { if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
+  if (digitando || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === '/') { e.preventDefault(); abrirAba('chat'); if (!prefs.painel) alternar('painel'); $('texto').focus(); }
+  else if (k === 'f') $('f-enquadrar').onclick();
+  else if (k === 'g') $('f-grade').onclick();
+  else if (k === 'r') $('f-regua').onclick();
+  else if (k === 'p') $('f-painel').onclick();
+});
+
+// ---------- Importar mapa ----------
+const LIMITE_ENVIO = 11 * 1024 * 1024;
+function carregarImagem(arquivo) {
+  return new Promise((ok, falha) => {
+    const url = URL.createObjectURL(arquivo), i = new Image();
+    i.onload = () => ok({ i, url }); i.onerror = () => { URL.revokeObjectURL(url); falha(new Error('Não consegui ler essa imagem.')); }; i.src = url;
+  });
+}
+/** Imagens grandes demais são reduzidas aqui mesmo (o servidor aceita até 12 MB). */
+async function prepararImagem(arquivo) {
+  const { i, url } = await carregarImagem(arquivo);
+  try {
+    if (arquivo.size <= LIMITE_ENVIO && Math.max(i.naturalWidth, i.naturalHeight) <= 8000) return { blob: arquivo, l: i.naturalWidth, a: i.naturalHeight, reduzida: false };
+    let escala = Math.min(1, 6000 / Math.max(i.naturalWidth, i.naturalHeight));
+    for (let tentativa = 0; tentativa < 6; tentativa++) {
+      const c = document.createElement('canvas'); c.width = Math.round(i.naturalWidth * escala); c.height = Math.round(i.naturalHeight * escala);
+      c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.88));
+      if (blob && blob.size <= LIMITE_ENVIO) return { blob, l: c.width, a: c.height, reduzida: true };
+      escala *= 0.75;
+    }
+    throw new Error('Essa imagem é grande demais, mesmo reduzida. Tente uma menor.');
+  } finally { URL.revokeObjectURL(url); }
+}
+async function importarMapa(arquivo) {
+  if (!arquivo) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(arquivo.type)) return mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.');
+  try {
+    aviso('Preparando o mapa…', 'dado', 2500);
+    const { blob, l, a, reduzida } = await prepararImagem(arquivo);
+    await post(`mapa?l=${l}&a=${a}`, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
+    aviso(reduzida ? 'Mapa importado (reduzi a imagem para caber).' : 'Mapa importado!', 'ok');
+  } catch (e) { if (e && e.message && !/^(Não deu|Só o|Use uma)/.test(e.message)) mostrarErro(e.message); }
+}
+$('arquivo').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; importarMapa(f); };
+let arrastosArquivo = 0;
+addEventListener('dragenter', (e) => { if (estado && estado.voce.mestre && [...(e.dataTransfer.types || [])].includes('Files')) { arrastosArquivo++; $('solte').classList.add('on'); } });
+addEventListener('dragleave', () => { arrastosArquivo = Math.max(0, arrastosArquivo - 1); if (!arrastosArquivo) $('solte').classList.remove('on'); });
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => { e.preventDefault(); arrastosArquivo = 0; $('solte').classList.remove('on'); if (estado && estado.voce.mestre && e.dataTransfer.files[0]) importarMapa(e.dataTransfer.files[0]); });
+
+$('salvar-grade').onclick = () => post('grade', { grade: Number($('grade').value) }).then(() => aviso('Grade atualizada.', 'ok')).catch(() => {});
 $('add-npc').onclick = () => { post('npc', { nome: $('npc-nome').value }).then(() => ($('npc-nome').value = '')).catch(() => {}); };
 $('remover-npc').onclick = () => { if (selecionada) post('npc/remover', { peca: selecionada }).then(() => { selecionada = null; }).catch(() => {}); };
 $('limpar-chat').onclick = () => { if (confirmarLimpeza()) post('chat/limpar', {}).catch(() => {}); };
@@ -401,7 +715,7 @@ function montarBarra() {
     b.onclick = () => enviar(dualidade(mod())); caixa.append(b);
   }
   for (const f of [4, 6, 8, 10, 12, 20, 100]) {
-    const b = el('button', '', 'd' + f);
+    const b = el('button', f === 20 ? 'd20' : '', 'd' + f);
     b.onclick = () => enviar(f === 20 ? d20(mod()) : `/r 1d${f}${comMod(mod())}`);
     caixa.append(b);
   }
@@ -415,16 +729,18 @@ async function enviar(texto) {
   let t = texto.trim(); if (!t) return;
   if (escondida()) t = t.replace(/^\/(r|roll|rolar)(\s|$)/i, '/gr$2').replace(/^\/(dh|dualidade)(\s|$)/i, '/gdh$2');
   await post('chat', { texto: t });
+  if (!prefs.painel) alternar('painel');
+  abrirAba('chat');
 }
 $('enviar').onclick = () => { const i = $('texto'); enviar(i.value).then(() => (i.value = '')).catch(() => {}); };
 $('texto').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('enviar').onclick(); } });
 
 const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 const pertoDoFim = () => { const m = $('mensagens'); return m.scrollHeight - m.scrollTop - m.clientHeight < 80; };
-const rolarParaFim = () => { const m = $('mensagens'); m.scrollTop = m.scrollHeight; };
+const rolarParaFim = () => { const m = $('mensagens'); m.style.scrollBehavior = 'auto'; m.scrollTop = m.scrollHeight; m.style.scrollBehavior = ''; };
 
-function desenharRolagem(r, rotulo) {
-  const caixa = el('div', 'rolagem');
+function desenharRolagem(r, rotulo, secreta) {
+  const caixa = el('div', 'cartao ' + (secreta ? 'secreta ' : '') + (r.tipo === 'dualidade' ? 'dualidade ' : '') + (r.tipo === 'dualidade' && r.resultado === 'critico' ? 'critico' : ''));
   if (rotulo) caixa.append(el('div', 'rotulo', rotulo));
   const dados = el('div', 'dados');
   if (r.tipo === 'dados') {
@@ -455,19 +771,26 @@ function desenharRolagem(r, rotulo) {
 function desenharChat() {
   const caixa = $('mensagens'), descer = pertoDoFim();
   caixa.textContent = '';
-  if (!chat.length) caixa.append(el('div', 'mudo', 'Nada por aqui ainda. Mande uma mensagem ou role um dado.'));
+  if (!chat.length) {
+    const v = el('div', 'vazio-chat'); v.append(el('span', 'grande', '🎲'), document.createTextNode('Nada por aqui ainda.'), document.createElement('br'), document.createTextNode('Mande uma mensagem ou role um dado.'));
+    caixa.append(v);
+  }
   for (const m of chat) {
-    const d = el('div', 'msg' + (m.secreta ? ' secreta' : ''));
-    const topo = el('div', 'topo'); topo.append(el('span', '', m.autor), el('time', '', hora(m.em)));
-    d.append(topo);
-    if (m.tipo === 'msg') d.append(el('div', 'corpo', m.texto));
-    else if (m.resultado) d.append(desenharRolagem(m.resultado, m.texto));
+    const minha = estado && m.userId === estado.voce.id;
+    const d = el('div', 'msg' + (minha ? ' minha' : ''));
+    const av = el('div', 'avatar'); pintarAvatar(av, m.autor, minha ? estado.voce.avatar : null);
+    const c = el('div', 'conteudo');
+    const topo = el('div', 'topo'); topo.append(el('b', '', m.autor), el('time', '', hora(m.em)));
+    c.append(topo);
+    if (m.tipo === 'msg') c.append(el('div', 'corpo', m.texto));
+    else if (m.resultado) c.append(desenharRolagem(m.resultado, m.texto, m.secreta));
     if (m.secreta) {
-      d.append(el('span', 'selo', '🔒 Escondida: só você vê'));
-      const b = el('button', 'sec', '👁️ Mostrar para a mesa'); b.style.marginTop = '6px';
+      c.append(el('span', 'selo', '🔒 Escondida: só você vê'));
+      const b = el('button', 'btn sec', '👁️ Mostrar para a mesa'); b.style.marginTop = '6px';
       b.onclick = () => post('chat/revelar', { id: m.id }).catch(() => {});
-      d.append(b);
-    } else if (m.revelada) d.append(el('span', 'selo revelada', '👁️ Revelada pelo mestre'));
+      c.append(b);
+    } else if (m.revelada) c.append(el('span', 'selo revelada', '👁️ Revelada pelo mestre'));
+    d.append(av, c);
     caixa.append(d);
   }
   if (descer) rolarParaFim();
@@ -479,18 +802,31 @@ async function carregarChat() {
   if (sig === sigChat) return;
   sigChat = sig;
   const ultimo = novo.length ? novo[novo.length - 1].id : 0;
-  if (ultimoChat && ultimo > ultimoChat && !$('aba-chat').classList.contains('ativa')) { novas += novo.filter((m) => m.id > ultimoChat).length; contador(); }
+  const recentes = novo.filter((m) => m.id > ultimoChat && estado && m.userId !== estado.voce.id);
+  if (!primeiroChat) {
+    const chatVisivel = $('aba-chat').classList.contains('ativa') && prefs.painel;
+    if (!chatVisivel) { novas += recentes.length; contador(); }
+    // Rolagem de outra pessoa aparece em um aviso sobre o mapa, mesmo com o painel fechado.
+    for (const m of recentes) if (m.tipo !== 'msg' && m.resultado && !chatVisivel) aviso(`🎲 ${m.autor}: ${m.resultado.total}${m.texto ? ' · ' + m.texto : ''}`, 'dado');
+    if (!chatVisivel) for (const m of recentes) if (m.tipo === 'msg') aviso(`💬 ${m.autor}: ${m.texto.slice(0, 80)}`, '');
+  }
+  primeiroChat = false;
   ultimoChat = ultimo; chat = novo; desenharChat();
 }
+
+function marcarConexao(ok) { online = ok; $('ponto').classList.toggle('ok', ok); $('ponto').title = ok ? 'Conectado à mesa' : 'Sem conexão: tentando de novo…'; }
 
 function conectar() {
   const es = new EventSource(api('eventos'));
   es.onmessage = (e) => { (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {}); };
   es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };
   // Plano B: o aviso em tempo real pode não chegar (túnel, rede da empresa). A cada 3 s confere o que mudou.
-  setInterval(() => { if (!document.hidden) { carregar().catch(() => {}); carregarChat().catch(() => {}); } }, 3000);
+  setInterval(() => {
+    if (document.hidden) return;
+    Promise.all([carregar(), carregarChat()]).then(() => marcarConexao(true)).catch(() => marcarConexao(false));
+  }, 3000);
 }
-Promise.all([carregar(), carregarChat()]).then(() => { rolarParaFim(); conectar(); }).catch(() => {});
+Promise.all([carregar(), carregarChat()]).then(() => { marcarConexao(true); rolarParaFim(); conectar(); }).catch(() => marcarConexao(false));
 </script>
 </body>
 </html>

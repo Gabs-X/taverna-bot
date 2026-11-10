@@ -4,6 +4,7 @@ import {
   assinarLink,
   chatVisivel,
   criarSessao,
+  DURACAO_CONVITE,
   DURACAO_LINK,
   DURACAO_SESSAO,
   interpretarEntrada,
@@ -141,4 +142,14 @@ test('texto que vai para o Discord: mensagem, dados e dualidade', () => {
   );
   // Marcas de formatação no nome não quebram a mensagem.
   assert.equal(textoParaDiscord('**Ar_ia**', 'msg', 'oi', null), '🗺️ **Aria:** oi');
+});
+
+test('link de convite vale mais que o link comum, mas continua assinado', () => {
+  const agora = 1_000_000;
+  const comum = assinarLink('segredo', 1, '123456789012345678', agora);
+  const convite = assinarLink('segredo', 1, '123456789012345678', agora, DURACAO_CONVITE);
+  assert.equal(lerLink('segredo', 1, comum, agora + DURACAO_LINK + 1), undefined);
+  assert.equal(lerLink('segredo', 1, convite, agora + DURACAO_LINK + 1), '123456789012345678');
+  assert.equal(lerLink('segredo', 1, convite, agora + DURACAO_CONVITE + 1), undefined);
+  assert.equal(lerLink('segredo', 2, convite, agora + 10), undefined);
 });

@@ -49,8 +49,8 @@ function segredo() {
 }
 
 /** Link pessoal de quem rodou o /campanha mapa (vale 1 hora; ao abrir, vira uma sessão de 7 dias). */
-export function linkDoMapa(campanhaId: number, userId: string) {
-  return `${ENDERECO}/m/${campanhaId}?${new URLSearchParams(assinarLink(segredo(), campanhaId, userId))}`;
+export function linkDoMapa(campanhaId: number, userId: string, duracao?: number) {
+  return `${ENDERECO}/m/${campanhaId}?${new URLSearchParams(assinarLink(segredo(), campanhaId, userId, Date.now(), duracao))}`;
 }
 
 const campanhaPorId = (id: number) => db.prepare('SELECT * FROM campanhas WHERE id = ?').get(id) as Campanha | undefined;

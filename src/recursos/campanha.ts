@@ -11,6 +11,7 @@ import {
   type GuildMember,
 } from 'discord.js';
 import { db } from '../db.ts';
+import { DURACAO_CONVITE } from '../lib/mapa.ts';
 import { ehMestre } from '../lib/servidor.ts';
 import type { Comando } from '../tipos.ts';
 import { apagarMapa, avisarMapa, linkDoMapa, mapaPublico } from './mapa.ts';
@@ -106,6 +107,12 @@ export const campanha: Comando = {
     )
     .addSubcommand((s) =>
       s
+        .setName('iniciar')
+        .setDescription('Abre a sessão: manda o link do mapa no privado de cada jogador da campanha (só o mestre)')
+        .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true)),
+    )
+    .addSubcommand((s) =>
+      s
         .setName('canal')
         .setDescription('Liga o chat do mapa a um canal do Discord (o que um escreve aparece no outro). Sem canal, desliga')
         .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true))
@@ -194,6 +201,61 @@ export const campanha: Comando = {
     }
 
     if (!podeMexer(i, c)) return i.reply(SEM_PERMISSAO);
+
+    if (sub === 'iniciar') {
+      if (!mapaPublico()) {
+        return i.reply({
+          content: 'O mapa ainda não tem um endereço que os jogadores consigam abrir (falta `MAPA_URL` no `.env`). Veja o README.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      const jogadores = personagens(c.id);
+      if (!jogadores.length) {
+        return i.reply({ content: `**${c.nome}** ainda não tem personagens. Use \`/campanha adicionar\` antes.`, flags: MessageFlags.Ephemeral });
+      }
+      await i.deferReply({ flags: MessageFlags.Ephemeral });
+
+      const enviados: string[] = [];
+      const falharam: string[] = [];
+      for (const id of jogadores) {
+        const ficha = fichaDe(c.sistema, c.guild_id, id);
+        const botao = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Entrar no mapa').setEmoji('🗺️').setURL(linkDoMapa(c.id, id, DURACAO_CONVITE));
+        const convite = new EmbedBuilder()
+          .setColor(COR)
+          .setTitle(`🗺️ ${c.nome} · a sessão vai começar`)
+          .setDescription(
+            `<@${c.mestre_id}> abriu o mapa da campanha.\n` +
+              (ficha ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n` : '') +
+              'Clique em **Entrar no mapa**: o link é só seu e vale por 12 horas. Não compartilhe.',
+          )
+          .setFooter({ text: `${SISTEMAS[c.sistema].nome} · se o botão vencer, use /campanha mapa` });
+        try {
+          const usuario = await i.client.users.fetch(id);
+          await usuario.send({ embeds: [convite], components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botao)] });
+          enviados.push(id);
+        } catch {
+          falharam.push(id);
+        }
+      }
+
+      // O mestre entra pelo botão desta resposta; se o canal da mesa estiver ligado, avisa lá que a sessão começou.
+      const botaoMestre = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Abrir o mapa').setEmoji('🗺️').setURL(linkDoMapa(c.id, c.mestre_id, DURACAO_CONVITE));
+      const canal = c.canal_id ? await i.client.channels.fetch(c.canal_id).catch(() => null) : null;
+      if (canal?.isTextBased() && 'send' in canal) {
+        await canal
+          .send({ content: `🗺️ **${c.nome}**: a sessão começou! Os links do mapa foram enviados no privado. Não recebeu? Use \`/campanha mapa\`.`, allowedMentions: { parse: [] } })
+          .catch(() => {});
+      }
+      return i.editReply({
+        content:
+          `🗺️ Convites de **${c.nome}** enviados no privado: ${enviados.length}/${jogadores.length}.` +
+          (falharam.length
+            ? `\n⚠️ Não consegui falar no privado com ${falharam.map((id) => `<@${id}>`).join(', ')} (DMs fechadas). Peça para usarem \`/campanha mapa\`.`
+            : '') +
+          '\nSeu link de mestre está no botão abaixo.',
+        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botaoMestre)],
+      });
+    }
 
     if (sub === 'adicionar' || sub === 'remover') {
       const jogador = i.options.getUser('jogador', true);
