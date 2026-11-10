@@ -28,10 +28,12 @@ export const aoPedirMusica = (f: typeof aoPedir) => {
   aoPedir = f;
 };
 
-// radio: ligado pelo /radio. sugestoes: associadas à música inicial ainda não tocadas (o rádio fica no
-// estilo dela e só busca novas quando a lista acaba); historico: últimas tocadas, para não repetir.
+// radio: ligado pelo /radio. semente: a música inicial (as associadas vêm dela, para o rádio ficar no estilo dela);
+// sugestoes: associadas ainda não tocadas; historico: últimas tocadas, para não repetir.
 type Sugestao = { title: string; author: string; durationMS: number; videoId: string };
-type Radio = { historico: string[]; sugestoes: Sugestao[]; painelId?: string; buscando?: boolean };
+type Radio = { semente: Track; historico: string[]; sugestoes: Sugestao[]; painelId?: string; buscando?: boolean };
+// O fim da lista do "a seguir" foge do estilo (de Mamonas Assassinas chega a Katy Perry): fica só com o começo.
+const MAX_SUGESTOES = 30;
 // ambiente: trilha da mesa de RPG (toca em loop, sem avisar cada volta).
 type Metadados = { canal: SendableChannels; radio?: Radio; ambiente?: string };
 
@@ -131,12 +133,14 @@ async function sugestoesDoYoutubeMusic(player: Player, base: Track, youtube: { s
   if (!ext?.innertube || !id) return [];
   // Algumas músicas vêm sem "a seguir" (resposta vazia): aí o rádio cai no plano B (mesmo artista).
   const aSeguir = await ext.innertube.music.getUpNext(id, true).catch(() => undefined);
-  return (aSeguir?.contents ?? []).flatMap((item) => {
-    const v = item as unknown as ItemASeguir;
-    if (v.type !== 'PlaylistPanelVideo' || !v.video_id) return [];
-    const autor = v.author || v.artists?.map((a) => a.name).join(', ') || '';
-    return [{ title: String(v.title), author: autor, durationMS: (v.duration?.seconds ?? 0) * 1000, videoId: v.video_id }];
-  });
+  return (aSeguir?.contents ?? [])
+    .flatMap((item) => {
+      const v = item as unknown as ItemASeguir;
+      if (v.type !== 'PlaylistPanelVideo' || !v.video_id) return [];
+      const autor = v.author || v.artists?.map((a) => a.name).join(', ') || '';
+      return [{ title: String(v.title), author: autor, durationMS: (v.duration?.seconds ?? 0) * 1000, videoId: v.video_id }];
+    })
+    .slice(0, MAX_SUGESTOES);
 }
 
 /** Põe na fila a próxima associada (da lista da música inicial), sem repetir as recentes. */
@@ -150,10 +154,15 @@ async function encherRadio(fila: GuildQueue<Metadados>) {
   try {
     const youtube = { searchEngine: `ext:${YoutubeExtractor.identifier}` } as const;
     let proxima: Track | undefined;
+    let origem = 'associada';
     try {
-      // Lista acabando: pede ao "a seguir" do YouTube Music (o mesmo rádio do app) a partir da música atual.
-      if (radio.sugestoes.filter((s) => !radio.historico.includes(chaveMusica(s.title, s.author))).length < 5) {
-        radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(player, base, youtube)));
+      const ineditas = () => radio.sugestoes.filter((s) => !radio.historico.includes(chaveMusica(s.title, s.author)));
+      // Lista acabando: pede ao "a seguir" do YouTube Music (o mesmo rádio do app) a partir da música inicial. Buscar
+      // sempre da atual faria o estilo ir escapando a cada lista; a atual só entra quando a inicial não tem mais o que dar.
+      if (ineditas().length < 5) {
+        radio.sugestoes = ineditas();
+        radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(player, radio.semente, youtube)));
+        if (ineditas().length < 5) radio.sugestoes.push(...(await sugestoesDoYoutubeMusic(player, base, youtube)));
       }
       const escolhida = escolherProxima(radio.sugestoes, radio.historico);
       if (escolhida) {
@@ -166,12 +175,15 @@ async function encherRadio(fila: GuildQueue<Metadados>) {
     }
     if (!proxima) {
       // Sem associadas boas: mais músicas do mesmo artista.
+      origem = `plano B: "${base.author} música"`;
       const busca = await player.search(`${base.author} música`, youtube).catch(() => null);
       proxima = escolherProxima(busca?.tracks ?? [], radio.historico);
     }
-    if (proxima) {
-      proxima.requestedBy = null; // marca como escolhida pelo rádio (o botão de desligar tira essas)
+    // Trocaram de estação ou desligaram durante a busca: esta música era do rádio antigo.
+    if (proxima && fila.metadata.radio === radio) {
+      proxima.requestedBy = null; // marca como escolhida pelo rádio (o /radio novo tira essas da fila)
       fila.addTrack(proxima);
+      console.log(`[rádio] próxima: ${proxima.title} · ${proxima.author} (${origem}; rádio de ${radio.semente.title})`);
     }
   } finally {
     radio.buscando = false;
@@ -421,17 +433,31 @@ export const radio: Comando = {
     aoPedir(i.guildId!, semente.title);
 
     try {
-      if (filaAtual) {
-        // Já tem música: liga o rádio na fila atual (a semente entra na frente).
-        filaAtual.metadata.radio ??= { historico: [], sugestoes: [] };
+      if (filaAtual?.channel) {
+        // Já está na call: liga o rádio na fila atual (a semente entra na frente, com as associadas dela).
+        const anterior = filaAtual.metadata.radio;
+        filaAtual.metadata.radio = { semente, historico: anterior?.historico ?? [], sugestoes: [], painelId: anterior?.painelId };
+        // Troca de estação: a que o rádio antigo já tinha escolhido não pode tocar depois da semente. Os pedidos do /tocar ficam.
+        for (const faixa of filaAtual.tracks.toArray()) if (!faixa.requestedBy) filaAtual.removeTrack(faixa);
+        // Trilha do /ambiente: vira rádio de verdade (com ela marcada, os eventos ignorariam o rádio).
+        if (filaAtual.metadata.ambiente) {
+          delete filaAtual.metadata.ambiente;
+          filaAtual.node.setVolume(70);
+        }
         filaAtual.setRepeatMode(QueueRepeatMode.OFF);
         filaAtual.insertTrack(semente, 0);
+        // Parado na call (a fila acabou e ele espera para sair): sem o play, a semente ficaria na fila em silêncio.
+        if (!filaAtual.isPlaying()) await filaAtual.node.play();
+        // Já era rádio: a estação nova começa agora, sem esperar a música da antiga acabar.
+        else if (anterior) filaAtual.node.skip();
       } else {
+        // Fila sem call (o bardo foi desconectado) guardaria os metadados antigos, sem o rádio.
+        filaAtual?.delete();
         await t.player.play(canalDoTocador as unknown as CanalDoPlayer, semente, {
           requestedBy: i.user.id,
           nodeOptions: {
             ...SEM_EFEITOS,
-            metadata: { canal: i.channel as SendableChannels, radio: { historico: [], sugestoes: [] } } satisfies Metadados,
+            metadata: { canal: i.channel as SendableChannels, radio: { semente, historico: [], sugestoes: [] } } satisfies Metadados,
             volume: 70,
             leaveOnEmpty: true,
             leaveOnEmptyCooldown: 60_000,
@@ -444,6 +470,7 @@ export const radio: Comando = {
       console.error('[rádio] /radio', erro);
       return i.editReply('😵 Não consegui começar o rádio com essa música.');
     }
+    console.log(`[rádio] ${i.user.username} ligou com ${semente.title} · ${semente.author} (tocando pelo ${t.nome})`);
     const quem = ` (tocando pelo **${t.nome}**)`;
     return i.editReply(`📻 **Rádio ligado**${quem} com **${semente.title}** (${semente.author}). Depois dela, sigo com músicas associadas sem repetir. Desliga no botão do painel ou com \`/musica parar\`.`);
   },
