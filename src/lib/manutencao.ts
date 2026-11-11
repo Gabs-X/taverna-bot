@@ -14,6 +14,25 @@ export const nomeBackup = (agora: number) =>
 export const backupsVelhos = (nomes: string[], manter: number) =>
   nomes.filter((n) => /^taverna-\d{4}-\d{2}-\d{2}\.db$/.test(n)).sort().reverse().slice(manter);
 
+/** Cópia tirada logo depois de uma sessão de RPG: taverna-2026-11-11-sessao-2130-minha-mesa.db. */
+export function nomeBackupSessao(agora: number, campanha: string) {
+  const d = new Date(agora);
+  const dia = d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const hora = d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '');
+  const nome = campanha.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'mesa';
+  return `taverna-${dia}-sessao-${hora}-${nome}.db`;
+}
+
+/** Cópias de sessão que sobram depois de guardar as `manter` mais novas. */
+export const backupsDeSessaoVelhos = (nomes: string[], manter: number) =>
+  nomes.filter((n) => /^taverna-\d{4}-\d{2}-\d{2}-sessao-\d{4}-[a-z0-9-]+\.db$/.test(n)).sort().reverse().slice(manter);
+
+/** Backups da nuvem que ainda não estão no PC (diários e de sessão), do mais velho para o mais novo. */
+export const backupsQueFaltam = (remotos: string[], locais: string[]) => {
+  const tem = new Set(locais);
+  return remotos.filter((n) => /^taverna-\d{4}-\d{2}-\d{2}(-sessao-\d{4}-[a-z0-9-]+)?\.db$/.test(n) && !tem.has(n)).sort();
+};
+
 /** Um arquivo da pasta dados da nuvem, como o `find -printf '%P\t%s\t%T@\n'` lista. */
 export type ArquivoRemoto = { caminho: string; tamanho: number; em: number };
 

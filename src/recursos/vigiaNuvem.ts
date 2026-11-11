@@ -1,14 +1,14 @@
 import { execFile, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Client } from 'discord.js';
-import { arquivosParaTrazer, backupsVelhos, lerListaRemota } from '../lib/manutencao.ts';
+import { arquivosParaTrazer, backupsDeSessaoVelhos, backupsQueFaltam, backupsVelhos, lerListaRemota } from '../lib/manutencao.ts';
 
 // Roda no PC de casa, junto com os bardos (src/bardos.ts): fica de olho no Taverneiro na nuvem.
 // - A cada 10 minutos confere por SSH se o serviço está ativo e mandando sinal. Se cair (ou a Oracle parar a
 //   máquina por ociosidade), o primeiro bardo avisa o dono do servidor no privado; avisa de novo quando voltar.
-// - Traz para cá o backup diário do banco da nuvem (dados/backups-nuvem, guarda os 14 últimos) e um espelho dos
+// - Traz para cá os backups do banco da nuvem (dados/backups-nuvem: os 14 diários e os 20 de depois das sessões) e um espelho dos
 //   arquivos (mapas, fotos, handouts, registros das sessões, livros e cartas) em dados/backups-nuvem/arquivos, só com o
 //   que é novo ou mudou: se a máquina sumir, dá para subir o Taverneiro em outro lugar sem perder nada.
 // Configuração no .env: NUVEM_SSH=usuario@ip (sem ela, a vigia fica desligada) e, opcional, NUVEM_CHAVE.
@@ -50,16 +50,22 @@ async function situacao(): Promise<string> {
   return 'ok';
 }
 
-/** Traz o backup mais novo da nuvem, se ainda não estiver aqui. */
+/**
+ * Traz da nuvem todos os backups que ainda não estão aqui (os diários e os tirados depois de cada sessão):
+ * se o PC ficou desligado alguns dias, os dias do meio não se perdem. Cada um chega como .parcial e só
+ * ganha o nome certo quando a cópia termina.
+ */
 async function trazerBackup() {
-  const remotos = (await rodar('ssh', [...opcoesSsh, destino!, 'ls ~/taverna-bot/dados/backups'])).split('\n').map((l) => l.trim()).filter((l) => l.endsWith('.db')).sort();
-  const maisNovo = remotos.at(-1);
-  if (!maisNovo) return;
+  const remotos = (await rodar('ssh', [...opcoesSsh, destino!, 'ls ~/taverna-bot/dados/backups'])).split('\n').map((l) => l.trim());
   mkdirSync(PASTA_LOCAL, { recursive: true });
-  if (existsSync(join(PASTA_LOCAL, maisNovo))) return;
-  await rodar('scp', [...opcoesSsh, `${destino}:~/taverna-bot/dados/backups/${maisNovo}`, join(PASTA_LOCAL, maisNovo)]);
-  for (const velho of backupsVelhos(readdirSync(PASTA_LOCAL), MANTER)) rmSync(join(PASTA_LOCAL, velho));
-  console.log(`💾 Backup da nuvem copiado para ${PASTA_LOCAL}/${maisNovo}.`);
+  for (const nome of backupsQueFaltam(remotos, readdirSync(PASTA_LOCAL))) {
+    const final = join(PASTA_LOCAL, nome), parcial = `${final}.parcial`;
+    await rodar('scp', [...opcoesSsh, `${destino}:~/taverna-bot/dados/backups/${nome}`, parcial]);
+    renameSync(parcial, final);
+    console.log(`💾 Backup da nuvem copiado para ${final}.`);
+  }
+  const locais = readdirSync(PASTA_LOCAL);
+  for (const velho of [...backupsVelhos(locais, MANTER), ...backupsDeSessaoVelhos(locais, 20)]) rmSync(join(PASTA_LOCAL, velho));
 }
 
 const PASTA_ARQUIVOS = `${PASTA_LOCAL}/arquivos`; // barra normal: o tar do Windows e o do Git aceitam

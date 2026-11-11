@@ -292,7 +292,14 @@ type Ouvinte = { res: ServerResponse; userId: string };
 const ouvintes = new Map<number, Set<Ouvinte>>();
 
 /** "estado" recarrega mapa e peças; "chat" recarrega só o chat. Rolagem escondida avisa só o mestre. */
+// Número de cada mudança (estado e chat) por campanha: a página pergunta só "mudou?" (pulso) e baixa o resto
+// apenas quando muda. O BOOT muda a cada vez que o bot liga, para a página não confundir os números.
+const BOOT = randomBytes(4).toString('hex');
+const versoes = new Map<number, { estado: number; chat: number }>();
 function avisar(campanhaId: number, oQue: 'estado' | 'chat', soMestre = false) {
+  const v = versoes.get(campanhaId) ?? { estado: 0, chat: 0 };
+  v[oQue]++;
+  versoes.set(campanhaId, v);
   const mestre = soMestre ? campanhaPorId(campanhaId)?.mestre_id : undefined;
   for (const o of ouvintes.get(campanhaId) ?? []) {
     if (!soMestre || o.userId === mestre) o.res.write(`data: ${oQue}\n\n`);
@@ -500,7 +507,7 @@ async function montarEstado(c: Campanha, userId: string) {
   const minha = pecas.find((p) => p.user_id === userId);
 
   return {
-    campanha: { nome: c.nome, sistema: c.sistema, mestre: donos.get(c.mestre_id)?.nome ?? 'Mestre', mestreId: c.mestre_id, mestreAvatar: donos.get(c.mestre_id)?.avatar ?? null },
+    campanha: { nome: c.nome, sistema: c.sistema, mestre: donos.get(c.mestre_id)?.nome ?? 'Mestre', mestreId: c.mestre_id, mestreAvatar: donos.get(c.mestre_id)?.avatar ?? null, discord: linkDiscord(c) },
     voce: { id: userId, mestre: souMestre, jogador: !!minha, pecaId: minha?.id ?? null, temFicha: !!fichaDe(c, userId), ...donos.get(userId)! },
     mapa: {
       versao: m.versao, temImagem: !!m.imagem, largura: m.largura, altura: m.altura, grade: m.grade,
@@ -900,12 +907,28 @@ const json = (res: ServerResponse, status: number, corpo: unknown) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(corpo));
 };
-const texto = (res: ServerResponse, status: number, titulo: string, msg: string) => {
-  res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8' });
-  res.end(
-    `<!doctype html><meta charset="utf-8"><title>${titulo}</title><body style="font-family:system-ui;background:#1d1029;color:#eee;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1>${titulo}</h1><p>${msg}</p></div>`,
-  );
+/** Endereço do canal da campanha no Discord (ou do servidor), para o botão das páginas de aviso. */
+const linkDiscord = (c: Campanha | undefined) => (c ? `https://discord.com/channels/${c.guild_id}${c.canal_id ? '/' + c.canal_id : ''}` : null);
+
+/** Página curta de aviso (link vencido, mesa fechada...), no tema da taverna, com um botão opcional para o Discord. */
+const texto = (res: ServerResponse, status: number, titulo: string, msg: string, botao?: { url: string; rotulo: string } | null) => {
+  res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${titulo}</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; font-family: Georgia, 'Palatino Linotype', serif;
+    background: radial-gradient(ellipse at top, #3a2414, #140b05 70%); color: #2b1a08; }
+  .caixa { max-width: 460px; width: 100%; text-align: center; padding: 28px 26px; border-radius: 18px; background: linear-gradient(180deg, #fbf1d8, #ead6a8);
+    border: 2px solid #b8862f; box-shadow: 0 20px 60px rgba(0, 0, 0, .6), inset 0 0 30px rgba(122, 82, 24, .25); }
+  h1 { margin: 0 0 10px; font-size: 24px; letter-spacing: .03em; } p { margin: 0 0 6px; line-height: 1.5; font-size: 16px; }
+  code { background: #3b2814; color: #fbe7b5; padding: 2px 7px; border-radius: 6px; font-size: 14px; }
+  a.botao { display: inline-block; margin-top: 16px; padding: 11px 20px; border-radius: 10px; background: linear-gradient(180deg, #ffe39a, #d9a441); color: #2b1a08;
+    text-decoration: none; font-weight: 700; border: 1px solid #7a5218; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); }
+  .passos { text-align: left; margin: 14px auto 0; max-width: 340px; font-size: 15px; } .passos li { margin: 4px 0; }
+</style>
+<div class="caixa"><h1>${titulo}</h1><p>${msg}</p>${botao ? `<a class="botao" href="${botao.url}">${botao.rotulo}</a>` : ''}</div></html>`);
 };
+/** Como voltar para o mapa: o link é pessoal e sai do Discord. */
+const VOLTAR = `<ol class="passos"><li>Abra o Discord, no canal da campanha.</li><li>Digite <code>/sessao mapa</code>.</li><li>Clique em <b>Abrir o mapa</b>: o link novo é só seu.</li></ol>`;
 const cookie = (nome: string, valor: string, segundos: number) => `${nome}=${valor}; Path=/; Max-Age=${segundos}; HttpOnly; SameSite=Lax${SEGURO ? '; Secure' : ''}`;
 
 async function lerCorpo(req: IncomingMessage, limite: number) {
@@ -976,13 +999,20 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   // Entrada pelo link do Discord: troca o link pessoal por um cookie de sessão e limpa o endereço.
   if (pagina && url.searchParams.has('k')) {
     const u = lerLink(segredo(), campanhaId, { u: url.searchParams.get('u'), v: url.searchParams.get('v'), k: url.searchParams.get('k') });
-    if (!u) return texto(res, 403, 'Link vencido', `Esse link já venceu ou não é válido. ${ABRA_DE_NOVO}`);
+    if (!u) {
+      const dc = linkDiscord(campanhaPorId(campanhaId));
+      return texto(res, 403, '⏳ Esse link venceu', `Os links do mapa valem por pouco tempo, para ninguém entrar com o link de outra pessoa. Pegue um novo em segundos:${VOLTAR}`, dc ? { url: dc, rotulo: '💬 Ir para o canal no Discord' } : null);
+    }
     res.writeHead(302, { Location: rota, 'Set-Cookie': cookie('mapa_sessao', criarSessao(segredo(), u), 7 * 86400), 'Referrer-Policy': 'no-referrer' });
     return void res.end();
   }
 
   const userId = lerSessao(segredo(), lerCookies(req.headers.cookie).mapa_sessao);
-  if (!userId) return api ? json(res, 401, { erro: 'Sessão vencida: abra o mapa de novo pelo /sessao mapa.' }) : texto(res, 401, 'Quem é você? 🎲', ABRA_DE_NOVO);
+  if (!userId) {
+    if (api) return json(res, 401, { erro: 'Sessão vencida: abra o mapa de novo pelo /sessao mapa.', vencida: true });
+    const dc = linkDiscord(campanhaPorId(campanhaId));
+    return texto(res, 401, '🎲 Quem é você?', `O mapa não sabe quem você é neste navegador (o acesso dura 7 dias). Entre pelo seu link pessoal:${VOLTAR}`, dc ? { url: dc, rotulo: '💬 Ir para o canal no Discord' } : null);
+  }
 
   const c = campanhaPorId(campanhaId);
   if (!c) return api ? json(res, 404, { erro: 'Campanha apagada.' }) : texto(res, 404, 'Campanha não encontrada', 'Ela pode ter sido apagada.');
@@ -1028,6 +1058,13 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
     const desde = acao.match(/^efeitos\/(\d+)$/);
     if (desde) return json(res, 200, { seq: seqEfeito, lista: efeitosDesde(c.id, Number(desde[1])) });
+    // Pulso: resposta pequena com o número das mudanças e os efeitos novos. A página só baixa o estado
+    // ou o chat quando o número muda (antes baixava tudo a cada 3 s).
+    const pulso = acao.match(/^pulso\/(\d+)$/);
+    if (pulso) {
+      const v = versoes.get(c.id) ?? { estado: 0, chat: 0 };
+      return json(res, 200, { boot: BOOT, estado: v.estado, chat: v.chat, seq: seqEfeito, lista: efeitosDesde(c.id, Number(pulso[1])) });
+    }
     if (acao === 'imagem') return servirImagem(res, mapaDe(c.id).imagem);
     if (acao === 'cartas/catalogo') {
       res.setHeader('Cache-Control', 'private, max-age=3600');

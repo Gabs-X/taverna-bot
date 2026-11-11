@@ -32,6 +32,7 @@ import { interpretarDataHora, tsCompleto, tsRelativo } from '../lib/tempo.ts';
 import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
 import { apagarMapa, avisarMapa, liberarBardos, linkDoMapa, mapaPublico } from './mapa.ts';
+import { backupDaSessao } from './manutencao.ts';
 
 // Campanhas: um mestre cria a mesa, escolhe o sistema e adiciona os jogadores. Cada personagem é a ficha do
 // jogador no sistema da campanha: ele cria no próprio mapa (com foto) ou pelo /dh ficha criar e /ficha criar.
@@ -809,7 +810,10 @@ export const sessao: Comando = {
               canal_voz_id = CASE WHEN canal_voz_id = ? THEN NULL ELSE canal_voz_id END WHERE id = ?`).run(id, id, id, c.id);
           } })),
         );
-        if (encerrada) await concluirEvento(i.guild!, c);
+        if (encerrada) {
+          await concluirEvento(i.guild!, c);
+          backupDaSessao(c.nome); // cópia do banco com tudo o que a sessão mexeu
+        }
         return i.editReply({ content:
           `🏁 Sessão de **${c.nome}** encerrada. Resumo e registro enviados para ${canal}.` +
           (falhas.length ? `\n⚠️ Não consegui apagar estas salas: ${falhas.map((id) => `<#${id}>`).join(', ')}. Verifique a permissão **Gerenciar Canais**.`

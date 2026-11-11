@@ -257,6 +257,25 @@ test('ping chega na tela de todos pelo tempo real', async () => {
   assert.equal(JSON.parse(busca.lista[0].dados).seq, dados.seq);
 });
 
+test('pulso: resposta pequena que só muda o número quando o estado ou o chat mudam', async () => {
+  const M = '100000000000000001';
+  const antes = (await chamar(M, 'pulso/0')).corpo;
+  assert.equal(typeof antes.boot, 'string');
+  const de_novo = (await chamar(M, 'pulso/0')).corpo;
+  assert.deepEqual([de_novo.estado, de_novo.chat], [antes.estado, antes.chat]); // nada mudou
+  await chamar(M, 'chat', { texto: 'olá, mesa' });
+  const depois = (await chamar(M, 'pulso/0')).corpo;
+  assert.ok(depois.chat > antes.chat);
+  // Sem sessão: 401 com a marca de vencida (a página mostra a faixa para voltar pelo Discord).
+  const r = await fetch(`${base}/api/m/${campanha}/pulso/0`);
+  assert.equal(r.status, 401);
+  assert.equal(((await r.json()) as { vencida: boolean }).vencida, true);
+  // Link vencido: página com o passo a passo para pegar um novo.
+  const pagina = await fetch(`${base}/m/${campanha}?u=1&v=1&k=errado`);
+  assert.equal(pagina.status, 403);
+  assert.match(await pagina.text(), /\/sessao mapa/);
+});
+
 test('ponte com os bardos: só entra com a chave, recebe o pedido do mestre e devolve a resposta', async () => {
   const M = '100000000000000001';
   const { readFileSync } = await import('node:fs');

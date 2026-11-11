@@ -23,3 +23,13 @@ test('espelho dos arquivos da nuvem: só traz o que falta ou mudou, e ignora cam
   assert.deepEqual(arquivosParaTrazer(lista, (c) => aqui[c] ?? null), ['livros/g-dh.pdf']);
   assert.deepEqual(arquivosParaTrazer(lista, () => null), ['mapas/a.png', 'livros/g-dh.pdf']);
 });
+
+test('cópia depois da sessão: nome com a hora e a mesa, e guarda só as mais novas', async () => {
+  const { nomeBackupSessao, backupsDeSessaoVelhos, backupsQueFaltam } = await import('./manutencao.ts');
+  assert.equal(nomeBackupSessao(Date.UTC(2026, 10, 12, 0, 30), 'Brumas de Ávalon!'), 'taverna-2026-11-11-sessao-2130-brumas-de-avalon.db');
+  const nomes = ['taverna-2026-11-01-sessao-2100-a.db', 'taverna-2026-11-03-sessao-2100-a.db', 'taverna-2026-11-02-sessao-2200-b.db', 'taverna-2026-11-03.db'];
+  assert.deepEqual(backupsDeSessaoVelhos(nomes, 2), ['taverna-2026-11-01-sessao-2100-a.db']);
+  assert.deepEqual(backupsVelhos(nomes, 0), ['taverna-2026-11-03.db']);
+  assert.deepEqual(backupsQueFaltam(['taverna-2026-11-09.db', 'taverna-2026-11-08.db', 'taverna-2026-11-10.db', 'x.db', 'taverna-2026-11-10-sessao-2300-a.db'], ['taverna-2026-11-10.db']),
+    ['taverna-2026-11-08.db', 'taverna-2026-11-09.db', 'taverna-2026-11-10-sessao-2300-a.db']);
+});

@@ -599,6 +599,12 @@
     #dica-mapa { display: none; }
     #topo::before, #topo::after { display: none; }
   }
+  /* ---------- Faixa de conexão (caiu ou acesso vencido) ---------- */
+  #faixa-conexao { position: fixed; top: 0; left: 0; right: 0; z-index: 70; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 9px 16px; font-family: var(--fonte-titulo); font-weight: 700; font-size: 13.5px; color: #fff3dc; background: linear-gradient(180deg, #8e2a1f, #5e140c); border-bottom: 1px solid #2b0905; box-shadow: 0 4px 16px rgba(0, 0, 0, .5); animation: entra .2s ease-out; text-align: center; }
+  #faixa-conexao.vencida { background: linear-gradient(180deg, #7a5218, #4a300e); }
+  #faixa-conexao a.btn { text-decoration: none; padding: 5px 12px; }
+  #faixa-conexao .giro { display: inline-block; animation: pisca 1s ease-in-out infinite; }
+  @keyframes pisca { 50% { opacity: .35; } }
   /* ---------- Mesa: holofote, relógios, áreas, dados animados ---------- */
   #holofote { position: absolute; left: 50%; top: 122px; transform: translateX(-50%); padding: 6px 16px; border-radius: 999px; font-family: var(--fonte-titulo); font-weight: 900; font-size: 14px; color: #2b1a08; background: linear-gradient(180deg, #ffe39a, #d9a441); border: 1px solid #7a5218; box-shadow: 0 0 22px rgba(255, 210, 110, .55), 0 3px 10px rgba(0, 0, 0, .5); z-index: 3; white-space: nowrap; pointer-events: none; animation: entra .2s ease-out; }
   #holofote.minha { animation: brilho 1.4s ease-in-out infinite; }
@@ -3522,13 +3528,53 @@ function aplicarEfeito(tipo, texto) {
   if (d.seq) { if (efeitosVistos.has(d.seq)) return; efeitosVistos.add(d.seq); if (efeitosVistos.size > 600) efeitosVistos.delete(efeitosVistos.values().next().value); }
   if (tipo === 'ping') { if (d.quem !== estado.voce.id) receberPing(d); } else receberEfeito(d);
 }
-setInterval(() => {
-  if (document.hidden || !estado) return;
-  pegar('efeitos/' + Math.max(0, seqEfeitos)).then((r) => {
-    if (seqEfeitos >= 0) for (const e of r.lista) aplicarEfeito(e.tipo, e.dados);
-    seqEfeitos = r.seq;
-  }).catch(() => {});
-}, 1000);
+// ---------- Pulso: a cada 1,5 s pergunta só "mudou alguma coisa?" ----------
+// Resposta pequena (números das mudanças e efeitos novos). O estado e o chat só são baixados quando mudam;
+// assim o mapa fica leve para o servidor e para o celular, e funciona mesmo quando o tempo real (SSE) falha.
+let marcaPulso = null, falhasPulso = 0, vencida = false;
+async function pulso() {
+  if (document.hidden || !estado || vencida) return;
+  let r;
+  try {
+    const resp = await fetch(api('pulso/' + Math.max(0, seqEfeitos)), { cache: 'no-store' });
+    if (resp.status === 401) { vencida = true; avisoConexao('vencida'); return; }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    r = await resp.json();
+  } catch {
+    falhasPulso++;
+    if (falhasPulso >= 2) avisoConexao('caiu');
+    return;
+  }
+  const voltou = falhasPulso >= 2;
+  falhasPulso = 0;
+  if (seqEfeitos >= 0 && !voltou) for (const e of r.lista) aplicarEfeito(e.tipo, e.dados);
+  seqEfeitos = r.seq;
+  const marca = { e: r.boot + ':' + r.estado, c: r.boot + ':' + r.chat };
+  if (voltou || !marcaPulso || marca.e !== marcaPulso.e) carregar().catch(() => {});
+  if (voltou || !marcaPulso || marca.c !== marcaPulso.c) carregarChat().catch(() => {});
+  marcaPulso = marca;
+  avisoConexao(voltou ? 'voltou' : 'ok');
+}
+setInterval(pulso, 1500);
+// Voltou para a aba (celular desbloqueado, outra aba): confere na hora.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pulso(); });
+
+/** Faixa no topo do mapa quando a conexão cai ou o acesso vence. */
+function avisoConexao(caso) {
+  let f = $('faixa-conexao');
+  if (caso === 'ok') { if (f) f.hidden = true; marcarConexao(true); return; }
+  if (caso === 'voltou') { if (f) f.hidden = true; marcarConexao(true); aviso('📡 Conectado de novo à mesa.', 'ok', 2500); return; }
+  if (!f) { f = el('div'); f.id = 'faixa-conexao'; document.body.append(f); }
+  f.textContent = ''; f.hidden = false; f.className = caso;
+  if (caso === 'caiu') {
+    marcarConexao(false);
+    f.append(el('span', 'giro', '📡'), document.createTextNode(' Sem conexão com a mesa. Tentando de novo… (o que você fizer agora pode não chegar)'));
+  } else {
+    f.append(document.createTextNode('⏳ Seu acesso ao mapa venceu. No Discord, use /sessao mapa e abra o link novo.'));
+    const dc = estado && estado.campanha.discord;
+    if (dc) { const a = el('a', 'btn', '💬 Ir para o Discord'); a.href = dc; a.target = '_blank'; a.rel = 'noopener'; f.append(a); }
+  }
+}
 function receberPing(d) {
   pings.push({ ...d, ini: performance.now() });
   const animar = () => { const agora = performance.now(); while (pings.length && agora - pings[0].ini > 1800) pings.shift(); desenhar(); if (pings.length) requestAnimationFrame(animar); };
@@ -3768,11 +3814,7 @@ function conectar() {
     (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {});
   };
   es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };
-  // Plano B: o aviso em tempo real pode não chegar (túnel, rede da empresa). A cada 3 s confere o que mudou.
-  setInterval(() => {
-    if (document.hidden) return;
-    Promise.all([carregar(), carregarChat()]).then(() => marcarConexao(true)).catch(() => marcarConexao(false));
-  }, 3000);
+  // Plano B (o tempo real pode não chegar por causa do túnel ou da rede): o pulso, a cada 1,5 s.
 }
 // ======================================================================
 // Mesa: dados animados, holofote, régua e áreas compartilhadas, relógios,

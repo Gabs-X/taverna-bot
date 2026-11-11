@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import type { Client } from 'discord.js';
 import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { backupsVelhos, ficouFora, nomeBackup } from '../lib/manutencao.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { backupsDeSessaoVelhos, backupsVelhos, ficouFora, nomeBackup, nomeBackupSessao } from '../lib/manutencao.ts';
 import { canalTexto } from '../lib/servidor.ts';
 import { duracaoTexto } from '../lib/tela.ts';
 
@@ -38,15 +39,44 @@ async function avisarQueda(client: Client) {
   }
 }
 
-/** Cópia do banco uma vez por dia (VACUUM INTO copia com o bot rodando, sem travar), guardando os 7 últimos. */
-function fazerBackup() {
-  const nome = nomeBackup(Date.now());
-  const destino = join(PASTA_BACKUPS, nome);
-  if (existsSync(destino)) return;
+/** Copia o banco (VACUUM INTO copia com o bot rodando, sem travar) e confere se a cópia abre inteira. */
+function copiarBanco(destino: string) {
   mkdirSync(PASTA_BACKUPS, { recursive: true });
   db.exec(`VACUUM INTO '${destino.replaceAll('\\', '/')}'`);
+  const copia = new DatabaseSync(destino, { readOnly: true });
+  try {
+    const r = copia.prepare('PRAGMA integrity_check').get() as { integrity_check: string };
+    if (r.integrity_check !== 'ok') throw new Error(`cópia com defeito: ${r.integrity_check}`);
+  } finally {
+    copia.close();
+  }
+}
+
+/** Cópia do banco uma vez por dia, guardando as 7 últimas. */
+function fazerBackup() {
+  const destino = join(PASTA_BACKUPS, nomeBackup(Date.now()));
+  if (existsSync(destino)) return;
+  try {
+    copiarBanco(destino);
+  } catch (e) {
+    rmSync(destino, { force: true }); // cópia ruim não fica parecendo boa; tenta de novo na próxima hora
+    throw e;
+  }
   for (const velho of backupsVelhos(readdirSync(PASTA_BACKUPS), MANTER_BACKUPS)) rmSync(join(PASTA_BACKUPS, velho));
   console.log(`💾 Backup do banco salvo em ${destino}.`);
+}
+
+/** Cópia extra logo depois de uma sessão de RPG (fichas, cartas e diário recém-mexidos), guardando as 10 últimas. */
+export function backupDaSessao(campanha: string) {
+  const destino = join(PASTA_BACKUPS, nomeBackupSessao(Date.now(), campanha));
+  try {
+    copiarBanco(destino);
+    for (const velho of backupsDeSessaoVelhos(readdirSync(PASTA_BACKUPS), 10)) rmSync(join(PASTA_BACKUPS, velho));
+    console.log(`💾 Backup depois da sessão salvo em ${destino}.`);
+  } catch (e) {
+    rmSync(destino, { force: true });
+    console.error('[backup] depois da sessão:', e);
+  }
 }
 
 export function iniciarManutencao(client: Client) {
