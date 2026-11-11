@@ -1,15 +1,16 @@
-import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { execFile, spawn } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Client } from 'discord.js';
-import { backupsVelhos } from '../lib/manutencao.ts';
+import { arquivosParaTrazer, backupsVelhos, lerListaRemota } from '../lib/manutencao.ts';
 
 // Roda no PC de casa, junto com os bardos (src/bardos.ts): fica de olho no Taverneiro na nuvem.
 // - A cada 10 minutos confere por SSH se o serviço está ativo e mandando sinal. Se cair (ou a Oracle parar a
 //   máquina por ociosidade), o primeiro bardo avisa o dono do servidor no privado; avisa de novo quando voltar.
-// - Traz para cá o backup diário do banco da nuvem (dados/backups-nuvem, guarda os 14 últimos): se a máquina
-//   sumir, dá para subir o Taverneiro em outro lugar sem perder nada.
+// - Traz para cá o backup diário do banco da nuvem (dados/backups-nuvem, guarda os 14 últimos) e um espelho dos
+//   arquivos (mapas, fotos, handouts, registros das sessões, livros e cartas) em dados/backups-nuvem/arquivos, só com o
+//   que é novo ou mudou: se a máquina sumir, dá para subir o Taverneiro em outro lugar sem perder nada.
 // Configuração no .env: NUVEM_SSH=usuario@ip (sem ela, a vigia fica desligada) e, opcional, NUVEM_CHAVE.
 
 const CONFERIR_A_CADA = 10 * 60_000;
@@ -61,6 +62,38 @@ async function trazerBackup() {
   console.log(`💾 Backup da nuvem copiado para ${PASTA_LOCAL}/${maisNovo}.`);
 }
 
+const PASTA_ARQUIVOS = `${PASTA_LOCAL}/arquivos`; // barra normal: o tar do Windows e o do Git aceitam
+// O banco vivo vai pelo backup diário; segredos, registros do bot e arquivos pela metade ficam de fora.
+const FILTRO_ARQUIVOS = "! -path './backups/*' ! -name '*.log' ! -name 'estado.json' ! -name 'supervisor.pid' ! -name 'taverna.db*' ! -name 'bardos.chave' ! -name '*.parcial'";
+
+/** Espelha aqui os arquivos da pasta dados da nuvem, trazendo só o que falta ou mudou (um tar pelo SSH). */
+export async function espelharArquivos() {
+  const saida = await rodar('ssh', [...opcoesSsh, destino!, `cd ~/taverna-bot/dados && find . -type f ${FILTRO_ARQUIVOS} -printf '%P\\t%s\\t%T@\\n'`]);
+  const faltam = arquivosParaTrazer(lerListaRemota(saida), (caminho) => {
+    try {
+      const st = statSync(join(PASTA_ARQUIVOS, caminho));
+      return { tamanho: st.size, em: st.mtimeMs / 1000 };
+    } catch {
+      return null;
+    }
+  });
+  if (!faltam.length) return;
+  mkdirSync(PASTA_ARQUIVOS, { recursive: true });
+  await new Promise<void>((ok, falha) => {
+    const ssh = spawn('ssh', [...opcoesSsh, destino!, 'cd ~/taverna-bot/dados && tar -cf - -T -'], { windowsHide: true });
+    const tar = spawn('tar', ['-xf', '-', '-C', PASTA_ARQUIVOS], { windowsHide: true });
+    let erro = '';
+    ssh.stderr.on('data', (d) => (erro += d));
+    tar.stderr.on('data', (d) => (erro += d));
+    ssh.on('error', falha);
+    tar.on('error', falha);
+    ssh.stdout.pipe(tar.stdin);
+    ssh.stdin.end(faltam.join('\n') + '\n');
+    tar.on('close', (codigo) => (codigo === 0 ? ok() : falha(new Error(erro.trim() || `tar saiu com ${codigo}`))));
+  });
+  console.log(`💾 ${faltam.length} arquivo(s) da nuvem copiados para ${PASTA_ARQUIVOS}.`);
+}
+
 async function avisarDono(client: Client, texto: string) {
   console.log(`[nuvem] ${texto.replace(/\*\*/g, '')}`);
   const guild = client.guilds.cache.first();
@@ -82,6 +115,7 @@ export function iniciarVigiaNuvem(client: Client) {
       falhasSeguidas = 0;
       avisado = false;
       await trazerBackup().catch((e) => console.error('[nuvem] backup:', (e as Error).message));
+      await espelharArquivos().catch((e) => console.error('[nuvem] arquivos:', (e as Error).message));
       return;
     }
     // Duas conferências seguidas com problema (uns 10 a 20 minutos), para não avisar por um soluço da rede.
