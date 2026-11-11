@@ -706,6 +706,19 @@ const MIGRACOES: (() => void)[] = [
       CREATE INDEX IF NOT EXISTS mapa_desenhos_campanha ON mapa_desenhos (campanha_id, cena_id);
     `);
   },
+  // 30: sons que o mestre envia para tocar no navegador de cada jogador (arquivos em dados/sons).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS campanha_sons (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        nome        TEXT NOT NULL,
+        arquivo     TEXT NOT NULL,
+        criado_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS campanha_sons_campanha ON campanha_sons (campanha_id);
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

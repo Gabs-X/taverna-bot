@@ -120,3 +120,15 @@ test('desenho permanente: tipos, pontos dentro do mapa e só 2 pontos nas formas
   assert.throws(() => validarDesenho({ tipo: 'estrela', pontos: [[0, 0], [1, 1]] }, 9, 9));
   assert.throws(() => validarDesenho({ tipo: 'linha', pontos: [[0, 0]] }, 9, 9));
 });
+
+test('áudio do mestre reconhecido pelos primeiros bytes', async () => {
+  const { tipoAudio } = await import('./mesa.ts');
+  const b = (s: string, resto = 12) => new Uint8Array([...Buffer.from(s, 'latin1'), ...new Array(resto).fill(0)]);
+  assert.equal(tipoAudio(b('ID3'))?.ext, 'mp3');
+  assert.equal(tipoAudio(new Uint8Array([0xff, 0xfb, ...new Array(12).fill(0)]))?.ext, 'mp3');
+  assert.equal(tipoAudio(b('OggS'))?.mime, 'audio/ogg');
+  assert.equal(tipoAudio(b('RIFF\0\0\0\0WAVE'))?.ext, 'wav');
+  assert.equal(tipoAudio(b('\0\0\0\x20ftypM4A '))?.ext, 'm4a');
+  assert.equal(tipoAudio(b('<html>')), null);
+  assert.equal(tipoAudio(new Uint8Array(3)), null);
+});

@@ -10,7 +10,7 @@ import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
 import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa, revelarRaio } from '../lib/nevoa.ts';
 import { esquecerMesa, estadoDaMesa, lerMesa, registrarHistorico, tratarMesa, type Mesa } from './mapaMesa.ts';
-import { validarDesenho } from '../lib/mesa.ts';
+import { CLIMAS, EFEITOS_TELA, SONS_PRONTOS, tipoAudio, validarDesenho } from '../lib/mesa.ts';
 import { CARTA, CARTAS, CLASSES, DOMINIOS, ESTAGIOS, dominiosTocados, limites, lugarAoEscolher, motivoParaNaoEscolher, moverCarta, type CartaDoPersonagem } from '../lib/cartasDH.ts';
 import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type Criatura, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
@@ -67,6 +67,13 @@ type Cena = {
 
 type Elemento = { id: number; campanha_id: number; cena_id: number | null; imagem: string; x: number; y: number; largura: number; altura: number; rotacao: number; oculto: number; ordem: number };
 type DesenhoSalvo = { id: number; tipo: string; pontos: string; cor: string; espessura: number; preenchido: number; oculto: number };
+// Clima ligado em cada mesa (chuva, neve...): fica em memória, quem abre o mapa depois já vê.
+const climas = new Map<number, Set<string>>();
+const PASTA_SONS = 'dados/sons';
+const LIMITE_SOM = 8 * 1024 * 1024;
+type Som = { id: number; nome: string; arquivo: string };
+const sonsDe = (campanhaId: number) => db.prepare('SELECT id, nome, arquivo FROM campanha_sons WHERE campanha_id = ? ORDER BY nome COLLATE NOCASE').all(campanhaId) as Som[];
+
 /** Elementos e desenhos da cena aberta (sem cenas, os que não têm cena). */
 const elementosDaCena = (c: { id: number }, m: { cena_id: number | null }) =>
   db.prepare('SELECT * FROM mapa_elementos WHERE campanha_id = ? AND cena_id IS ? ORDER BY ordem, id').all(c.id, m.cena_id) as Elemento[];
@@ -546,6 +553,8 @@ async function montarEstado(c: Campanha, userId: string) {
     },
     cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente, notas: cn.notas })) : [],
     ...estadoDaMesa({ c, userId, souMestre }),
+    clima: [...(climas.get(c.id) ?? [])],
+    sons: souMestre ? sonsDe(c.id).map((x) => ({ id: x.id, nome: x.nome })) : [],
     // Elementos (imagens soltas) e desenhos do mestre: os escondidos só o mestre recebe; com a cortina fechada, ninguém.
     elementos: elementosDaCena(c, m).filter((e) => souMestre || (!e.oculto && !m.cortina)).map((e) => ({
       id: e.id, x: e.x, y: e.y, largura: e.largura, altura: e.altura, rotacao: e.rotacao, oculto: !!e.oculto,
@@ -1132,6 +1141,14 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       const h = db.prepare('SELECT imagem FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(Number(imgHandout[1]), c.id) as { imagem: string } | undefined;
       return servirImagem(res, h?.imagem);
     }
+    const somArquivo = acao.match(/^som-arquivo\/(\d+)$/);
+    if (somArquivo) {
+      const som = db.prepare('SELECT arquivo FROM campanha_sons WHERE id = ? AND campanha_id = ?').get(Number(somArquivo[1]), c.id) as { arquivo: string } | undefined;
+      if (!som || /[\\/]/.test(som.arquivo) || !existsSync(`${PASTA_SONS}/${som.arquivo}`)) return json(res, 404, { erro: 'Som não encontrado.' });
+      const dados = readFileSync(`${PASTA_SONS}/${som.arquivo}`);
+      res.writeHead(200, { 'Content-Type': tipoAudio(dados)?.mime ?? 'application/octet-stream', 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+      return void res.end(dados);
+    }
     const imgElemento = acao.match(/^elemento-imagem\/(\d+)$/);
     if (imgElemento) {
       const e = db.prepare('SELECT imagem, oculto FROM mapa_elementos WHERE id = ? AND campanha_id = ?').get(Number(imgElemento[1]), c.id) as { imagem: string; oculto: number } | undefined;
@@ -1696,6 +1713,26 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // Som do mestre: chega como arquivo (mp3, ogg, wav, m4a, webm, flac), com o nome no endereço.
+  if (acao === 'som/enviar') {
+    if ((db.prepare('SELECT COUNT(*) AS n FROM campanha_sons WHERE campanha_id = ?').get(c.id) as { n: number }).n >= 60) return json(res, 400, { erro: 'A campanha já tem 60 sons. Apague alguns antes.' });
+    let dados: Buffer;
+    try {
+      dados = await lerCorpo(req, LIMITE_SOM);
+    } catch {
+      return json(res, 413, { erro: 'Áudio grande demais (máximo 8 MB).' });
+    }
+    const tipo = tipoAudio(dados);
+    if (!tipo) return json(res, 415, { erro: 'Use um áudio MP3, OGG, WAV, M4A, WEBM ou FLAC.' });
+    const nome = String(url.searchParams.get('nome') ?? '').replace(/\s+/g, ' ').trim().slice(0, 40) || 'Som';
+    mkdirSync(PASTA_SONS, { recursive: true });
+    const arquivo = `${c.id}-${Date.now()}.${tipo.ext}`;
+    writeFileSync(`${PASTA_SONS}/${arquivo}`, dados);
+    const novo = db.prepare('INSERT INTO campanha_sons (campanha_id, nome, arquivo, criado_em) VALUES (?, ?, ?, ?)').run(c.id, nome, arquivo, Date.now());
+    avisar(c.id, 'estado', true);
+    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+  }
+
   // Elemento novo: a imagem chega como arquivo (antes de ler o corpo como JSON).
   if (acao === 'elemento/novo') {
     const m = mapaDe(c.id);
@@ -1970,6 +2007,49 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
   }
 
+  // ---------- Efeitos de tela, clima e sons (tocam no navegador de cada um) ----------
+  if (acao === 'tela/efeito') {
+    const nome = String(b.nome);
+    if (!(EFEITOS_TELA as readonly string[]).includes(nome)) return json(res, 400, { erro: 'Efeito desconhecido.' });
+    const m = mapaDe(c.id);
+    const ponto = b.x !== undefined ? { x: Math.round(limitar(b.x, 0, m.largura, 0)), y: Math.round(limitar(b.y, 0, m.altura, 0)) } : {};
+    transmitir(c.id, 'efeito', JSON.stringify({ tipo: 'tela', nome, ...ponto }));
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'tela/clima') {
+    const nome = String(b.nome);
+    if (!(CLIMAS as readonly string[]).includes(nome)) return json(res, 400, { erro: 'Clima desconhecido.' });
+    const ligados = climas.get(c.id) ?? new Set<string>();
+    if (b.ligado) ligados.add(nome); else ligados.delete(nome);
+    climas.set(c.id, ligados);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, clima: [...ligados] });
+  }
+  if (acao === 'som/tocar') {
+    const volume = Math.round(limitar(b.volume, 0, 100, 80));
+    if (b.pronto !== undefined) {
+      if (!(SONS_PRONTOS as readonly string[]).includes(String(b.pronto))) return json(res, 400, { erro: 'Som desconhecido.' });
+      transmitir(c.id, 'efeito', JSON.stringify({ tipo: 'som', pronto: String(b.pronto), volume }));
+      return json(res, 200, { ok: true });
+    }
+    const som = db.prepare('SELECT id, nome FROM campanha_sons WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as { id: number; nome: string } | undefined;
+    if (!som) return json(res, 404, { erro: 'Som não encontrado.' });
+    transmitir(c.id, 'efeito', JSON.stringify({ tipo: 'som', url: `/api/m/${c.id}/som-arquivo/${som.id}`, nome: som.nome, volume, repetir: !!b.repetir }));
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'som/parar') {
+    transmitir(c.id, 'efeito', JSON.stringify({ tipo: 'som-parar' }));
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'som/apagar') {
+    const som = db.prepare('SELECT arquivo FROM campanha_sons WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as { arquivo: string } | undefined;
+    if (!som) return json(res, 404, { erro: 'Som não encontrado.' });
+    db.prepare('DELETE FROM campanha_sons WHERE id = ?').run(Number(b.id));
+    if (!/[\\/]/.test(som.arquivo)) rmSync(`${PASTA_SONS}/${som.arquivo}`, { force: true });
+    avisar(c.id, 'estado', true);
+    return json(res, 200, { ok: true });
+  }
+
   // ---------- Desenhos permanentes do mestre ----------
   if (acao === 'desenho/novo') {
     const m = mapaDe(c.id);
@@ -2029,6 +2109,9 @@ export function apagarMapa(campanhaId: number) {
   for (const e of db.prepare('SELECT DISTINCT imagem FROM mapa_elementos WHERE campanha_id = ?').all(campanhaId) as { imagem: string }[]) apagarImagem(e.imagem);
   db.prepare('DELETE FROM mapa_elementos WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_desenhos WHERE campanha_id = ?').run(campanhaId);
+  for (const som of sonsDe(campanhaId)) if (!/[\\/]/.test(som.arquivo)) rmSync(`${PASTA_SONS}/${som.arquivo}`, { force: true });
+  db.prepare('DELETE FROM campanha_sons WHERE campanha_id = ?').run(campanhaId);
+  climas.delete(campanhaId);
   db.prepare('DELETE FROM campanha_roteiro WHERE campanha_id = ?').run(campanhaId);
   esquecerMesa(campanhaId);
   for (const o of ouvintes.get(campanhaId) ?? []) o.res.end();

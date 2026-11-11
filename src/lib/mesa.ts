@@ -120,3 +120,25 @@ export function validarDesenho(corpo: Record<string, unknown>, largura: number, 
   const espessura = Math.min(40, Math.max(1, Number(corpo.espessura) || 4));
   return { tipo, pontos: final, cor, espessura, preenchido: !!corpo.preenchido && (tipo === 'retangulo' || tipo === 'circulo') };
 }
+
+// ---------- Efeitos de tela e sons da mesa ----------
+
+/** Efeitos rápidos que o mestre dispara na tela de todos. */
+export const EFEITOS_TELA = ['ventania', 'tremor', 'fogo', 'explosao', 'relampago', 'luz', 'escuridao'] as const;
+/** Climas que ficam ligados até o mestre desligar. */
+export const CLIMAS = ['chuva', 'neve', 'neblina', 'vento'] as const;
+/** Sons prontos, gerados no próprio navegador (sem arquivo). */
+export const SONS_PRONTOS = ['trovao', 'explosao', 'espada', 'porta', 'sino', 'magia', 'rugido', 'batida', 'moedas'] as const;
+
+/** Tipo de um arquivo de áudio pelos primeiros bytes (o nome do arquivo não conta). */
+export function tipoAudio(dados: Uint8Array): { ext: string; mime: string } | null {
+  const txt = (ini: number, fim: number) => String.fromCharCode(...dados.subarray(ini, fim));
+  if (dados.length < 12) return null;
+  if (txt(0, 3) === 'ID3' || (dados[0] === 0xff && (dados[1] & 0xe0) === 0xe0)) return { ext: 'mp3', mime: 'audio/mpeg' };
+  if (txt(0, 4) === 'OggS') return { ext: 'ogg', mime: 'audio/ogg' };
+  if (txt(0, 4) === 'RIFF' && txt(8, 12) === 'WAVE') return { ext: 'wav', mime: 'audio/wav' };
+  if (txt(0, 4) === 'fLaC') return { ext: 'flac', mime: 'audio/flac' };
+  if (txt(4, 8) === 'ftyp') return { ext: 'm4a', mime: 'audio/mp4' };
+  if (dados[0] === 0x1a && dados[1] === 0x45 && dados[2] === 0xdf && dados[3] === 0xa3) return { ext: 'webm', mime: 'audio/webm' };
+  return null;
+}
