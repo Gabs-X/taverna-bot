@@ -1,5 +1,14 @@
 # Novidades do Taverneiro
 
+## v1.15.0 (11/11/2026)
+
+- ✨ Efeitos na tela de todos: ventania, tremor, fogo, explosão (no ponto que o mestre clicar), relâmpago, luz divina e escuridão.
+- 🌦️ Clima no mapa: chuva, neve, neblina e vento ficam ligados até o mestre desligar (chuva e vento com som).
+- 🔊 Sons que tocam no navegador de cada um: trovão, explosão, espada, porta rangendo, sino, magia, rugido, batida e moedas. O mestre também pode enviar os próprios áudios.
+- 🔇 Não quer som? O 🔊 da barra do mapa desliga só para você.
+- 🧱 O mestre pode pôr elementos com imagem na cena (móveis, árvores, armadilhas) e desenhos que ficam no mapa até ele apagar.
+- 🎞️ GIF animado agora funciona no mapa, nas peças e nas fotos dos personagens.
+
 ## v1.14.0 (11/11/2026)
 
 - 🎭 Cortina do mestre: o mestre fecha a cortina para ajeitar a cena e os jogadores veem um palco fechado, sem as peças do mestre. A ficha, o chat e o livro continuam funcionando.
