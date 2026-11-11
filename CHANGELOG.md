@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.11.1 (11/11/2026)
+
+- 🎵 Música da mesa: a trilha e as músicas pedidas pelo mapa agora tocam na call da campanha
+
 ## v1.11.0 (11/11/2026)
 
 - 🍺 Mapa da campanha de cara nova: mesa de madeira, pergaminho, luz de vela e dados de osso que rolam no chat (com faixa de VINTE NATURAL e FALHA CRÍTICA)
