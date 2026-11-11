@@ -719,6 +719,10 @@ const MIGRACOES: (() => void)[] = [
       CREATE INDEX IF NOT EXISTS campanha_sons_campanha ON campanha_sons (campanha_id);
     `);
   },
+  // 31: status escrito na peça (um texto curto que aparece num balão em cima dela).
+  () => {
+    db.exec("ALTER TABLE mapa_pecas ADD COLUMN status TEXT NOT NULL DEFAULT ''");
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

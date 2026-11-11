@@ -257,6 +257,16 @@ test('ping chega na tela de todos pelo tempo real', async () => {
   assert.equal(JSON.parse(busca.lista[0].dados).seq, dados.seq);
 });
 
+test('status na peça: o jogador escreve no dele, o mestre em qualquer uma', async () => {
+  const M = '100000000000000001', J = '200000000000000002';
+  const minha = (await estado(J)).pecas.find((p: { userId: string }) => p.userId === J);
+  assert.equal((await chamar(J, 'peca/status', { peca: minha.id, texto: '  Envenenado   e   com medo ' })).corpo.status, 'Envenenado e com medo');
+  assert.equal((await estado(M)).pecas.find((p: { id: number }) => p.id === minha.id).status, 'Envenenado e com medo');
+  const outra = (await estado(M)).pecas.find((p: { userId: string | null }) => p.userId !== J);
+  if (outra) assert.equal((await chamar(J, 'peca/status', { peca: outra.id, texto: 'x' })).status, 403);
+  assert.equal((await chamar(M, 'peca/status', { peca: minha.id, texto: '' })).corpo.status, '');
+});
+
 test('pulso: resposta pequena que só muda o número quando o estado ou o chat mudam', async () => {
   const M = '100000000000000001';
   const antes = (await chamar(M, 'pulso/0')).corpo;

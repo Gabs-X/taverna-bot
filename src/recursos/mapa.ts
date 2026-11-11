@@ -58,7 +58,7 @@ type Mapa = {
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
   criatura_id: number | null; tipo: string | null; pv: number | null; condicoes: string; iniciativa: number | null; agiu: number;
-  escondida: number; cena_id: number | null;
+  escondida: number; cena_id: number | null; status: string;
 };
 type Cena = {
   id: number; campanha_id: number; nome: string; imagem: string | null; largura: number; altura: number; grade: number;
@@ -601,6 +601,7 @@ async function montarEstado(c: Campanha, userId: string) {
         ficha: dadosFicha,
         vida: !p.user_id && !souMestre ? vidaParaJogadores(m, cr, p) : null,
         condicoes: p.condicoes ? p.condicoes.split(',') : [],
+        status: p.status || '',
         iniciativa: p.iniciativa,
         agiu: !!p.agiu,
         escondida: !!p.escondida,
@@ -1326,6 +1327,18 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     db.prepare('UPDATE mapa_pecas SET condicoes = ? WHERE id = ?').run(alternarCondicao(p.condicoes, b.condicao, !!b.ligar), p.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
+  }
+
+  // Status escrito na peça (balão em cima dela): o dono escreve no personagem dele, o mestre em qualquer uma.
+  if (acao === 'peca/status') {
+    const b = await lerJson<{ peca: number; texto: string }>(req);
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.peca), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
+    if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só escreve o status do seu personagem.' });
+    const texto = String(b.texto ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    db.prepare('UPDATE mapa_pecas SET status = ? WHERE id = ?').run(texto, p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, status: texto });
   }
 
   // PV, Estresse, Esperança e Armadura do personagem (o dono ou o mestre), sem sair do mapa.
