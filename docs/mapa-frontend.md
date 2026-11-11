@@ -81,7 +81,7 @@ npm run mapa:demo
 
 ## O que fica salvo entre uma sessão e outra
 
-`/campanha finalizar` só encerra a sessão: manda o resumo para o canal de resumos, cria a entrada no diário e apaga o canal de texto e a call da sessão. **Nada do mapa é apagado.** No próximo `/campanha iniciar`, a mesa volta do jeito que ficou:
+`/sessao finalizar` só encerra a sessão: manda o resumo para o canal de resumos, cria a entrada no diário e apaga o canal de texto e a call da sessão. **Nada do mapa é apagado.** No próximo `/sessao iniciar`, a mesa volta do jeito que ficou:
 
 - **Personagens**: ficha, foto, posição no mapa, vida, Estresse, Esperança, Armadura e condições.
 - **Cenas**: cada uma com o seu mapa, a sua grade, a sua névoa e a sua trilha. A última cena aberta continua aberta.

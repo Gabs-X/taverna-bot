@@ -1,25 +1,18 @@
 import {
-  ChannelType,
   EmbedBuilder,
-  GuildScheduledEventEntityType,
-  GuildScheduledEventPrivacyLevel,
-  GuildScheduledEventStatus,
   InteractionContextType,
   MessageFlags,
   SlashCommandBuilder,
   type Client,
-  type GuildMember,
 } from 'discord.js';
-import { CANAIS, CARGOS, NOME_SERVIDOR } from '../config.ts';
+import { CANAIS } from '../config.ts';
 import { db } from '../db.ts';
-import { canalPorNome, canalTexto, cargoPorNome, ehMestre, emoji } from '../lib/servidor.ts';
+import { canalTexto, emoji } from '../lib/servidor.ts';
 import {
   dataValida,
   ehBissexto,
-  interpretarDataHora,
   interpretarDuracao,
   partesBrasilia,
-  tsCompleto,
   tsRelativo,
 } from '../lib/tempo.ts';
 import type { Comando } from '../tipos.ts';
@@ -27,118 +20,6 @@ import { registrar } from './registro.ts';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const HORA_PARABENS = 9; // horário de Brasília
-
-// Cada mesa de RPG tem sua call, seu canal de avisos e o cargo de quem joga.
-const MESAS = {
-  dnd: { nome: 'D&D 3.5', emoji: '🐉', titulo: 'Sessão de D&D', voz: CANAIS.mesaRpg, avisos: CANAIS.avisosRpg, cargo: CARGOS.aventureiro.nome },
-  dh: { nome: 'Daggerheart', emoji: '🌗', titulo: 'Sessão de Daggerheart', voz: CANAIS.mesaDh, avisos: CANAIS.avisosDh, cargo: CARGOS.daggerheart.nome },
-} as const;
-
-// ---------- /sessao: marca a próxima sessão de RPG como evento do Discord ----------
-
-export const sessao: Comando = {
-  data: new SlashCommandBuilder()
-    .setName('sessao')
-    .setDescription('Sessões de RPG: marcar (vira evento do Discord) e ver as próximas')
-    .setContexts(InteractionContextType.Guild)
-    .addSubcommand((s) =>
-      s
-        .setName('marcar')
-        .setDescription('Marca uma sessão e avisa os jogadores da mesa (Mestre ou admin)')
-        .addStringOption((o) =>
-          o
-            .setName('mesa')
-            .setDescription('Qual mesa')
-            .setRequired(true)
-            .addChoices(...Object.entries(MESAS).map(([value, m]) => ({ name: `${m.emoji} ${m.nome}`, value }))),
-        )
-        .addStringOption((o) => o.setName('data').setDescription('Ex.: 25/10 ou 25/10/2026').setRequired(true).setMaxLength(10))
-        .addStringOption((o) => o.setName('hora').setDescription('Ex.: 20h, 20:30').setRequired(true).setMaxLength(5))
-        .addStringOption((o) => o.setName('titulo').setDescription('Ex.: Sessão 12 · A Cripta do Lich').setMaxLength(100))
-        .addStringOption((o) => o.setName('descricao').setDescription('Resumo, o que levar, recado do Mestre').setMaxLength(500))
-        .addIntegerOption((o) => o.setName('duracao').setDescription('Em horas (padrão: 4)').setMinValue(1).setMaxValue(12)),
-    )
-    .addSubcommand((s) => s.setName('proximas').setDescription('Lista as próximas sessões e eventos do servidor')),
-
-  async executar(i) {
-    const guild = i.guild!;
-
-    if (i.options.getSubcommand() === 'proximas') {
-      const eventos = [...(await guild.scheduledEvents.fetch()).values()]
-        .filter((e) => e.status === GuildScheduledEventStatus.Scheduled || e.status === GuildScheduledEventStatus.Active)
-        .sort((a, b) => (a.scheduledStartTimestamp ?? 0) - (b.scheduledStartTimestamp ?? 0))
-        .slice(0, 10);
-      if (!eventos.length) return i.reply({ content: 'Nenhuma sessão marcada. O Mestre pode usar `/sessao marcar`.', flags: MessageFlags.Ephemeral });
-      const embed = new EmbedBuilder()
-        .setColor(CARGOS.mestre.cor)
-        .setTitle('📅 Próximas sessões e eventos')
-        .setDescription(
-          eventos
-            .map((e) => {
-              const ms = e.scheduledStartTimestamp ?? 0;
-              const ativo = e.status === GuildScheduledEventStatus.Active ? ' · 🔴 rolando agora' : '';
-              return `**[${e.name}](${e.url})**\n${tsCompleto(ms)} (${tsRelativo(ms)})${ativo} · ${e.userCount ?? 0} interessado(s)`;
-            })
-            .join('\n\n'),
-        );
-      return i.reply({ embeds: [embed] });
-    }
-
-    const membro = i.member as GuildMember;
-    if (!ehMestre(membro)) {
-      return i.reply({ content: `Só quem tem o cargo **${CARGOS.mestre.nome}** marca sessões.`, flags: MessageFlags.Ephemeral });
-    }
-
-    const inicio = interpretarDataHora(i.options.getString('data', true), i.options.getString('hora', true));
-    if (!inicio) return i.reply({ content: 'Não entendi a data ou a hora. Use, por exemplo, `data:25/10 hora:20h`.', flags: MessageFlags.Ephemeral });
-    if (inicio.getTime() < Date.now() + 60_000) return i.reply({ content: 'Essa data já passou.', flags: MessageFlags.Ephemeral });
-
-    const mesaRpg = MESAS[i.options.getString('mesa', true) as keyof typeof MESAS];
-    const titulo = i.options.getString('titulo') ?? mesaRpg.titulo;
-    const descricao = i.options.getString('descricao') ?? undefined;
-    const fim = new Date(inicio.getTime() + (i.options.getInteger('duracao') ?? 4) * 3_600_000);
-    const mesa = canalPorNome(guild, mesaRpg.voz, ChannelType.GuildVoice);
-
-    await i.deferReply({ flags: MessageFlags.Ephemeral });
-    const evento = await guild.scheduledEvents.create({
-      name: titulo,
-      description: descricao,
-      scheduledStartTime: inicio,
-      scheduledEndTime: fim,
-      privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
-      ...(mesa
-        ? { entityType: GuildScheduledEventEntityType.Voice, channel: mesa.id }
-        : { entityType: GuildScheduledEventEntityType.External, entityMetadata: { location: NOME_SERVIDOR } }),
-    });
-
-    const jogadores = cargoPorNome(guild, mesaRpg.cargo);
-    const avisos = canalTexto(guild, mesaRpg.avisos);
-    if (avisos) {
-      const embed = new EmbedBuilder()
-        .setColor(CARGOS.mestre.cor)
-        .setAuthor({ name: `${membro.displayName} marcou a próxima sessão`, iconURL: membro.displayAvatarURL() })
-        .setTitle(`${mesaRpg.emoji} ${titulo}`)
-        .setURL(evento.url)
-        .setDescription(
-          [
-            `📅 ${tsCompleto(inicio.getTime())} (${tsRelativo(inicio.getTime())})`,
-            mesa ? `🔊 ${mesa}` : null,
-            descricao ? `\n> ${descricao}` : null,
-            '\nClique no título e marque **Interessado** para o Discord te lembrar na hora.',
-          ]
-            .filter(Boolean)
-            .join('\n'),
-        );
-      await avisos.send({
-        content: jogadores ? `${jogadores}` : undefined,
-        embeds: [embed],
-        allowedMentions: { roles: jogadores ? [jogadores.id] : [] },
-      });
-    }
-
-    return i.editReply(`✅ Sessão marcada: ${evento.url}${avisos ? `\nAvisei em ${avisos}.` : ''}`);
-  },
-};
 
 // ---------- /lembrete ----------
 

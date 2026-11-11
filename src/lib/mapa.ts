@@ -7,7 +7,7 @@ import { rolarDualidade, type Dualidade } from './daggerheart.ts';
 
 export const DURACAO_SESSAO = 7 * 24 * 3_600_000;
 export const DURACAO_LINK = 3_600_000;
-/** Link mandado no privado pelo /campanha iniciar: vale a sessão inteira (o jogador pode abrir mais tarde). */
+/** Link mandado no privado pelo /sessao iniciar: vale a sessão inteira (o jogador pode abrir mais tarde). */
 export const DURACAO_CONVITE = 12 * 3_600_000;
 export const LIMITE_IMAGEM = 12 * 1024 * 1024;
 export const LIMITE_TEXTO = 500;
@@ -22,7 +22,7 @@ const confere = (a: string, b: string | undefined) => {
 const ehId = (u: unknown): u is string => typeof u === 'string' && /^\d{5,25}$/.test(u);
 
 /**
- * Link pessoal que o /campanha mapa entrega (só a pessoa vê, a resposta é efêmera). É ele que liga o site ao Discord:
+ * Link pessoal que o /sessao mapa entrega (só a pessoa vê, a resposta é efêmera). É ele que liga o site ao Discord:
  * quem abre entra como quem rodou o comando. Vale por 1 hora; depois disso fica o cookie de sessão.
  */
 export function assinarLink(segredo: string, campanhaId: number, userId: string, agora = Date.now(), duracao = DURACAO_LINK) {
@@ -199,7 +199,7 @@ export function chatVisivel(linhas: LinhaChat[], souMestre: boolean) {
     }));
 }
 
-// ---------- Registro da sessão (/campanha finalizar) ----------
+// ---------- Registro da sessão (/sessao finalizar) ----------
 
 const horaBR = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 

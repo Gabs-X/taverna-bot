@@ -457,11 +457,11 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN canal_id TEXT');
   },
-  // 14: call da campanha (o canal de texto é o canal_id; os dois nascem no /campanha iniciar).
+  // 14: call da campanha (o canal de texto é o canal_id; os dois nascem no /sessao iniciar).
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN canal_voz_id TEXT');
   },
-  // 15: início da sessão em andamento (preenchido pelo /campanha iniciar, limpo pelo /campanha finalizar).
+  // 15: início da sessão em andamento (preenchido pelo /sessao iniciar, limpo pelo /sessao finalizar).
   () => {
     db.exec('ALTER TABLE campanhas ADD COLUMN sessao_inicio INTEGER');
   },
@@ -571,7 +571,7 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE mapas ADD COLUMN handout_id INTEGER;
     `);
   },
-  // 23: entre sessões. Diário (cada /campanha finalizar vira uma entrada, com o registro e as notas do mestre)
+  // 23: entre sessões. Diário (cada /sessao finalizar vira uma entrada, com o registro e as notas do mestre)
   // e o que o grupo carrega junto: ouro e inventário compartilhados.
   () => {
     db.exec(`
@@ -622,6 +622,13 @@ const MIGRACOES: (() => void)[] = [
   // 25: escolhas da criação guiada da ficha do Daggerheart (classe, subclasse, traços sem bônus, armadura...), para reabrir a guia.
   () => {
     db.exec("ALTER TABLE fichas_dh ADD COLUMN guia TEXT NOT NULL DEFAULT ''");
+  },
+  // 26: sessão marcada pelo /sessao marcar (evento do Discord da campanha e quando começa).
+  () => {
+    db.exec(`
+      ALTER TABLE campanhas ADD COLUMN evento_id TEXT;
+      ALTER TABLE campanhas ADD COLUMN evento_inicio INTEGER;
+    `);
   },
 ];
 

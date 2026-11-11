@@ -14,8 +14,6 @@ const TABELA: [string[], string[]][] = [
   [['teste', 'iniciativa'], [CANAIS.rolagens, CANAIS.mesaRpgTexto]],
   // Daggerheart
   [['dh'], [CANAIS.rolagensDh, CANAIS.fichasDh, CANAIS.mesaDhTexto]],
-  // Sessões: o Mestre marca nos avisos de cada mesa.
-  [['sessao'], [CANAIS.avisosRpg, CANAIS.avisosDh]],
   // Ferramentas do Mestre: em qualquer canal das duas mesas.
   [['gerar', 'ambiente'], [CANAIS.mesaRpgTexto, CANAIS.rolagens, CANAIS.fichas, CANAIS.mesaDhTexto, CANAIS.rolagensDh, CANAIS.fichasDh]],
 

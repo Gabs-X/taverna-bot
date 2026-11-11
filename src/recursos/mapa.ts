@@ -33,7 +33,7 @@ import {
   type ResultadoLinha,
 } from '../lib/mapa.ts';
 
-// Mapa da campanha, estilo Roll20: um site embutido no bot. O /campanha mapa entrega a cada um um link pessoal
+// Mapa da campanha, estilo Roll20: um site embutido no bot. O /sessao mapa entrega a cada um um link pessoal
 // (resposta efêmera no Discord), então o site sabe quem é cada jogador. O jogador cria a ficha e põe a foto do
 // personagem ali mesmo; cada jogador vira uma peça que só ele (ou o mestre) move. O mestre guarda NPCs e inimigos
 // numa biblioteca da campanha e arrasta para o mapa quantas cópias quiser. O chat da mesa guarda as rolagens de todos
@@ -89,7 +89,7 @@ function segredo() {
   return novo;
 }
 
-/** Link pessoal de quem rodou o /campanha mapa (vale 1 hora; ao abrir, vira uma sessão de 7 dias). */
+/** Link pessoal de quem rodou o /sessao mapa (vale 1 hora; ao abrir, vira uma sessão de 7 dias). */
 export function linkDoMapa(campanhaId: number, userId: string, duracao?: number) {
   return `${ENDERECO}/m/${campanhaId}?${new URLSearchParams(assinarLink(segredo(), campanhaId, userId, Date.now(), duracao))}`;
 }
@@ -332,7 +332,7 @@ function ehBardo(req: IncomingMessage) {
   return local && !deFora && !!chaveBardos && veio.length === certa.length && timingSafeEqual(veio, certa);
 }
 
-/** IDs dos bardos (a ponte do PC de casa conta ao conectar; fica guardado para o /campanha iniciar). */
+/** IDs dos bardos (a ponte do PC de casa conta ao conectar; fica guardado para o /sessao iniciar). */
 export const idsDosBardos = () =>
   String((db.prepare("SELECT valor FROM bot_estado WHERE chave = 'bardos_ids'").get() as { valor: string } | undefined)?.valor ?? '')
     .split(',')
@@ -840,7 +840,7 @@ async function receberImagem(req: IncomingMessage, res: ServerResponse, prefixo:
   return arquivo;
 }
 
-const ABRA_DE_NOVO = 'Abra o mapa pelo comando <code>/campanha mapa</code> no Discord: o link é pessoal e liga o site à sua conta.';
+const ABRA_DE_NOVO = 'Abra o mapa pelo comando <code>/sessao mapa</code> no Discord: o link é pessoal e liga o site à sua conta.';
 
 async function tratar(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', ENDERECO);
@@ -883,7 +883,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   }
 
   const userId = lerSessao(segredo(), lerCookies(req.headers.cookie).mapa_sessao);
-  if (!userId) return api ? json(res, 401, { erro: 'Sessão vencida: abra o mapa de novo pelo /campanha mapa.' }) : texto(res, 401, 'Quem é você? 🎲', ABRA_DE_NOVO);
+  if (!userId) return api ? json(res, 401, { erro: 'Sessão vencida: abra o mapa de novo pelo /sessao mapa.' }) : texto(res, 401, 'Quem é você? 🎲', ABRA_DE_NOVO);
 
   const c = campanhaPorId(campanhaId);
   if (!c) return api ? json(res, 404, { erro: 'Campanha apagada.' }) : texto(res, 404, 'Campanha não encontrada', 'Ela pode ter sido apagada.');
@@ -949,7 +949,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const foto = acao.match(/^foto\/(\d+)$/);
     if (foto) return servirImagem(res, idsJogadores(c.id).includes(foto[1]) ? fotoDe(c, foto[1])?.imagem : null);
-    // Registro de uma sessão do diário (o mesmo arquivo do /campanha finalizar; rolagens escondidas não entram).
+    // Registro de uma sessão do diário (o mesmo arquivo do /sessao finalizar; rolagens escondidas não entram).
     const registro = acao.match(/^diario\/(\d+)$/);
     if (registro) {
       const sessao = db.prepare('SELECT arquivo FROM campanha_sessoes WHERE id = ? AND campanha_id = ?').get(Number(registro[1]), c.id) as { arquivo: string | null } | undefined;
@@ -1676,7 +1676,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if (acao === 'musica') {
     const comando = lerComandoMusica(b);
     if (typeof comando === 'string') return json(res, 400, { erro: comando });
-    if (!c.canal_voz_id) return json(res, 400, { erro: 'A mesa ainda não tem call: abra a sessão com /campanha iniciar.' });
+    if (!c.canal_voz_id) return json(res, 400, { erro: 'A mesa ainda não tem call: abra a sessão com /sessao iniciar.' });
     await liberarBardos({ voz: c.canal_voz_id, texto: c.canal_id });
     const r = await pedirAosBardos({ ...comando, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
     avisar(c.id, 'estado', true);

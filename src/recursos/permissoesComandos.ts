@@ -46,7 +46,7 @@ function mapa(): Record<string, string[]> {
     teste: [CARGOS.aventureiro.nome],
     iniciativa: [CARGOS.aventureiro.nome],
     dh: [CARGOS.daggerheart.nome],
-    sessao: [CARGOS.mestre.nome],
+    sessao: [CARGOS.aventureiro.nome, CARGOS.daggerheart.nome, CARGOS.mestre.nome],
     gerar: [CARGOS.aventureiro.nome, CARGOS.daggerheart.nome, CARGOS.mestre.nome],
   };
 }

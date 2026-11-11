@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { ActivityType, ApplicationFlagsBitField, Client, Events, GatewayIntentBits, MessageFlags, Partials, REST, Routes, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
-import { aniversario, iniciarAgenda, lembrete, sessao } from './recursos/agenda.ts';
+import { aniversario, iniciarAgenda, lembrete } from './recursos/agenda.ts';
 import { aoEntrar, aoSair } from './recursos/boasVindas.ts';
 import { apostas } from './recursos/limitesApostas.ts';
 import { drg } from './recursos/drg.ts';
@@ -8,7 +8,7 @@ import { botaoMinerador, minerador } from './recursos/minerador.ts';
 import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, selecaoFormulario } from './recursos/formulario.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
-import { campanha } from './recursos/campanha.ts';
+import { campanha, sessao } from './recursos/campanha.ts';
 import { aoMensagemDiscord, iniciarMapa } from './recursos/mapa.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { comandosCampeoes, vitimas } from './recursos/campeoes.ts';

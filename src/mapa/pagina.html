@@ -3328,7 +3328,7 @@ function painelImersao() {
   $('painel-musica').hidden = !mestre || !m;
   if (!mestre || !m) return;
   $('musica-status').textContent = !m.ponte ? '🔌 Os bardos estão sem ligação com o mapa (o PC da música está desligado?).'
-    : !m.temCall ? '🔇 A mesa ainda não tem call: abra a sessão com /campanha iniciar.'
+    : !m.temCall ? '🔇 A mesa ainda não tem call: abra a sessão com /sessao iniciar.'
     : m.fila ? `🎶 ${m.fila.bardo}: ${m.fila.titulo || '…'}${m.fila.pausado ? ' (pausado)' : ''}` : '🎶 Nada tocando na call da mesa.';
   const trilhas = $('musica-trilhas');
   if (!trilhas.children.length) for (const a of m.ambientes) { const b = el('button', '', a.nome); b.dataset.id = a.id; b.onclick = () => musica({ acao: 'ambiente', tipo: a.id }); trilhas.append(b); }

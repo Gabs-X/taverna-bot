@@ -681,7 +681,7 @@ export async function executarDoMapa(p: PedidoMusica): Promise<string> {
   if (!canalVoz) throw new Error(`O ${t.nome} não consegue ver a call da mesa (permissões).`);
   const pode = 'permissionsFor' in canalVoz && t.client.user ? canalVoz.permissionsFor(t.client.user) : null;
   if (pode && !pode.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak])) {
-    throw new Error(`O ${t.nome} não tem permissão para entrar na call da mesa. Rode /campanha iniciar de novo para liberar.`);
+    throw new Error(`O ${t.nome} não tem permissão para entrar na call da mesa. Rode /sessao iniciar de novo para liberar.`);
   }
   const texto = p.canalTextoId ? await t.client.channels.fetch(p.canalTextoId).catch(() => null) : null;
   const canal = texto?.isTextBased() && 'send' in texto ? (texto as SendableChannels) : semCanal;
