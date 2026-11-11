@@ -473,3 +473,30 @@ test('ponte com os bardos: os IDs que a ponte conta ficam guardados para liberar
   controle.abort();
   assert.deepEqual(idsDosBardos(), ['1562800102463242292', '1562948061347446884']);
 });
+
+test('efeitos ao vivo: desenho chega a todos, reação só com a própria peça e "olhem aqui" só do mestre', async () => {
+  const J = '200000000000000002', M = '100000000000000001';
+  const controle = new AbortController();
+  const r = await fetch(`${base}/api/m/${campanha}/eventos`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, M)}` }, signal: controle.signal });
+  const leitor = r.body!.getReader();
+  const minha = (await estado(J)).pecas.find((p: any) => p.meu);
+  const goblin = (await estado(M)).pecas.find((p: any) => p.tipo === 'inimigo');
+
+  assert.equal((await chamar(J, 'efeito', { tipo: 'laser', id: 'abc!', pontos: [[10, 10], [20, 25], 'lixo'], fim: false })).status, 200);
+  assert.equal((await chamar(J, 'efeito', { tipo: 'reacao', emoji: '🎉', peca: goblin.id })).status, 403);
+  assert.equal((await chamar(J, 'efeito', { tipo: 'reacao', emoji: '🍕', peca: minha.id })).status, 400);
+  assert.equal((await chamar(J, 'efeito', { tipo: 'reacao', emoji: '🎉', peca: minha.id })).status, 200);
+  assert.equal((await chamar(J, 'efeito', { tipo: 'foco', x: 50, y: 50 })).status, 403);
+  assert.equal((await chamar(M, 'efeito', { tipo: 'foco', x: 50, y: 50 })).status, 200);
+
+  let texto = '';
+  const ate = Date.now() + 3000;
+  while (Date.now() < ate && (texto.match(/efeito:/g) ?? []).length < 3) texto += new TextDecoder().decode((await leitor.read()).value);
+  controle.abort();
+  const efeitos = [...texto.matchAll(/data: efeito:(.*)\n/g)].map((m) => JSON.parse(m[1]));
+  assert.deepEqual(efeitos.map((e) => e.tipo), ['laser', 'reacao', 'foco']);
+  assert.equal(efeitos[0].id, 'abc');
+  assert.deepEqual(efeitos[0].pontos, [[10, 10], [20, 25]]);
+  assert.equal(efeitos[1].peca, minha.id);
+  assert.equal(efeitos[2].quem, M);
+});

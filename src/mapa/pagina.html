@@ -80,7 +80,7 @@
   .ferr:hover::after { opacity: 1; }
   .sep { height: 1px; background: linear-gradient(90deg, transparent, #7a5532, transparent); margin: 2px 4px; }
 
-  #bandeja { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; padding: 9px 10px; border-radius: 12px; max-width: calc(100% - 28px); overflow-x: auto; border-top: 2px solid #8a6233; }
+  #bandeja { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); display: flex; gap: 8px; padding: 9px 10px; border-radius: 12px; max-width: calc(100% - 28px); overflow-x: auto; border-top: 2px solid #8a6233; }
   .card { width: 116px; flex: none; padding: 7px 8px; border-radius: 9px; background: linear-gradient(180deg, #3a2717, #2a1b10); border: 1px solid #5c4026; cursor: pointer; display: flex; flex-direction: column; gap: 5px; transition: transform .14s, border-color .14s, box-shadow .14s; box-shadow: inset 0 1px rgba(255, 220, 160, .07); }
   .card:hover { transform: translateY(-3px); border-color: #a87a3c; box-shadow: 0 6px 14px rgba(0, 0, 0, .4); }
   .card.sel { border-color: var(--ouro); box-shadow: 0 0 0 1px var(--ouro), 0 0 16px rgba(240, 195, 90, .35); }
@@ -106,7 +106,7 @@
   #solte.on { display: grid; }
 
   /* Ficha: folha de pergaminho presa no mapa */
-  #ficha-card { position: absolute; left: 14px; top: 78px; width: 310px; max-height: calc(100% - 190px); overflow-y: auto; border-radius: 6px; padding: 16px 16px 14px; display: none; z-index: 4 !important;
+  #ficha-card { position: absolute; right: 66px; top: 14px; width: 310px; max-height: calc(100% - 190px); overflow-y: auto; border-radius: 6px; padding: 16px 16px 14px; display: none; z-index: 4 !important;
     background: var(--papel); border: 1px solid #a07a44; box-shadow: inset 0 0 0 4px rgba(251, 241, 216, .6), inset 0 0 0 5px #c4a46f, inset 0 0 50px rgba(140, 90, 30, .22), 0 16px 40px rgba(0, 0, 0, .55); }
   #ficha-card.aberta { display: block; animation: desenrola .25s ease-out; }
   @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -152,11 +152,10 @@
   .contador { background: var(--acento2); color: #fff; border-radius: 99px; padding: 0 7px; font-family: var(--fonte); font-size: 11px; margin-left: 5px; box-shadow: 0 0 8px rgba(196, 80, 44, .6); }
   .aba { flex: 1; min-height: 0; display: none; flex-direction: column; }
   .aba.ativa { display: flex; }
-  #aba-mesa { overflow-y: auto; }
-  #aba-mesa section { padding: 14px 16px; border-bottom: 1px solid rgba(92, 64, 38, .7); box-shadow: 0 1px rgba(255, 220, 160, .03); }
-  #aba-mesa h2 { font-family: var(--fonte-titulo); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ouro); margin: 0 0 11px; display: flex; align-items: center; gap: 9px; }
-  #aba-mesa h2::before { content: '✦'; color: var(--acento2); font-size: 11px; }
-  #aba-mesa h2::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #7a5532, transparent); }
+  #gaveta-corpo section { padding: 14px 16px; border-bottom: 1px solid rgba(92, 64, 38, .7); box-shadow: 0 1px rgba(255, 220, 160, .03); }
+  #gaveta-corpo h2 { font-family: var(--fonte-titulo); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ouro); margin: 0 0 11px; display: flex; align-items: center; gap: 9px; }
+  #gaveta-corpo h2::before { content: '✦'; color: var(--acento2); font-size: 11px; }
+  #gaveta-corpo h2::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #7a5532, transparent); }
 
   button.btn, label.btn { background: var(--latao); color: #2b1a08; border: 1px solid #7a5218; border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; text-shadow: 0 1px rgba(255, 255, 255, .3);
     box-shadow: inset 0 1px rgba(255, 255, 255, .5), 0 2px 0 #5a3a10, 0 3px 8px rgba(0, 0, 0, .3); transition: filter .12s, transform .08s, box-shadow .08s; }
@@ -267,6 +266,7 @@
   /* ---------- Combate ---------- */
   #combate { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 12px; max-width: calc(100% - 120px); overflow-x: auto; z-index: 3 !important; border-color: #8e2a1f; box-shadow: inset 0 1px rgba(255, 220, 160, .08), 0 0 0 1px rgba(0, 0, 0, .4), 0 0 24px rgba(196, 60, 30, .3), var(--sombra); }
   body.em-combate #ficha-card { top: 126px; max-height: calc(100% - 240px); }
+  body.em-combate #dock, body.em-combate #gaveta { top: 126px; }
   #combate .rodada { font-family: var(--fonte-titulo); font-size: 12.5px; font-weight: 900; color: var(--ouro); white-space: nowrap; padding: 0 5px; text-shadow: 0 1px #000; }
   .chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: linear-gradient(180deg, #3a2717, #2a1b10); border: 2px solid #5c4026; cursor: pointer; white-space: nowrap; font-size: 12.5px; font-weight: 700; flex: none; transition: border-color .15s, opacity .2s; }
   .chip .avatar { width: 24px; height: 24px; font-size: 10px; border-width: 2px; box-shadow: none; }
@@ -290,6 +290,32 @@
   .recurso button:hover { border-color: var(--acento); }
   #ouro { color: var(--ouro); font-size: 18px; text-shadow: 0 0 10px rgba(240, 195, 90, .35); }
   #ataque .linha > * { min-width: 0; }
+
+  /* ---------- Barra de ícones (esquerda) e gaveta das funções ---------- */
+  #dock { position: absolute; left: 14px; top: 78px; display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 12px; max-height: calc(100% - 170px); overflow-y: auto; }
+  #dock .ferr::after { right: auto; left: 48px; }
+  #dock .ferr.ativo { background: var(--latao); color: #2b1a08; border-color: #7a5218; box-shadow: inset 0 1px rgba(255, 255, 255, .45), 0 1px 0 #4a300e; }
+  #dock .sep-mestre { font-family: var(--fonte-titulo); font-size: 9px; letter-spacing: .12em; color: var(--mudo); text-align: center; padding: 4px 0 1px; border-top: 1px solid #5c4026; margin-top: 2px; }
+  #gaveta { position: absolute; left: 70px; top: 78px; width: 380px; max-width: calc(100% - 90px); max-height: calc(100% - 170px); display: flex; flex-direction: column; border-radius: 12px; z-index: 4 !important; animation: gaveta .18s ease-out; }
+  @keyframes gaveta { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+  .gaveta-topo { display: flex; align-items: center; gap: 8px; padding: 10px 12px 9px 14px; border-bottom: 2px solid #8a6233; background: linear-gradient(180deg, #33210f, #24170d); border-radius: 12px 12px 0 0; }
+  .gaveta-topo h2 { margin: 0; flex: 1; font-family: var(--fonte-titulo); font-size: 15px; color: var(--ouro); text-shadow: 0 1px 0 #000; }
+  .gaveta-topo button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #7a5532; background: #3e2a19; color: var(--texto); cursor: pointer; }
+  #gaveta-corpo { overflow-y: auto; min-height: 0; }
+  #gaveta-corpo > section:not(.na-gaveta) { display: none; }
+  #gaveta.uma #gaveta-corpo section > h2:first-child { display: none; }
+  #gaveta-corpo section:last-child { border-bottom: 0; }
+  /* Ações de mostrar no mapa (embaixo, à esquerda) */
+  #acoes-mapa { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; display: flex; gap: 5px; padding: 6px; border-radius: 12px; }
+  #acoes-mapa button { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--texto); cursor: pointer; font-family: var(--fonte-titulo); font-size: 12px; font-weight: 700; transition: background .12s, border-color .12s; }
+  #acoes-mapa button:hover { background: #3e2a19; border-color: #7a5532; }
+  #acoes-mapa button.on { background: var(--latao); color: #2b1a08; border-color: #7a5218; }
+  #acoes-mapa button .ico { font-size: 16px; }
+  #reacoes { position: absolute; left: 50%; transform: translateX(-50%); bottom: 68px; display: flex; gap: 4px; padding: 6px; border-radius: 12px; z-index: 5 !important; animation: entra .15s ease-out; }
+  #reacoes button { width: 40px; height: 40px; font-size: 22px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; transition: transform .1s, background .1s; }
+  #reacoes button:hover { background: #3e2a19; transform: scale(1.18); }
+  canvas.mira { cursor: crosshair; }
+  canvas.lapis { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext y='20' font-size='20'%3E✏️%3C/text%3E%3C/svg%3E") 2 22, crosshair; }
 
   /* ---------- Livro de regras: um tomo encadernado em couro ---------- */
   .modal > .caixa.livro {
@@ -371,6 +397,12 @@
   .achado.sub { padding-left: 20px; font-size: 13px; }
   .lateral-vazio { padding: 12px; color: #7b6040; font-style: italic; font-family: var(--fonte-texto); }
   .link-livro { margin-top: 6px; }
+  .modal > .caixa.livro.cheia { position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; animation: none; z-index: 50; }
+  .modal > .caixa.livro.cheia::before, .modal > .caixa.livro.cheia::after { display: none; }
+  #ml-folha.ampliado { cursor: grab; }
+  #ml-folha.ampliado.arrastando { cursor: grabbing; }
+  #ml-folha.ampliado .pagina-livro { cursor: inherit; }
+  #ml-zoom { font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px; color: var(--mudo); min-width: 44px; text-align: center; }
   .carta-chat { width: 120px; margin-top: 6px; }
   @media (max-width: 820px) {
     .modal > .caixa.livro { padding: 12px 10px 10px; height: calc(100vh - 16px); }
@@ -544,8 +576,11 @@
     body { flex-direction: column; }
     aside { width: 100%; height: 48vh; border-left: 0; border-top: 3px solid #3a2615; box-shadow: inset 0 1px #6b4a2b, 0 -8px 24px rgba(0, 0, 0, .45); }
     body.recolhido aside { margin-right: 0; margin-bottom: -48vh; }
-    #ficha-card { width: calc(100% - 28px); top: 72px; }
-    #bandeja { bottom: 10px; }
+    #ficha-card { width: calc(100% - 28px); top: 72px; right: auto; left: 14px; }
+    #gaveta { left: 14px; right: 14px; width: auto; max-width: none; top: 72px; }
+    #dock { top: 72px; max-height: calc(100% - 150px); }
+    #acoes-mapa button .rot { display: none; }
+    #bandeja { bottom: 64px; }
     .ferr::after { display: none; }
     #dica-mapa { display: none; }
     #topo::before, #topo::after { display: none; }
@@ -624,7 +659,19 @@
   </div>
 
   <div id="bandeja" class="vidro" hidden></div>
-  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas · botão do meio (ou Alt + clique) marca um ponto para todos</div>
+  <nav id="dock" class="vidro"></nav>
+  <div id="gaveta" class="vidro" hidden>
+    <div class="gaveta-topo"><h2 id="gaveta-titulo"></h2><button id="gaveta-fechar" title="Fechar (Esc)">✕</button></div>
+    <div id="gaveta-corpo"></div>
+  </div>
+  <div id="acoes-mapa" class="vidro">
+    <button id="a-apontar" title="Clique no mapa para marcar um ponto para todos (ou botão do meio / Alt + clique)"><span class="ico">📍</span><span class="rot">Apontar</span></button>
+    <button id="a-desenhar" title="Arraste no mapa para desenhar um traço que todos veem (some sozinho)"><span class="ico">✏️</span><span class="rot">Desenhar</span></button>
+    <button id="a-reagir" title="Uma reação em cima do seu personagem"><span class="ico">😀</span><span class="rot">Reagir</span></button>
+    <button id="a-foco" title="Mestre: clique no mapa e a câmera de todos vai para lá" hidden><span class="ico">📢</span><span class="rot">Olhem aqui!</span></button>
+  </div>
+  <div id="reacoes" class="vidro" hidden></div>
+  <div id="dica-mapa" class="vidro" hidden>Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas · botão do meio (ou Alt + clique) marca um ponto para todos</div>
   <div id="solte">🖼️ Solte a imagem aqui para usar como mapa</div>
   <div id="toasts"></div>
 </div>
@@ -637,7 +684,7 @@
   </div>
   <div class="abas">
     <button id="tab-chat" class="ativa">💬 Chat<span id="novas" class="contador" hidden></span></button>
-    <button id="tab-mesa">🧙 Mesa</button>
+
   </div>
 
   <div id="aba-chat" class="aba ativa">
@@ -722,7 +769,7 @@
       <div class="item" id="meu-resumo"><div class="avatar" id="meu-avatar"></div><div><div class="nome" id="meu-nome"></div><small id="meu-sub"></small></div></div>
       <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button><button id="minhas-cartas" class="btn sec" hidden>🃏 Minhas cartas</button><button id="subir-nivel" class="btn sec" hidden>⬆️ Subir de nível</button></div>
     </section>
-    <section>
+    <section id="painel-personagens">
       <h2>Personagens</h2>
       <div id="lista"></div>
     </section>
@@ -780,7 +827,7 @@
   <div class="caixa livro">
     <button class="fechar" data-fecha="modal-livro" title="Fechar (Esc)">✕</button>
     <div class="livro-topo">
-      <div class="livro-titulo"><span class="selo-livro">📖</span><div><h2 id="ml-titulo">Livro de regras</h2><small id="ml-sub">← → viram a página</small></div></div>
+      <div class="livro-titulo"><span class="selo-livro">📖</span><div><h2 id="ml-titulo">Livro de regras</h2><small id="ml-sub">← → viram a página · rodinha dá zoom · arraste para mover · duplo clique volta</small></div></div>
       <div class="livro-barra">
         <div class="grupo">
           <button class="btn sec" id="ml-ant" title="Voltar (←)">◀</button>
@@ -789,8 +836,10 @@
           <button class="btn sec" id="ml-prox" title="Avançar (→)">▶</button>
         </div>
         <div class="grupo">
-          <button class="btn sec" id="ml-menos" title="Diminuir">－</button>
-          <button class="btn sec" id="ml-mais" title="Aumentar">＋</button>
+          <button class="btn sec" id="ml-menos" title="Diminuir (rodinha do mouse)">－</button>
+          <span id="ml-zoom">100%</span>
+          <button class="btn sec" id="ml-mais" title="Aumentar (rodinha do mouse)">＋</button>
+          <button class="btn sec" id="ml-cheia" title="Tela cheia (F)">⛶</button>
           <button class="btn sec" id="ml-modo" title="Uma página ou o livro aberto">📖</button>
         </div>
         <div class="busca-livro"><input id="ml-busca" type="text" maxlength="60" placeholder="Procurar no livro (ex.: Medo)…" autocomplete="off"></div>
@@ -1001,6 +1050,8 @@ function painel() {
   painelImersao();
   painelEntreSessoes();
   painelLivro();
+  atualizarDock();
+  $('a-foco').hidden = !estado.voce.mestre;
   if (!$('modal-cartas').hidden) { opcoesCartas = null; desenharPrancheta().catch(() => {}); }
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
@@ -1252,10 +1303,37 @@ function pintar() {
     ctx.globalAlpha = 1;
   }
 
-  // Pings: dois anéis que crescem e somem.
+  // Traços de desenho: linha brilhante na cor de quem desenhou, some aos poucos.
+  const agoraEf = performance.now();
+  for (const t of tracos.values()) {
+    if (t.pontos.length < 1) continue;
+    const alfa = t.fim ? Math.max(0, 1 - (agoraEf - t.t) / 1600) : 1;
+    ctx.save(); ctx.globalAlpha = alfa; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.shadowColor = corDeQuem(t.quem); ctx.shadowBlur = 14 * px; ctx.strokeStyle = corDeQuem(t.quem); ctx.lineWidth = 5 * px;
+    ctx.beginPath(); ctx.moveTo(t.pontos[0][0], t.pontos[0][1]); for (const p of t.pontos) ctx.lineTo(p[0], p[1]);
+    if (t.pontos.length === 1) ctx.lineTo(t.pontos[0][0] + 0.1, t.pontos[0][1]);
+    ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.6 * px; ctx.stroke(); ctx.restore();
+  }
+  // Reações: o emoji sobe de cima da peça e some.
+  for (const r of reacoesNoMapa) {
+    const p = estado.pecas.find((q) => q.id === r.peca); if (!p) continue;
+    const k = (agoraEf - r.ini) / 3200, raio = grade * 0.42 * (p.tamanho || 1);
+    ctx.save(); ctx.globalAlpha = k < 0.75 ? 1 : Math.max(0, 1 - (k - 0.75) / 0.25);
+    const tam = Math.max(22 * px, grade * 0.7) * (k < 0.12 ? 0.6 + k * 3.3 : 1);
+    ctx.font = tam + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(r.emoji, p.x, p.y - raio - 6 * px - k * grade * 0.9); ctx.restore();
+  }
+
+  // Pings: dois anéis que crescem e somem, com o nome de quem apontou.
   const agoraPing = performance.now();
   for (const pg of pings) {
-    const t = Math.min(1, (agoraPing - pg.ini) / 1800), cor = pg.quem === estado.voce.id ? '240,195,90' : '255,128,64';
+    const t = Math.min(1, (agoraPing - pg.ini) / 1800), cor = pg.foco ? '240,195,90' : pg.quem === estado.voce.id ? '240,195,90' : '255,128,64';
+    const nome = pg.foco ? '👁️ Olhem aqui!' : nomeDeQuem(pg.quem);
+    if (nome) {
+      const fsP = 13 * px; ctx.font = '700 ' + fsP + 'px ' + FONTE_TITULO; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.lineWidth = 3 * px; ctx.strokeStyle = 'rgba(20,12,6,' + (1 - t) + ')'; ctx.strokeText(nome, pg.x, pg.y - grade * 0.5);
+      ctx.fillStyle = 'rgba(' + cor + ',' + (1 - t) + ')'; ctx.fillText(nome, pg.x, pg.y - grade * 0.5);
+    }
     for (const atraso of [0, 0.25]) {
       const tt = Math.max(0, t - atraso); if (tt <= 0) continue;
       ctx.beginPath(); ctx.arc(pg.x, pg.y, grade * (0.3 + 2.2 * tt), 0, Math.PI * 2);
@@ -1309,6 +1387,14 @@ cv.addEventListener('pointerdown', (e) => {
   if (e.button === 1 || (e.altKey && e.button === 0)) { e.preventDefault(); pingar(mundo(e)); return; }
   cv.setPointerCapture(e.pointerId);
   const pt = mundo(e);
+  if (e.button === 0 && modoMapa === 'apontar') { pingar(pt); return; }
+  if (e.button === 0 && modoMapa === 'foco') { efeito({ tipo: 'foco', x: pt.x, y: pt.y }); escolherModo('foco'); return; }
+  if (e.button === 0 && modoMapa === 'desenhar') {
+    const id = Math.random().toString(36).slice(2, 10);
+    meuTraco = { id, pontos: [[pt.x, pt.y]], enviados: 0, timer: setInterval(() => enviarTraco(false), 100) };
+    tracos.set(id, { pontos: meuTraco.pontos, quem: estado.voce.id, t: performance.now(), fim: false });
+    arrasto = { laser: true }; animarEfeitos(); return;
+  }
   if (usandoRegua) { regua = { a: pt, b: pt }; arrasto = { regua: true }; desenhar(); return; }
   if (pincel) { arrasto = { nevoa: true, revelar: pincel === 'revelar', a: pt, b: pt }; desenhar(); return; }
   const p = pecaEm(pt);
@@ -1320,6 +1406,11 @@ cv.addEventListener('pointerdown', (e) => {
 });
 cv.addEventListener('pointermove', (e) => {
   if (!arrasto) return;
+  if (arrasto.laser && meuTraco) {
+    const pt = mundo(e), ult = meuTraco.pontos[meuTraco.pontos.length - 1];
+    if (Math.hypot(pt.x - ult[0], pt.y - ult[1]) * cam.z > 3) { meuTraco.pontos.push([pt.x, pt.y]); const t = tracos.get(meuTraco.id); if (t) t.t = performance.now(); desenhar(); }
+    return;
+  }
   if (arrasto.regua) { regua.b = mundo(e); desenhar(); return; }
   if (arrasto.nevoa) { arrasto.b = mundo(e); desenhar(); return; }
   if (arrasto.mapa) { const dpr = devicePixelRatio || 1; cam.x = arrasto.cx + (e.clientX - arrasto.sx) * dpr; cam.y = arrasto.cy + (e.clientY - arrasto.sy) * dpr; }
@@ -1327,6 +1418,7 @@ cv.addEventListener('pointermove', (e) => {
   desenhar();
 });
 function soltar() {
+  if (arrasto && arrasto.laser) { enviarTraco(true); arrasto = null; return; }
   if (arrasto && arrasto.nevoa) {
     const g = estado.mapa.grade, { a, b } = arrasto;
     post('nevoa/pintar', { c0: Math.floor(a.x / g), r0: Math.floor(a.y / g), c1: Math.floor(b.x / g), r1: Math.floor(b.y / g), revelar: arrasto.revelar }).catch(() => {});
@@ -1348,6 +1440,124 @@ cv.addEventListener('wheel', (e) => {
 addEventListener('resize', desenhar);
 function esconderDica() { const d = $('dica-mapa'); if (d && !d.hidden) d.hidden = true; try { localStorage.setItem('mapa_dica', '1'); } catch {} }
 try { if (localStorage.getItem('mapa_dica')) $('dica-mapa').hidden = true; } catch {}
+
+// ---------- Barra de ícones (funções da mesa espalhadas pela tela) ----------
+const DOCK = [
+  { k: 'meu', ico: '🧙', nome: 'Meu personagem', secs: ['painel-meu'] },
+  { k: 'cartas', ico: '🃏', nome: 'Cartas (C)', acao: () => abrirPrancheta(estado.voce.id), ver: () => estado.campanha.sistema === 'dh' && !!(minhaPeca() && minhaPeca().ficha) },
+  { k: 'livro', ico: '📖', nome: 'Livro de regras (L)', acao: () => abrirLivro(), ver: () => !!estado.livro },
+  { k: 'grupo', ico: '💰', nome: 'Grupo: ouro e inventário', secs: ['painel-grupo'] },
+  { k: 'personagens', ico: '👥', nome: 'Personagens', secs: ['painel-personagens'] },
+  { k: 'diario', ico: '📜', nome: 'Diário da campanha', secs: ['painel-diario'] },
+  { sep: 'Mestre' },
+  { k: 'mesa', ico: '🗺️', nome: 'Mesa: mapa, combate e livro', secs: ['painel-mestre', 'painel-livro'] },
+  { k: 'cenas', ico: '🎬', nome: 'Cenas e névoa', secs: ['painel-cenas'] },
+  { k: 'biblioteca', ico: '👹', nome: 'NPCs e inimigos', secs: ['painel-biblioteca'] },
+  { k: 'musica', ico: '🎵', nome: 'Música da mesa', secs: ['painel-musica'] },
+  { k: 'handouts', ico: '🖼️', nome: 'Handouts', secs: ['painel-handouts'] },
+];
+let gavetaAberta = null;
+(function montarDock() {
+  for (const sec of [...$('aba-mesa').children]) $('gaveta-corpo').append(sec);
+  $('aba-mesa').remove();
+  for (const d of DOCK) {
+    if (d.sep) { const s = el('div', 'sep-mestre', d.sep); s.dataset.sep = '1'; $('dock').append(s); continue; }
+    const b = el('button', 'ferr', d.ico); b.dataset.dica = d.nome; b.dataset.k = d.k;
+    b.onclick = () => (d.acao ? d.acao() : abrirGaveta(d.k));
+    $('dock').append(b);
+  }
+})();
+const visivelNoDock = (d) => (d.ver ? d.ver() : d.secs.some((id) => !$(id).hidden));
+function atualizarDock() {
+  for (const b of $('dock').querySelectorAll('button')) { const d = DOCK.find((x) => x.k === b.dataset.k); b.hidden = !visivelNoDock(d); b.classList.toggle('ativo', gavetaAberta === d.k); }
+  const sep = $('dock').querySelector('[data-sep]'); if (sep) sep.hidden = !estado.voce.mestre;
+  if (gavetaAberta && !visivelNoDock(DOCK.find((x) => x.k === gavetaAberta))) fecharGaveta();
+}
+function abrirGaveta(k) {
+  if (gavetaAberta === k) return fecharGaveta();
+  const d = DOCK.find((x) => x.k === k); if (!d || !d.secs) return;
+  gavetaAberta = k;
+  $('gaveta-titulo').textContent = d.ico + ' ' + d.nome;
+  for (const sec of $('gaveta-corpo').children) sec.classList.toggle('na-gaveta', d.secs.includes(sec.id));
+  $('gaveta').classList.toggle('uma', d.secs.filter((id) => !$(id).hidden).length <= 1);
+  $('gaveta').hidden = false; $('gaveta-corpo').scrollTop = 0;
+  atualizarDock();
+}
+function fecharGaveta() { gavetaAberta = null; $('gaveta').hidden = true; for (const b of $('dock').querySelectorAll('button')) b.classList.remove('ativo'); }
+$('gaveta-fechar').onclick = fecharGaveta;
+
+// ---------- Mostrar coisas no mapa: apontar, desenhar, reagir e "olhem aqui" ----------
+const REACOES = ['👍', '👎', '😂', '😱', '😡', '❤️', '🤔', '🎉', '💀', '🙏'];
+let modoMapa = null; // 'apontar' | 'desenhar' | 'foco'
+function escolherModo(m) {
+  modoMapa = modoMapa === m ? null : m;
+  if (modoMapa && usandoRegua) $('f-regua').onclick();
+  if (modoMapa && pincel) escolherPincel(pincel);
+  for (const [id, k] of [['a-apontar', 'apontar'], ['a-desenhar', 'desenhar'], ['a-foco', 'foco']]) $(id).classList.toggle('on', modoMapa === k);
+  cv.classList.toggle('mira', modoMapa === 'apontar' || modoMapa === 'foco');
+  cv.classList.toggle('lapis', modoMapa === 'desenhar');
+  if (modoMapa === 'foco') aviso('📢 Clique no ponto do mapa para onde todos devem olhar.', '', 3000);
+}
+$('a-apontar').onclick = () => escolherModo('apontar');
+$('a-desenhar').onclick = () => escolherModo('desenhar');
+$('a-foco').onclick = () => escolherModo('foco');
+(function montarReacoes() {
+  for (const r of REACOES) {
+    const b = el('button', '', r); b.title = 'Reagir com ' + r;
+    b.onclick = () => {
+      const alvo = estado.voce.mestre ? estado.pecas.find((p) => p.id === selecionada) : minhaPeca();
+      if (!alvo) return aviso(estado.voce.mestre ? 'Selecione a peça que vai reagir.' : 'Você ainda não tem personagem no mapa.', 'erro');
+      efeito({ tipo: 'reacao', emoji: r, peca: alvo.id });
+      $('reacoes').hidden = true; $('a-reagir').classList.remove('on');
+    };
+    $('reacoes').append(b);
+  }
+})();
+$('a-reagir').onclick = () => { $('reacoes').hidden = !$('reacoes').hidden; $('a-reagir').classList.toggle('on', !$('reacoes').hidden); };
+function efeito(corpo) { return fetch(api('efeito'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).catch(() => {}); }
+
+// Traços de desenho (laser) e reações: chegam pelo tempo real e somem sozinhos.
+const tracos = new Map(), reacoesNoMapa = [];
+let animandoEfeitos = false;
+function animarEfeitos() {
+  if (animandoEfeitos) return; animandoEfeitos = true;
+  const passo = () => {
+    const agora = performance.now();
+    for (const [id, t] of tracos) if (agora - t.t > (t.fim ? 1600 : 5000)) tracos.delete(id);
+    while (reacoesNoMapa.length && agora - reacoesNoMapa[0].ini > 3200) reacoesNoMapa.shift();
+    desenhar();
+    if (tracos.size || reacoesNoMapa.length) requestAnimationFrame(passo); else animandoEfeitos = false;
+  };
+  requestAnimationFrame(passo);
+}
+const corDeQuem = (u) => { if (estado && u === estado.campanha.mestreId) return '#f0c35a'; const p = estado && estado.pecas.find((q) => q.userId === u); return p ? corDe(p) : '#ff8040'; };
+const nomeDeQuem = (u) => { if (!estado) return ''; if (u === estado.campanha.mestreId) return estado.campanha.mestre + ' (mestre)'; const p = estado.pecas.find((q) => q.userId === u); return p ? p.nome : ''; };
+function receberEfeito(d) {
+  if (d.tipo === 'laser') {
+    if (d.quem === estado.voce.id) return; // o meu já está na tela
+    const t = tracos.get(d.id) || { pontos: [], quem: d.quem };
+    t.pontos.push(...d.pontos); t.t = performance.now(); t.fim = !!d.fim; tracos.set(d.id, t);
+    animarEfeitos();
+  } else if (d.tipo === 'reacao') {
+    reacoesNoMapa.push({ peca: d.peca, emoji: d.emoji, ini: performance.now() }); animarEfeitos();
+  } else if (d.tipo === 'foco') {
+    // O mestre pediu: a câmera de todos vai suavemente até o ponto, com um ping grande.
+    const ini = { ...cam }, alvo = { x: cv.width / 2 - d.x * cam.z, y: cv.height / 2 - d.y * cam.z }, t0 = performance.now();
+    const ir = () => { const k = Math.min(1, (performance.now() - t0) / 450), e = 1 - Math.pow(1 - k, 3); cam.x = ini.x + (alvo.x - ini.x) * e; cam.y = ini.y + (alvo.y - ini.y) * e; desenhar(); if (k < 1) requestAnimationFrame(ir); };
+    requestAnimationFrame(ir);
+    receberPing({ x: d.x, y: d.y, quem: d.quem, foco: true });
+    if (d.quem !== estado.voce.id) aviso('📢 O mestre pediu: olhem aqui!', 'ok', 2500);
+  }
+}
+// Desenho local: vai para a tela na hora e para a mesa em pedaços (a cada 100 ms).
+let meuTraco = null;
+function enviarTraco(fim) {
+  if (!meuTraco) return;
+  const novos = meuTraco.pontos.slice(Math.max(0, meuTraco.enviados - 1));
+  if (novos.length > 1 || fim) efeito({ tipo: 'laser', id: meuTraco.id, pontos: novos.slice(0, 60).map((p) => [Math.round(p[0]), Math.round(p[1])]), fim: !!fim });
+  meuTraco.enviados = meuTraco.pontos.length;
+  if (fim) { const t = tracos.get(meuTraco.id); if (t) { t.fim = true; t.t = performance.now(); } clearInterval(meuTraco.timer); meuTraco = null; }
+}
 
 // ---------- Ferramentas ----------
 function aplicarPrefs() {
@@ -1390,7 +1600,7 @@ function andar(dx, dy, repetida) {
 addEventListener('keydown', (e) => {
   const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
   const aberta = document.querySelector('.modal:not([hidden])');
-  if (e.key === 'Escape') { if (aberta) { if (!aberta.dataset.fixa) aberta.hidden = true; } else if (pincel) escolherPincel(pincel); else if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
+  if (e.key === 'Escape') { if (aberta) { if (!aberta.dataset.fixa) aberta.hidden = true; } else if (modoMapa) escolherModo(modoMapa); else if (!$('reacoes').hidden) { $('reacoes').hidden = true; $('a-reagir').classList.remove('on'); } else if (gavetaAberta) fecharGaveta(); else if (pincel) escolherPincel(pincel); else if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
   if (aberta || digitando || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (PASSOS[k]) { if (andar(PASSOS[k][0], PASSOS[k][1], e.repeat)) e.preventDefault(); return; }
@@ -1521,7 +1731,7 @@ try { livro.umaPagina = localStorage.getItem('mapa_livro_modo') === 'uma'; } cat
 
 function painelLivro() {
   const l = estado.livro;
-  $('f-livro').hidden = !l;
+  $('f-livro').hidden = true; // o livro abre pela barra de ícones (e pela tecla L)
   $('painel-livro').hidden = !estado.voce.mestre;
   $('livro-status').textContent = l ? '✅ Livro na mesa (' + mb(l.tamanho) + ').' : 'Nenhum livro ainda. Envie o PDF das regras para a mesa consultar.';
   $('livro-abrir').hidden = !l; $('livro-tirar').hidden = !l;
@@ -1712,17 +1922,63 @@ async function procurarNoLivro(termo) {
 
 // ----- Controles -----
 $('f-livro').onclick = () => abrirLivro();
+new MutationObserver(() => { if (!$('modal-livro').hidden) return; $('modal-livro').querySelector('.caixa').classList.remove('cheia'); $('ml-cheia').classList.remove('on'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }).observe($('modal-livro'), { attributes: true, attributeFilter: ['hidden'] });
 $('livro-abrir').onclick = () => abrirLivro();
 $('ml-ant').onclick = () => virar(-1);
 $('ml-prox').onclick = () => virar(1);
 $('ml-virar-ant').onclick = () => virar(-1);
 $('ml-virar-prox').onclick = () => virar(1);
-$('ml-pag-e').onclick = () => { if (livroAberto()) virar(-1); };
-$('ml-pag-d').onclick = () => { if (livroAberto()) virar(1); };
-$('ml-mais').onclick = () => { livro.zoom = Math.min(3, livro.zoom * 1.2); mostrarPagina().catch(() => {}); };
-$('ml-menos').onclick = () => { livro.zoom = Math.max(0.5, livro.zoom / 1.2); mostrarPagina().catch(() => {}); };
+$('ml-pag-e').onclick = () => { if (livroAberto() && livro.zoom <= 1.01 && !puxou) virar(-1); };
+$('ml-pag-d').onclick = () => { if (livroAberto() && livro.zoom <= 1.01 && !puxou) virar(1); };
+/** Zoom do livro em direção a um ponto (o do mouse): mostra na hora com CSS e redesenha nítido logo depois. */
+let zoomRender = 1, esperaZoom = 0;
+function zoomLivro(novo, cx, cy) {
+  novo = Math.min(4, Math.max(0.5, novo));
+  if (Math.abs(novo - livro.zoom) < 0.001) return;
+  const folha = $('ml-folha'), r = folha.getBoundingClientRect();
+  const px = (cx ?? r.left + r.width / 2) - r.left, py = (cy ?? r.top + r.height / 2) - r.top;
+  const fx = (folha.scrollLeft + px) / (folha.scrollWidth || 1), fy = (folha.scrollTop + py) / (folha.scrollHeight || 1);
+  livro.zoom = novo;
+  $('ml-zoom').textContent = Math.round(novo * 100) + '%';
+  folha.classList.toggle('ampliado', novo > 1.01);
+  const lv = $('ml-livro'); lv.style.transformOrigin = '0 0'; lv.style.transform = 'scale(' + novo / zoomRender + ')';
+  clearTimeout(esperaZoom);
+  esperaZoom = setTimeout(() => mostrarPagina().then(() => {
+    lv.style.transform = ''; zoomRender = livro.zoom;
+    folha.scrollLeft = fx * folha.scrollWidth - px; folha.scrollTop = fy * folha.scrollHeight - py;
+  }).catch(() => {}), 160);
+}
+$('ml-mais').onclick = () => zoomLivro(livro.zoom * 1.25);
+$('ml-menos').onclick = () => zoomLivro(livro.zoom / 1.25);
+$('ml-folha').addEventListener('wheel', (e) => { e.preventDefault(); zoomLivro(livro.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX, e.clientY); }, { passive: false });
+$('ml-folha').addEventListener('dblclick', (e) => { e.preventDefault(); zoomLivro(1); });
+// Com zoom, arrastar move a página (e o clique não vira a página).
+let puxando = null, puxou = false;
+$('ml-folha').addEventListener('pointerdown', (e) => {
+  if (livro.zoom <= 1.01 || e.button !== 0 || e.target.closest('button')) return;
+  puxando = { x: e.clientX, y: e.clientY, sl: $('ml-folha').scrollLeft, st: $('ml-folha').scrollTop }; puxou = false;
+  $('ml-folha').classList.add('arrastando');
+});
+addEventListener('pointermove', (e) => {
+  if (!puxando) return;
+  const dx = e.clientX - puxando.x, dy = e.clientY - puxando.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) puxou = true;
+  $('ml-folha').scrollLeft = puxando.sl - dx; $('ml-folha').scrollTop = puxando.st - dy;
+});
+addEventListener('pointerup', () => { if (puxando) { puxando = null; $('ml-folha').classList.remove('arrastando'); setTimeout(() => { puxou = false; }, 0); } });
+/** Tela cheia: o livro ocupa a janela toda e, se o navegador deixar, a tela toda (sem barras). */
+function telaCheiaLivro() {
+  const caixa = $('modal-livro').querySelector('.caixa'), cheia = !caixa.classList.contains('cheia');
+  caixa.classList.toggle('cheia', cheia);
+  $('ml-cheia').classList.toggle('on', cheia);
+  if (cheia && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+  if (!cheia && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  setTimeout(() => mostrarPagina().catch(() => {}), 150);
+}
+$('ml-cheia').onclick = telaCheiaLivro;
+document.addEventListener('fullscreenchange', () => { if (!$('modal-livro').hidden) setTimeout(() => mostrarPagina().catch(() => {}), 120); });
 $('ml-modo').onclick = () => {
-  livro.umaPagina = !livro.umaPagina; livro.zoom = 1;
+  livro.umaPagina = !livro.umaPagina; livro.zoom = 1; zoomRender = 1; $('ml-zoom').textContent = '100%'; $('ml-folha').classList.remove('ampliado');
   try { localStorage.setItem('mapa_livro_modo', livro.umaPagina ? 'uma' : 'duas'); } catch {}
   mostrarPagina().catch(() => {});
 };
@@ -1749,6 +2005,7 @@ $('ml-aba').onclick = () => { if (estado && estado.livro) window.open(estado.liv
 // Setas viram a página com o livro aberto (fora das caixas de texto).
 addEventListener('keydown', (e) => {
   if ($('modal-livro').hidden || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); e.stopImmediatePropagation(); telaCheiaLivro(); return; }
   if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); e.stopImmediatePropagation(); virar(1); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); e.stopImmediatePropagation(); virar(-1); }
 }, true);
@@ -3166,12 +3423,12 @@ $('item-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 
 // ---------- Abas ----------
 
+// O painel da direita agora é só o chat; as funções da mesa abrem pela barra de ícones (gaveta).
 function abrirAba(qual) {
-  for (const a of ['chat', 'mesa']) { $('tab-' + a).classList.toggle('ativa', a === qual); $('aba-' + a).classList.toggle('ativa', a === qual); }
   if (qual === 'chat') { novas = 0; contador(); rolarParaFim(); }
+  else abrirGaveta('personagens');
 }
 $('tab-chat').onclick = () => abrirAba('chat');
-$('tab-mesa').onclick = () => abrirAba('mesa');
 function contador() { $('novas').hidden = !novas; $('novas').textContent = novas; }
 
 // ---------- Chat e rolagens ----------
@@ -3328,6 +3585,7 @@ function conectar() {
   const es = new EventSource(api('eventos'));
   es.onmessage = (e) => {
     if (e.data.startsWith('ping:')) { try { receberPing(JSON.parse(e.data.slice(5))); } catch {} return; }
+    if (e.data.startsWith('efeito:')) { try { receberEfeito(JSON.parse(e.data.slice(7))); } catch {} return; }
     (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {});
   };
   es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };

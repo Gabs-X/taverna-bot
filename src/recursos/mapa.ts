@@ -360,6 +360,9 @@ export async function liberarBardos(canais: { voz?: string | null; texto?: strin
   return falhas;
 }
 
+const REACOES_MAPA = ['👍', '👎', '😂', '😱', '😡', '❤️', '🤔', '🎉', '💀', '🙏'];
+const ultimoEfeito = new Map<string, number>();
+
 /** Manda um pedido de música aos bardos e espera a resposta (ou desiste em 25 s). */
 function pedirAosBardos(pedido: PedidoMusica): Promise<{ ok: boolean; msg: string }> {
   const ponte = [...pontes][0];
@@ -1200,6 +1203,35 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const m = mapaDe(c.id);
     const dados = JSON.stringify({ x: limitar(b.x, 0, m.largura, 0), y: limitar(b.y, 0, m.altura, 0), quem: userId });
     for (const o of ouvintes.get(c.id) ?? []) o.res.write(`data: ping:${dados}\n\n`);
+    return json(res, 200, { ok: true });
+  }
+
+  // Efeitos ao vivo para a mesa toda: traço de desenho, reação em cima da peça e "olhem aqui" do mestre.
+  if (acao === 'efeito') {
+    const b = await lerJson<{ tipo: string; id: string; pontos: unknown; fim: boolean; emoji: string; peca: number; x: number; y: number }>(req, 16_000);
+    const agora = Date.now(), chave = `${userId}:${b.tipo}`;
+    if (agora - (ultimoEfeito.get(chave) ?? 0) < (b.tipo === 'laser' ? 60 : 500)) return json(res, 200, { ok: false });
+    const m = mapaDe(c.id);
+    let ef: Record<string, unknown>;
+    if (b.tipo === 'laser') {
+      const pontos = (Array.isArray(b.pontos) ? b.pontos : []).slice(0, 60)
+        .filter((p): p is [number, number] => Array.isArray(p) && p.length === 2)
+        .map(([x, y]) => [Math.round(limitar(x, 0, m.largura, 0)), Math.round(limitar(y, 0, m.altura, 0))]);
+      if (!pontos.length) return json(res, 400, { erro: 'Traço vazio.' });
+      ef = { tipo: 'laser', id: String(b.id ?? '').replace(/[^a-z0-9]/gi, '').slice(0, 12), pontos, fim: !!b.fim };
+    } else if (b.tipo === 'reacao') {
+      if (!REACOES_MAPA.includes(String(b.emoji))) return json(res, 400, { erro: 'Reação desconhecida.' });
+      const p = db.prepare('SELECT id, user_id FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.peca), c.id) as { id: number; user_id: string | null } | undefined;
+      if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
+      if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só reage com o seu personagem.' });
+      ef = { tipo: 'reacao', emoji: b.emoji, peca: p.id };
+    } else if (b.tipo === 'foco') {
+      if (!souMestre) return json(res, 403, { erro: 'Só o mestre chama a atenção de todos.' });
+      ef = { tipo: 'foco', x: Math.round(limitar(b.x, 0, m.largura, 0)), y: Math.round(limitar(b.y, 0, m.altura, 0)) };
+    } else return json(res, 400, { erro: 'Efeito desconhecido.' });
+    ultimoEfeito.set(chave, agora); // só os aceitos contam no limite
+    const dados = JSON.stringify({ ...ef, quem: userId });
+    for (const o of ouvintes.get(c.id) ?? []) o.res.write(`data: efeito:${dados}\n\n`);
     return json(res, 200, { ok: true });
   }
 

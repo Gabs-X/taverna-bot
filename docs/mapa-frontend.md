@@ -57,6 +57,11 @@ npm run mapa:demo
 - **Ficha guiada (Daggerheart)**: o passo a passo fica no `pagina.html` (`CLASSES_DH`, `ARMADURAS_T1` e `calcularGuia()`), com os números do livro: classes nas páginas 29 a 51, armaduras na 127, limiares na 115 e avanços na 24. As escolhas ficam guardadas em `fichas_dh.guia` (JSON), para reabrir a guia no mesmo ponto.
   - **Armas**: as tabelas do Nível 1 ficam em `ARMAS_PRIMARIAS` e `ARMAS_SECUNDARIAS` (livro p. 116 e 125). No formulário de ataque, escolher a arma preenche o traço, o dano (com a Proficiência) e o bônus.
   - **Subir de nível**: fica em `abrirSubirNivel()` (livro p. 24). O que é automático e os dois avanços do patamar vão para `guia.historico`, `guia.marcados`, `guia.extras` e `guia.cartasAvanco`. O servidor soma `cartasAvanco` às cartas extras do mestre.
+- **Layout**:
+  - O painel da direita é só o chat.
+  - As funções da mesa ficam nas seções do HTML, que o `montarDock()` move para a gaveta `#gaveta`, aberta pela barra de ícones `#dock` à esquerda. Os grupos de seções estão em `DOCK`.
+  - A ficha da peça selecionada fica à direita, ao lado das ferramentas.
+- **Efeitos ao vivo** (`POST efeito`, chegam pelo SSE como `efeito:{json}`): `laser` (traço de desenho em pedaços), `reacao` (emoji em cima da peça; só a própria peça, ou qualquer uma para o mestre) e `foco` (só o mestre: puxa a câmera de todos). Os botões ficam em `#acoes-mapa`. O ping antigo (`POST ping`) continua valendo.
 - **Ações (POST)**:
   - de todos: `mover`, `chat`, `ficha`, `ficha/foto`, `ficha/foto/remover`, `ficha/recurso`, `ataque`, `peca/condicao`, `combate/agiu`, `ping` e `grupo/*`
   - só do mestre: `mapa`, `grade`, `npc/*`, `criatura*`, `peca/pv`, `peca/tamanho`, `peca/esconder`, `combate/*`, `medo`, `vida-inimigos`, `nevoa/*`, `cena/*`, `musica`, `handout*`, `diario/notas`, `chat/revelar` e `chat/limpar`
