@@ -16,7 +16,8 @@
     "servico:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 status",
     "servico:log": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/servico-windows.ps1 log",
     "supervisor": "node scripts/supervisor.mjs",
-    "lancar": "node scripts/lancar.mjs"
+    "lancar": "node scripts/lancar.mjs",
+    "mapa:demo": "node --watch-path=src --disable-warning=ExperimentalWarning scripts/demo-mapa.ts"
   },
   "keywords": [],
   "author": "",
