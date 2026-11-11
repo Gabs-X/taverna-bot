@@ -47,3 +47,19 @@ export function lerComandoMusica(b: Record<string, unknown>): ComandoMusica | st
       return 'Comando de música desconhecido.';
   }
 }
+
+/** Link do Spotify: o tipo (música, playlist, álbum...) e se é dele. */
+export function linkDoSpotify(texto: string): { tipo: string } | null {
+  const m = /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(track|playlist|album|artist|episode|show)\/[A-Za-z0-9]+/i.exec(texto.trim());
+  return m ? { tipo: m[1].toLowerCase() } : null;
+}
+
+/** Da página de uma música do Spotify, o que buscar no YouTube: "título artista" (og:title e o começo do og:description). */
+export function buscaDaPaginaSpotify(html: string): string | null {
+  const meta = (p: string) => new RegExp(`<meta property="og:${p}" content="([^"]*)"`).exec(html)?.[1];
+  const titulo = meta('title');
+  if (!titulo) return null;
+  const artista = (meta('description') ?? '').split(' · ')[0];
+  const limpo = (s: string) => s.replace(/&amp;/g, '&').replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').trim();
+  return limpo(`${titulo} ${artista}`).slice(0, 200);
+}

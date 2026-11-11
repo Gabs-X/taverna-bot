@@ -17,7 +17,7 @@ import { PermissionFlagsBits,
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
-import { AMBIENTES, type Ambiente, type FilaTocando, type PedidoMusica } from '../lib/ambientes.ts';
+import { AMBIENTES, type Ambiente, type FilaTocando, type PedidoMusica, buscaDaPaginaSpotify, linkDoSpotify } from '../lib/ambientes.ts';
 import { FALAS_DRG } from '../lib/drg.ts';
 import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
@@ -59,6 +59,20 @@ const SEM_EFEITOS = { disableEqualizer: true, disableBiquad: true, disableFilter
 /** Prepara um tocador para cada bardo já conectado (a ordem define quem é escolhido primeiro). */
 export async function iniciarMusica(bardos: Client[]) {
   for (const bardo of bardos) tocadores.push(await criarTocador(bardo, bardo.user?.username ?? 'Bardo'));
+}
+
+/**
+ * O leitor de Spotify não acha nada (o Spotify fechou o acesso), então link de música do Spotify vira a busca
+ * "título artista" no YouTube, lida da página da música. Playlist e álbum do Spotify não dá: avisa.
+ */
+async function resolverBusca(busca: string): Promise<string> {
+  const sp = linkDoSpotify(busca);
+  if (!sp) return busca;
+  if (sp.tipo !== 'track') throw new Error('Do Spotify só dá para tocar link de uma música. Para playlist, use um link do YouTube.');
+  const html = await fetch(busca.trim(), { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'pt-BR' }, signal: AbortSignal.timeout(10_000) }).then((r) => r.text()).catch(() => '');
+  const texto = buscaDaPaginaSpotify(html);
+  if (!texto) throw new Error('Não consegui ler esse link do Spotify. Tente o nome da música.');
+  return texto;
 }
 
 async function criarTocador(client: Client, nome: string): Promise<Tocador> {
@@ -384,7 +398,7 @@ export const tocar: Comando = {
 
     await i.deferReply();
     try {
-      const { track, searchResult } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, i.options.getString('busca', true), {
+      const { track, searchResult } = await t.player.play(canalDoTocador as unknown as CanalDoPlayer, await resolverBusca(i.options.getString('busca', true)), {
         requestedBy: i.user.id,
         nodeOptions: {
           ...SEM_EFEITOS,
@@ -406,6 +420,7 @@ export const tocar: Comando = {
       return i.editReply(texto + ` (tocando pelo **${t.nome}**)`);
     } catch (erro) {
       console.error('[música] /tocar', erro);
+      if (erro instanceof Error && /Spotify/.test(erro.message)) return i.editReply('😵 ' + erro.message);
       return i.editReply('😵 Não achei nada com essa busca (ou o link não é suportado).');
     }
   },
@@ -686,20 +701,21 @@ export async function executarDoMapa(p: PedidoMusica): Promise<string> {
   }
 
   if (p.acao !== 'tocar') throw new Error('Comando desconhecido.');
-  // Tocar: com trilha de ambiente na call, a música substitui a trilha; senão entra na fila.
-  const busca = await t.player.search(p.busca).catch(() => null);
-  const faixa = busca?.tracks[0];
-  if (!faixa) throw new Error('Não achei essa música.');
-  if (filaDaCall && !filaDaCall.metadata.ambiente) {
-    filaDaCall.addTrack(faixa);
-    if (!filaDaCall.isPlaying()) await filaDaCall.node.play();
-    return `🎵 ${faixa.title} entrou na fila.`;
+  // Tocar: igual ao /tocar (o player entende nome, link do YouTube/Spotify/SoundCloud e playlist).
+  // Com trilha de ambiente na call, a música substitui a trilha; senão entra na fila.
+  const busca = await resolverBusca(p.busca);
+  if (filaDaCall?.metadata.ambiente) filaDaCall.delete();
+  try {
+    const { track, searchResult } = await t.player.play(canalVoz as unknown as CanalDoPlayer, busca, {
+      nodeOptions: { ...SEM_EFEITOS, metadata: { canal } satisfies Metadados, volume: 70, leaveOnEmpty: true, leaveOnEmptyCooldown: 60_000, leaveOnEnd: true, leaveOnEndCooldown: 120_000 },
+    });
+    return searchResult.playlist
+      ? `📃 ${searchResult.tracks.length} músicas de ${searchResult.playlist.title} na fila pelo ${t.nome}.`
+      : `🎵 ${track.title} na fila pelo ${t.nome}.`;
+  } catch (erro) {
+    console.error('[mapa] tocar:', p.busca, erro);
+    throw new Error('Não achei nada com essa busca (ou o link não é suportado).');
   }
-  filaDaCall?.delete();
-  await t.player.play(canalVoz as unknown as CanalDoPlayer, faixa, {
-    nodeOptions: { ...SEM_EFEITOS, metadata: { canal } satisfies Metadados, volume: 70, leaveOnEmpty: true, leaveOnEmptyCooldown: 60_000, leaveOnEnd: true, leaveOnEndCooldown: 120_000 },
-  });
-  return `🎵 Tocando ${faixa.title} pelo ${t.nome}.`;
 }
 
 /** O que está tocando em cada call (para o mapa mostrar ao mestre). */
