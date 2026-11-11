@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha } from './fichaMapa.ts';
+import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha } from './fichaMapa.ts';
 import { textoDoPersonagem } from './mapa.ts';
 
 const fichaDH = {
@@ -57,6 +57,15 @@ test('nome do webhook: corta em 80 letras e recusa o que o Discord proíbe', () 
   assert.equal(nomeDeWebhook('x'.repeat(90))!.length, 80);
   assert.equal(nomeDeWebhook('Discordiano'), null);
   assert.equal(nomeDeWebhook('   '), null);
+});
+
+test('fala no canal: "(", "//" e "ooc" ficam fora do personagem', () => {
+  assert.equal(foraDoPersonagem('Eu saco a espada!'), false);
+  assert.equal(foraDoPersonagem('(vou pegar água, já volto)'), true);
+  assert.equal(foraDoPersonagem('  // regra: dá pra correr?'), true);
+  assert.equal(foraDoPersonagem('OOC alguém viu meu dado?'), true);
+  assert.equal(foraDoPersonagem('Oocalipse vem aí'), false);
+  assert.equal(foraDoPersonagem('x'.repeat(2001)), true);
 });
 
 test('texto do personagem no Discord não repete o nome (ele já vem no webhook)', () => {

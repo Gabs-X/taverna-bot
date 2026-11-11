@@ -318,3 +318,54 @@ test('diário: cada sessão finalizada aparece com o registro, e o mestre escrev
   assert.equal((await chamar(M, 'diario/notas', { id, notas: 'O grupo achou a cripta.' })).status, 200);
   assert.equal((await estado(J)).diario[0].notas, 'O grupo achou a cripta.');
 });
+
+test('fala escrita direto no canal sai como o personagem; mestre e fora do personagem ficam como estão', async () => {
+  const { aoMensagemDiscord } = await import('../recursos/mapa.ts');
+  db.prepare("UPDATE campanhas SET canal_id = 'canal-da-mesa' WHERE id = ?").run(campanha);
+  const enviadas: any[] = [];
+  const canal = {
+    id: 'canal-da-mesa',
+    type: 0,
+    guild: { members: { me: {} } },
+    permissionsFor: () => ({ has: () => true }),
+    fetchWebhooks: async () => [],
+    createWebhook: async () => ({ token: 't', owner: { id: 'bot' }, send: async (x: unknown) => enviadas.push(x) }),
+  };
+  const mensagem = (autor: string, conteudo: string) => {
+    const m = {
+      apagada: false,
+      author: { id: autor, bot: false },
+      webhookId: null,
+      inGuild: () => true,
+      guildId: 'g',
+      channelId: 'canal-da-mesa',
+      channel: canal,
+      content: conteudo,
+      cleanContent: conteudo,
+      reference: null,
+      stickers: { size: 0 },
+      poll: null,
+      attachments: new Map(),
+      delete: async () => { m.apagada = true; },
+    };
+    return m;
+  };
+
+  const fala = mensagem('200000000000000002', 'Eu saco a espada!');
+  await aoMensagemDiscord(fala as never);
+  assert.equal(fala.apagada, true);
+  assert.equal(enviadas.length, 1);
+  assert.equal(enviadas[0].username, 'Lyra');
+  assert.equal(enviadas[0].content, 'Eu saco a espada!');
+
+  const ooc = mensagem('200000000000000002', '(já volto)');
+  const doMestre = mensagem('100000000000000001', 'Rolem iniciativa.');
+  await aoMensagemDiscord(ooc as never);
+  await aoMensagemDiscord(doMestre as never);
+  assert.equal(ooc.apagada || doMestre.apagada, false);
+  assert.equal(enviadas.length, 1);
+
+  // As três aparecem no chat do mapa.
+  const chat = (await chamar('100000000000000001', 'chat')).corpo.map((l: any) => l.texto);
+  for (const t of ['Eu saco a espada!', '(já volto)', 'Rolem iniciativa.']) assert.ok(chat.includes(t), t);
+});

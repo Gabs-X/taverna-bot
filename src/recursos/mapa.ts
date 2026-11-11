@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { ChannelType, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
 import { AMBIENTES, ehAmbiente, lerComandoMusica, type FilaTocando, type PedidoMusica } from '../lib/ambientes.ts';
 import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeVida, proximoTurno, resolverAtaque } from '../lib/combate.ts';
@@ -9,7 +9,7 @@ import { rolar } from '../lib/dados.ts';
 import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
 import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa } from '../lib/nevoa.ts';
-import { nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
+import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
   chatVisivel,
@@ -497,7 +497,45 @@ export async function aoMensagemDiscord(m: Message) {
   const c = db.prepare('SELECT * FROM campanhas WHERE guild_id = ? AND canal_id = ?').get(m.guildId, m.channelId) as Campanha | undefined;
   if (!c || (c.mestre_id !== m.author.id && !idsJogadores(c.id).includes(m.author.id))) return;
   const texto = m.cleanContent.trim().slice(0, LIMITE_TEXTO);
-  if (texto) gravarChat(c, m.author.id, await autorDe(c, m.author.id), 'msg', texto, null, false, false);
+  if (!texto) return;
+  await falarComoPersonagem(c, m);
+  gravarChat(c, m.author.id, await autorDe(c, m.author.id), 'msg', texto, null, false, false);
+}
+
+/**
+ * O jogador escreveu direto no canal: a mensagem é refeita pelo webhook com o nome e a foto do personagem e a original sai.
+ * Fica como está quando é do mestre, fora do personagem ("(", "//", "ooc"), resposta, figurinha, enquete,
+ * de quem ainda não tem ficha, ou quando o bot não pode gerenciar webhooks e mensagens no canal.
+ */
+async function falarComoPersonagem(c: Campanha, m: Message<true>) {
+  if (c.mestre_id === m.author.id || foraDoPersonagem(m.content)) return false;
+  if (m.reference || m.stickers.size || m.poll) return false;
+  const canal = m.channel;
+  if (canal.type !== ChannelType.GuildText) return false;
+  const eu = canal.guild.members.me;
+  const pode = eu ? canal.permissionsFor(eu) : null;
+  if (!pode?.has(PermissionFlagsBits.ManageWebhooks) || !pode.has(PermissionFlagsBits.ManageMessages)) return false;
+  if (!fichaDe(c, m.author.id)?.nome) return false;
+  const p = await personaDe(c, m.author.id, null);
+  const nome = nomeDeWebhook(p.nome);
+  if (!nome) return false;
+  try {
+    const w = await webhookDe(canal);
+    await w.send({
+      content: m.content,
+      username: nome,
+      avatarURL: p.avatar ?? undefined,
+      files: [...m.attachments.values()].map((a) => ({ attachment: a.url, name: a.name })),
+      allowedMentions: { parse: [] },
+    });
+  } catch (e) {
+    // Webhook apagado ou anexo grande demais: a mensagem original fica.
+    webhooks.delete(canal.id);
+    console.error('[mapa] não consegui refazer a fala como o personagem:', (e as Error).message);
+    return false;
+  }
+  await m.delete().catch((e: Error) => console.error('[mapa] não consegui apagar a fala original:', e.message));
+  return true;
 }
 
 // ---------- Ficha do jogador (criada no mapa) ----------

@@ -151,6 +151,15 @@ export function nomeDaCopia(nome: string, existentes: string[]) {
   for (let n = 2; ; n++) if (!usados.has(`${nome} ${n}`.toLowerCase())) return `${nome} ${n}`;
 }
 
+/**
+ * Fala do jogador escrita direto no canal da campanha que deve continuar como ele (fora do personagem):
+ * começa com "(", "//" ou "ooc", ou é longa demais para o webhook (2000 letras).
+ */
+export function foraDoPersonagem(texto: string) {
+  const t = texto.trim();
+  return !t || t.length > 2000 || /^(\(|\/\/|ooc\b)/i.test(t);
+}
+
 /** Nome que o webhook aceita: 1 a 80 letras e sem as palavras que o Discord proíbe. */
 export function nomeDeWebhook(nome: string) {
   const limpo = nome.replace(/\s+/g, ' ').trim().slice(0, 80);
