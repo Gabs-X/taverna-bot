@@ -10,6 +10,7 @@ import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
 import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa, revelarRaio } from '../lib/nevoa.ts';
 import { esquecerMesa, estadoDaMesa, lerMesa, registrarHistorico, tratarMesa, type Mesa } from './mapaMesa.ts';
+import { validarDesenho } from '../lib/mesa.ts';
 import { CARTA, CARTAS, CLASSES, DOMINIOS, ESTAGIOS, dominiosTocados, limites, lugarAoEscolher, motivoParaNaoEscolher, moverCarta, type CartaDoPersonagem } from '../lib/cartasDH.ts';
 import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type Criatura, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
@@ -63,6 +64,14 @@ type Cena = {
   id: number; campanha_id: number; nome: string; imagem: string | null; largura: number; altura: number; grade: number;
   nevoa_ligada: number; nevoa: string | null; ambiente: string | null; notas: string;
 };
+
+type Elemento = { id: number; campanha_id: number; cena_id: number | null; imagem: string; x: number; y: number; largura: number; altura: number; rotacao: number; oculto: number; ordem: number };
+type DesenhoSalvo = { id: number; tipo: string; pontos: string; cor: string; espessura: number; preenchido: number; oculto: number };
+/** Elementos e desenhos da cena aberta (sem cenas, os que não têm cena). */
+const elementosDaCena = (c: { id: number }, m: { cena_id: number | null }) =>
+  db.prepare('SELECT * FROM mapa_elementos WHERE campanha_id = ? AND cena_id IS ? ORDER BY ordem, id').all(c.id, m.cena_id) as Elemento[];
+const desenhosDaCena = (c: { id: number }, m: { cena_id: number | null }) =>
+  db.prepare('SELECT * FROM mapa_desenhos WHERE campanha_id = ? AND cena_id IS ? ORDER BY id').all(c.id, m.cena_id) as DesenhoSalvo[];
 
 /** Peças da cena aberta: os jogadores (que andam junto entre as cenas) e as peças do mestre desta cena. */
 const pecasDaCena = (c: { id: number }, m: Mapa) =>
@@ -521,6 +530,7 @@ async function montarEstado(c: Campanha, userId: string) {
       cena: cenaAtiva?.nome ?? null,
       visao: m.visao,
       cortina: !!m.cortina,
+      gif: /\.gif$/i.test(m.imagem ?? ''),
     },
     handout: handoutDe(c, m.handout_id),
     livro: (() => {
@@ -536,6 +546,14 @@ async function montarEstado(c: Campanha, userId: string) {
     },
     cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente, notas: cn.notas })) : [],
     ...estadoDaMesa({ c, userId, souMestre }),
+    // Elementos (imagens soltas) e desenhos do mestre: os escondidos só o mestre recebe; com a cortina fechada, ninguém.
+    elementos: elementosDaCena(c, m).filter((e) => souMestre || (!e.oculto && !m.cortina)).map((e) => ({
+      id: e.id, x: e.x, y: e.y, largura: e.largura, altura: e.altura, rotacao: e.rotacao, oculto: !!e.oculto,
+      url: `/api/m/${c.id}/elemento-imagem/${e.id}?a=${encodeURIComponent(e.imagem)}`, gif: /\.gif$/i.test(e.imagem),
+    })),
+    desenhos: desenhosDaCena(c, m).filter((d) => souMestre || (!d.oculto && !m.cortina)).map((d) => ({
+      id: d.id, tipo: d.tipo, pontos: JSON.parse(d.pontos) as [number, number][], cor: d.cor, espessura: d.espessura, preenchido: !!d.preenchido, oculto: !!d.oculto,
+    })),
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
       const cr = p.criatura_id ? porCriatura.get(p.criatura_id) : undefined;
@@ -569,6 +587,8 @@ async function montarEstado(c: Campanha, userId: string) {
         tamanho: p.tamanho,
         avatar,
         imagemPropria: !!p.imagem,
+        // GIF animado: a página redesenha o mapa sem parar enquanto houver um na tela.
+        gif: /\.gif$/i.test((p.user_id ? foto?.imagem : p.imagem ?? cr?.imagem) ?? ''),
         ficha: dadosFicha,
         vida: !p.user_id && !souMestre ? vidaParaJogadores(m, cr, p) : null,
         condicoes: p.condicoes ? p.condicoes.split(',') : [],
@@ -1111,6 +1131,11 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (imgHandout) {
       const h = db.prepare('SELECT imagem FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(Number(imgHandout[1]), c.id) as { imagem: string } | undefined;
       return servirImagem(res, h?.imagem);
+    }
+    const imgElemento = acao.match(/^elemento-imagem\/(\d+)$/);
+    if (imgElemento) {
+      const e = db.prepare('SELECT imagem, oculto FROM mapa_elementos WHERE id = ? AND campanha_id = ?').get(Number(imgElemento[1]), c.id) as { imagem: string; oculto: number } | undefined;
+      return servirImagem(res, e && (souMestre || !e.oculto) ? e.imagem : null);
     }
     const imgCriatura = acao.match(/^criatura-imagem\/(\d+)$/);
     if (imgCriatura) return servirImagem(res, criaturaPorId(c, imgCriatura[1])?.imagem);
@@ -1671,6 +1696,25 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // Elemento novo: a imagem chega como arquivo (antes de ler o corpo como JSON).
+  if (acao === 'elemento/novo') {
+    const m = mapaDe(c.id);
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM mapa_elementos WHERE campanha_id = ?').get(c.id) as { n: number }).n;
+    if (total >= 300) return json(res, 400, { erro: 'A campanha chegou a 300 elementos. Apague alguns antes.' });
+    const arquivo = await receberImagem(req, res, `${c.id}-elem`);
+    if (!arquivo) return;
+    // Tamanho inicial: o que a página mediu (proporção da imagem), limitado a 6 casas no lado maior.
+    const lMed = limitar(url.searchParams.get('l'), 1, 10_000, m.grade), aMed = limitar(url.searchParams.get('a'), 1, 10_000, m.grade);
+    const escala = (m.grade * 2) / Math.max(lMed, aMed);
+    const largura = Math.max(8, lMed * escala), altura = Math.max(8, aMed * escala);
+    const x = limitar(url.searchParams.get('x'), 0, m.largura, m.largura / 2), y = limitar(url.searchParams.get('y'), 0, m.altura, m.altura / 2);
+    const ordem = (db.prepare('SELECT COALESCE(MAX(ordem), 0) + 1 AS o FROM mapa_elementos WHERE campanha_id = ?').get(c.id) as { o: number }).o;
+    const novo = db.prepare('INSERT INTO mapa_elementos (campanha_id, cena_id, imagem, x, y, largura, altura, ordem, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, m.cena_id, arquivo, x, y, largura, altura, ordem, Date.now(),
+    );
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+  }
   const b = await lerJson<Record<string, unknown>>(req, 8_000);
 
   // Biblioteca: cria (sem id) ou edita (com id) um NPC ou inimigo. As cópias no mapa acompanham tamanho e vida máxima.
@@ -1891,6 +1935,69 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // ---------- Elementos: imagens soltas na cena (móveis, árvores, armadilhas), só do mestre ----------
+  if (acao === 'elemento/mudar') {
+    const e = db.prepare('SELECT * FROM mapa_elementos WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as Elemento | undefined;
+    if (!e) return json(res, 404, { erro: 'Elemento não encontrado.' });
+    const m = mapaDe(c.id);
+    const num = (v: unknown, min: number, max: number, padrao: number) => (v === undefined ? padrao : limitar(v, min, max, padrao));
+    let ordem = e.ordem;
+    if (b.ordem === 'frente') ordem = (db.prepare('SELECT COALESCE(MAX(ordem), 0) + 1 AS o FROM mapa_elementos WHERE campanha_id = ?').get(c.id) as { o: number }).o;
+    if (b.ordem === 'tras') ordem = (db.prepare('SELECT COALESCE(MIN(ordem), 0) - 1 AS o FROM mapa_elementos WHERE campanha_id = ?').get(c.id) as { o: number }).o;
+    db.prepare('UPDATE mapa_elementos SET x = ?, y = ?, largura = ?, altura = ?, rotacao = ?, oculto = ?, ordem = ? WHERE id = ?').run(
+      num(b.x, 0, m.largura, e.x), num(b.y, 0, m.altura, e.y), num(b.largura, 4, 20_000, e.largura), num(b.altura, 4, 20_000, e.altura),
+      ((Number(b.rotacao ?? e.rotacao) % 360) + 360) % 360, b.oculto === undefined ? e.oculto : b.oculto ? 1 : 0, ordem, e.id,
+    );
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'elemento/apagar') {
+    const e = db.prepare('SELECT imagem FROM mapa_elementos WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as { imagem: string } | undefined;
+    if (!e) return json(res, 404, { erro: 'Elemento não encontrado.' });
+    db.prepare('DELETE FROM mapa_elementos WHERE id = ?').run(Number(b.id));
+    if (!db.prepare('SELECT 1 FROM mapa_elementos WHERE imagem = ?').get(e.imagem)) apagarImagem(e.imagem);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'elemento/copiar') {
+    const e = db.prepare('SELECT * FROM mapa_elementos WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as Elemento | undefined;
+    if (!e) return json(res, 404, { erro: 'Elemento não encontrado.' });
+    const m = mapaDe(c.id);
+    const novo = db.prepare('INSERT INTO mapa_elementos (campanha_id, cena_id, imagem, x, y, largura, altura, rotacao, oculto, ordem, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, m.cena_id, e.imagem, Math.min(m.largura, e.x + m.grade), Math.min(m.altura, e.y + m.grade), e.largura, e.altura, e.rotacao, e.oculto, e.ordem + 1, Date.now(),
+    );
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+  }
+
+  // ---------- Desenhos permanentes do mestre ----------
+  if (acao === 'desenho/novo') {
+    const m = mapaDe(c.id);
+    let d;
+    try {
+      d = validarDesenho(b, m.largura, m.altura);
+    } catch (e) {
+      return json(res, 400, { erro: (e as Error).message });
+    }
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM mapa_desenhos WHERE campanha_id = ? AND cena_id IS ?').get(c.id, m.cena_id) as { n: number }).n;
+    if (total >= 500) return json(res, 400, { erro: 'Esta cena já tem 500 desenhos. Apague alguns antes.' });
+    const novo = db.prepare('INSERT INTO mapa_desenhos (campanha_id, cena_id, tipo, pontos, cor, espessura, preenchido, oculto, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, m.cena_id, d.tipo, JSON.stringify(d.pontos), d.cor, d.espessura, d.preenchido ? 1 : 0, b.oculto ? 1 : 0, Date.now(),
+    );
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+  }
+  if (acao === 'desenho/apagar') {
+    db.prepare('DELETE FROM mapa_desenhos WHERE id = ? AND campanha_id = ?').run(Number(b.id), c.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+  if (acao === 'desenho/limpar') {
+    db.prepare('DELETE FROM mapa_desenhos WHERE campanha_id = ? AND cena_id IS ?').run(c.id, mapaDe(c.id).cena_id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
   if (acao === 'npc/remover') {
     const npc = pecaDoMestre(c, b.peca);
     apagarImagem(npc?.imagem);
@@ -1919,6 +2026,9 @@ export function apagarMapa(campanhaId: number) {
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM campanha_relogios WHERE campanha_id = ?').run(campanhaId);
+  for (const e of db.prepare('SELECT DISTINCT imagem FROM mapa_elementos WHERE campanha_id = ?').all(campanhaId) as { imagem: string }[]) apagarImagem(e.imagem);
+  db.prepare('DELETE FROM mapa_elementos WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM mapa_desenhos WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM campanha_roteiro WHERE campanha_id = ?').run(campanhaId);
   esquecerMesa(campanhaId);
   for (const o of ouvintes.get(campanhaId) ?? []) o.res.end();

@@ -599,6 +599,14 @@
     #dica-mapa { display: none; }
     #topo::before, #topo::after { display: none; }
   }
+  /* ---------- Elementos e desenhos do mestre ---------- */
+  #barra-elemento { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -100%); display: flex; gap: 3px; padding: 5px; border-radius: 12px; z-index: 4 !important; animation: entra .15s ease-out; }
+  #barra-elemento button { min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--texto); cursor: pointer; font-size: 15px; }
+  #barra-elemento button:hover { background: #3e2a19; border-color: #7a5532; }
+  #barra-elemento .sep { width: 1px; background: #5c4026; margin: 4px 2px; }
+  .ferr-desenho { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+  .ferr-desenho button.on { background: var(--latao); color: #2b1a08; border-color: #7a5218; }
+  canvas.pintando { cursor: crosshair; } canvas.apagando { cursor: not-allowed; }
   /* ---------- Cortina do mestre ---------- */
   #cortina { position: absolute; inset: 0; z-index: 2; pointer-events: auto; overflow: hidden; }
   #cortina .pano { position: absolute; top: 0; bottom: 0; width: 51%; background:
@@ -785,6 +793,13 @@
   </div>
   <div id="reacoes" class="vidro" hidden></div>
   <div id="formas" class="vidro" hidden></div>
+  <div id="barra-elemento" class="vidro" hidden>
+    <button data-el="girar-" title="Girar 15° para a esquerda">⟲</button><button data-el="girar+" title="Girar 15° para a direita">⟳</button><div class="sep"></div>
+    <button data-el="menor" title="Diminuir">－</button><button data-el="maior" title="Aumentar">＋</button><div class="sep"></div>
+    <button data-el="frente" title="Trazer para a frente">⬆</button><button data-el="tras" title="Mandar para trás">⬇</button><button data-el="copiar" title="Duplicar">⧉</button>
+    <button data-el="esconder" title="Esconder dos jogadores / mostrar">🙈</button><div class="sep"></div>
+    <button data-el="apagar" title="Apagar (Delete)">🗑</button><button data-el="fechar" title="Soltar (Esc)">✕</button>
+  </div>
   <div id="holofote" hidden></div>
   <div id="relogios"></div>
   <div id="dica-mapa" class="vidro" hidden>Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas · botão do meio (ou Alt + clique) marca um ponto para todos</div>
@@ -890,6 +905,20 @@
       <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button><button id="minhas-cartas" class="btn sec" hidden>🃏 Minhas cartas</button><button id="subir-nivel" class="btn sec" hidden>⬆️ Subir de nível</button></div>
       <div class="linha"><button id="descansar" class="btn sec" hidden>🏕️ Descansar</button><button id="imprimir-ficha" class="btn sec" hidden>🖨️ Imprimir ficha</button><button id="ver-historico" class="btn sec" hidden>📜 Histórico</button></div>
       <div id="meu-historico" class="historico" hidden></div>
+    </section>
+    <section id="painel-elementos" hidden>
+      <h2>Elementos e desenhos</h2>
+      <div class="rotulo-sec">🖼️ Elementos</div>
+      <div class="mudo">Imagens soltas na cena: móveis, árvores, portas, armadilhas, fogueiras (GIF animado também). Não são personagens.</div>
+      <div class="linha"><label class="btn sec" for="elemento-arquivo">🖼️ Adicionar elemento</label><input id="elemento-arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden><label class="escondida" style="color:var(--texto)"><input type="checkbox" id="elemento-oculto"> 🙈 Entra escondido</label></div>
+      <div class="mudo" style="margin-top:4px">Clique num elemento no mapa para arrastar, girar, mudar o tamanho, duplicar, esconder ou apagar.</div>
+      <div class="rotulo-sec">✏️ Desenhos que ficam no mapa</div>
+      <div class="ferr-desenho" id="ferr-desenho">
+        <button class="btn sec" data-d="traco">✏️ Livre</button><button class="btn sec" data-d="linha">➖ Linha</button><button class="btn sec" data-d="retangulo">▭ Retângulo</button><button class="btn sec" data-d="circulo">◯ Círculo</button><button class="btn sec" data-d="borracha">🧽 Borracha</button>
+      </div>
+      <div class="linha"><input type="color" id="desenho-cor" value="#c0392b" title="Cor" style="width:44px;flex:none;padding:0"><input type="range" id="desenho-espessura" min="1" max="30" value="5" title="Espessura" style="flex:1"><label class="escondida" style="color:var(--texto)"><input type="checkbox" id="desenho-cheio"> Preenchido</label></div>
+      <div class="linha"><label class="escondida" style="color:var(--texto)"><input type="checkbox" id="desenho-oculto"> 🙈 Só eu vejo</label><span style="flex:1"></span><button class="btn perigo" id="desenho-limpar">Apagar todos</button></div>
+      <div class="mudo" style="margin-top:4px">Os desenhos ficam na cena até você apagar (🧽 Borracha: clique no desenho). Esc solta a ferramenta.</div>
     </section>
     <section id="painel-pedir" hidden>
       <h2>Pedir música</h2>
@@ -1389,6 +1418,7 @@ function pintar() {
     pg.addColorStop(0, '#f6e8c6'); pg.addColorStop(0.7, '#e3cb98'); pg.addColorStop(1, '#c9a86c');
     ctx.fillStyle = pg; ctx.fillRect(0, 0, largura, altura);
   }
+  pintarCamadaMestre();
   if (prefs.grade) {
     ctx.strokeStyle = imagem ? 'rgba(255,236,200,.24)' : 'rgba(90,55,20,.28)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
     for (let x = 0; x <= largura; x += grade) { ctx.moveTo(x, 0); ctx.lineTo(x, altura); }
@@ -1573,7 +1603,14 @@ cv.addEventListener('pointerdown', (e) => {
   }
   if (usandoRegua) { regua = { a: pt, b: pt }; arrasto = { regua: true }; desenhar(); return; }
   if (pincel) { arrasto = { nevoa: true, revelar: pincel === 'revelar', a: pt, b: pt }; desenhar(); return; }
+  if (e.button === 0 && ferrDesenho) { comecarDesenho(pt); return; }
   const p = pecaEm(pt);
+  // Mestre: sem peça no clique, pega um elemento (imagem solta) para arrastar.
+  if (!p && e.button === 0 && estado.voce.mestre) {
+    const el2 = elementoEm(pt);
+    if (el2) { elementoSel = el2.id; arrasto = { elemento: el2, dx: el2.x - pt.x, dy: el2.y - pt.y }; painelElemento(); desenhar(); return; }
+    if (elementoSel) { elementoSel = null; painelElemento(); }
+  }
   if (p) {
     selecionada = p.id; painel();
     if (p.podeMover) arrasto = { peca: p, dx: p.x - pt.x, dy: p.y - pt.y };
@@ -1588,6 +1625,8 @@ cv.addEventListener('pointermove', (e) => {
     return;
   }
   if (arrasto.area) { const q = mundo(e); areaNova.x2 = q.x; areaNova.y2 = q.y; desenhar(); return; }
+  if (arrasto.desenho) { continuarDesenho(mundo(e)); return; }
+  if (arrasto.elemento) { const q = mundo(e); arrasto.elemento.x = q.x + arrasto.dx; arrasto.elemento.y = q.y + arrasto.dy; arrasto.moveu = true; desenhar(); return; }
   if (arrasto.regua) { regua.b = mundo(e); enviarRegua(false); desenhar(); return; }
   if (arrasto.nevoa) { arrasto.b = mundo(e); desenhar(); return; }
   if (arrasto.mapa) { const dpr = devicePixelRatio || 1; cam.x = arrasto.cx + (e.clientX - arrasto.sx) * dpr; cam.y = arrasto.cy + (e.clientY - arrasto.sy) * dpr; }
@@ -1595,6 +1634,8 @@ cv.addEventListener('pointermove', (e) => {
   desenhar();
 });
 function soltar() {
+  if (arrasto && arrasto.desenho) { arrasto = null; terminarDesenho(); return; }
+  if (arrasto && arrasto.elemento) { const el2 = arrasto.elemento, moveu = arrasto.moveu; arrasto = null; if (moveu) post('elemento/mudar', { id: el2.id, x: el2.x, y: el2.y }).catch(() => {}); return; }
   if (arrasto && arrasto.area) { arrasto = null; soltarArea(); return; }
   if (arrasto && arrasto.regua) enviarRegua(true);
   if (arrasto && arrasto.laser) { enviarTraco(true); arrasto = null; return; }
@@ -1636,6 +1677,7 @@ const DOCK = [
   { k: 'biblioteca', ico: '👹', nome: 'NPCs e inimigos', secs: ['painel-biblioteca'] },
   { k: 'musica', ico: '🎵', nome: 'Música da mesa', secs: ['painel-musica'] },
   { k: 'handouts', ico: '🖼️', nome: 'Handouts', secs: ['painel-handouts'] },
+  { k: 'elementos', ico: '🧱', nome: 'Elementos e desenhos', secs: ['painel-elementos'] },
   { k: 'relogios', ico: '⏳', nome: 'Relógios de progresso', secs: ['painel-relogios'] },
   { k: 'roteiro', ico: '📋', nome: 'Roteiro da sessão', secs: ['painel-roteiro'] },
   { k: 'bestiario', ico: '📚', nome: 'Bestiário e encontros', acao: () => abrirBestiario(), ver: () => !!estado.temBestiario },
@@ -1821,6 +1863,8 @@ async function prepararImagem(arquivo) {
   const { i, url } = await carregarImagem(arquivo);
   try {
     if (arquivo.size <= LIMITE_ENVIO && Math.max(i.naturalWidth, i.naturalHeight) <= 8000) return { blob: arquivo, l: i.naturalWidth, a: i.naturalHeight, reduzida: false };
+    // GIF animado vai inteiro: reduzir pelo canvas viraria uma imagem parada.
+    if (arquivo.type === 'image/gif') throw new Error(`Esse GIF é grande demais (máximo ${Math.round(LIMITE_ENVIO / 1048576)} MB). Reduzir tiraria a animação: use um GIF menor.`);
     let escala = Math.min(1, 6000 / Math.max(i.naturalWidth, i.naturalHeight));
     for (let tentativa = 0; tentativa < 6; tentativa++) {
       const c = document.createElement('canvas'); c.width = Math.round(i.naturalWidth * escala); c.height = Math.round(i.naturalHeight * escala);
@@ -1873,6 +1917,11 @@ $('tam-mais').onclick = () => mudarTamanho(0.5);
 
 /** Reduz a imagem do NPC para no máximo 512 px (a ficha de um token não precisa de mais). */
 async function reduzirImagem(arquivo, lado) {
+  // GIF animado vai como está (até 3 MB): reduzir pelo canvas tiraria a animação.
+  if (arquivo.type === 'image/gif') {
+    if (arquivo.size > 3 * 1048576) throw new Error('Esse GIF é grande demais (máximo 3 MB para peças e fotos). Reduzir tiraria a animação: use um GIF menor.');
+    return arquivo;
+  }
   const { i, url } = await carregarImagem(arquivo);
   try {
     const e = Math.min(1, lado / Math.max(i.naturalWidth, i.naturalHeight));
@@ -4335,6 +4384,148 @@ function ajustarAcoes() {
 }
 addEventListener('resize', () => { if (estado) ajustarAcoes(); });
 
+// ---------- Elementos (imagens soltas) e desenhos permanentes do mestre ----------
+let elementoSel = null, ferrDesenho = null, desenhoNovo = null;
+function pintarCamadaMestre() {
+  const px = 1 / cam.z, mestre = estado.voce.mestre;
+  for (const e of estado.elementos || []) {
+    const img = avatarDe(e.url); // mesma cache das fotos (redesenha quando carrega)
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((e.rotacao * Math.PI) / 180);
+    if (e.oculto) ctx.globalAlpha = 0.45;
+    if (img) ctx.drawImage(img, -e.largura / 2, -e.altura / 2, e.largura, e.altura);
+    else { ctx.fillStyle = 'rgba(122,82,24,.25)'; ctx.fillRect(-e.largura / 2, -e.altura / 2, e.largura, e.altura); }
+    if (mestre && e.id === elementoSel) { posicionarBarraElemento(e); ctx.globalAlpha = 1; ctx.setLineDash([7 * px, 5 * px]); ctx.lineWidth = 2 * px; ctx.strokeStyle = '#f5c451'; ctx.strokeRect(-e.largura / 2, -e.altura / 2, e.largura, e.altura); ctx.setLineDash([]); }
+    ctx.restore();
+  }
+  for (const d of [...(estado.desenhos || []), ...(desenhoNovo ? [desenhoNovo] : [])]) pintarDesenho(d);
+}
+/** A barra de ajustes flutua logo acima do elemento selecionado (segue a câmera). */
+function posicionarBarraElemento(e) {
+  const b = $('barra-elemento'), dpr = devicePixelRatio || 1, meia = Math.max(e.largura, e.altura) / 2;
+  const x = (cam.x + e.x * cam.z) / dpr, y = (cam.y + (e.y - meia) * cam.z) / dpr - 10;
+  const area = b.parentElement.getBoundingClientRect(), w = b.offsetWidth || 380;
+  b.style.left = Math.min(area.width - w / 2 - 8, Math.max(w / 2 + 8, x)) + 'px';
+  b.style.top = Math.max(b.offsetHeight + 8, y) + 'px';
+}
+function caminhoDesenho(d) {
+  const [a, b] = [d.pontos[0], d.pontos[d.pontos.length - 1]];
+  ctx.beginPath();
+  if (d.tipo === 'retangulo') ctx.rect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+  else if (d.tipo === 'circulo') ctx.arc(a[0], a[1], Math.hypot(b[0] - a[0], b[1] - a[1]), 0, Math.PI * 2);
+  else { ctx.moveTo(a[0], a[1]); for (const p of d.tipo === 'linha' ? [b] : d.pontos.slice(1)) ctx.lineTo(p[0], p[1]); }
+}
+function pintarDesenho(d) {
+  if (!d.pontos || d.pontos.length < 1) return;
+  ctx.save(); ctx.globalAlpha = d.oculto ? 0.45 : 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  caminhoDesenho(d);
+  if (d.preenchido) { ctx.fillStyle = d.cor; ctx.globalAlpha *= 0.35; ctx.fill(); ctx.globalAlpha = d.oculto ? 0.45 : 1; }
+  ctx.strokeStyle = d.cor; ctx.lineWidth = d.espessura; ctx.stroke(); ctx.restore();
+}
+/** Elemento debaixo do ponto (o de cima primeiro), levando em conta a rotação. */
+function elementoEm(pt) {
+  const lista = estado.elementos || [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const e = lista[i], r = (-e.rotacao * Math.PI) / 180, dx = pt.x - e.x, dy = pt.y - e.y;
+    const lx = dx * Math.cos(r) - dy * Math.sin(r), ly = dx * Math.sin(r) + dy * Math.cos(r);
+    if (Math.abs(lx) <= e.largura / 2 && Math.abs(ly) <= e.altura / 2) return e;
+  }
+  return null;
+}
+const distSeg = (p, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], l = vx * vx + vy * vy; const t = l ? Math.max(0, Math.min(1, ((p.x - a[0]) * vx + (p.y - a[1]) * vy) / l)) : 0; return Math.hypot(p.x - a[0] - t * vx, p.y - a[1] - t * vy); };
+/** Desenho debaixo do ponto (para a borracha). */
+function desenhoEm(pt) {
+  const lista = estado.desenhos || [], folga = 8 / cam.z;
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const d = lista[i], tol = d.espessura / 2 + folga, [a, b] = [d.pontos[0], d.pontos[d.pontos.length - 1]];
+    if (d.tipo === 'circulo') { const r = Math.hypot(b[0] - a[0], b[1] - a[1]), dist = Math.hypot(pt.x - a[0], pt.y - a[1]); if (Math.abs(dist - r) <= tol || (d.preenchido && dist <= r)) return d; continue; }
+    if (d.tipo === 'retangulo') {
+      const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+      const dentro = pt.x >= x0 && pt.x <= x1 && pt.y >= y0 && pt.y <= y1;
+      const borda = [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]].some(([p, q]) => distSeg(pt, p, q) <= tol);
+      if (borda || (d.preenchido && dentro)) return d; continue;
+    }
+    const pts = d.tipo === 'linha' ? [a, b] : d.pontos;
+    for (let k = 1; k < pts.length; k++) if (distSeg(pt, pts[k - 1], pts[k]) <= tol) return d;
+  }
+  return null;
+}
+function escolherFerrDesenho(f) {
+  ferrDesenho = ferrDesenho === f ? null : f;
+  for (const b of $('ferr-desenho').querySelectorAll('[data-d]')) b.classList.toggle('on', b.dataset.d === ferrDesenho);
+  cv.classList.toggle('pintando', !!ferrDesenho && ferrDesenho !== 'borracha');
+  cv.classList.toggle('apagando', ferrDesenho === 'borracha');
+  if (ferrDesenho && modoMapa) escolherModo(modoMapa);
+}
+for (const b of $('ferr-desenho').querySelectorAll('[data-d]')) b.onclick = () => escolherFerrDesenho(b.dataset.d);
+function comecarDesenho(pt) {
+  if (ferrDesenho === 'borracha') { const d = desenhoEm(pt); if (d) post('desenho/apagar', { id: d.id }).catch(() => {}); else aviso('Clique em cima de um desenho para apagar.', '', 1500); return; }
+  desenhoNovo = { tipo: ferrDesenho, pontos: [[pt.x, pt.y], [pt.x, pt.y]], cor: $('desenho-cor').value, espessura: Number($('desenho-espessura').value), preenchido: $('desenho-cheio').checked && (ferrDesenho === 'retangulo' || ferrDesenho === 'circulo'), oculto: $('desenho-oculto').checked };
+  if (ferrDesenho === 'traco') desenhoNovo.pontos = [[pt.x, pt.y]];
+  arrasto = { desenho: true }; desenhar();
+}
+function continuarDesenho(pt) {
+  if (!desenhoNovo) return;
+  if (desenhoNovo.tipo === 'traco') { const u = desenhoNovo.pontos[desenhoNovo.pontos.length - 1]; if (Math.hypot(pt.x - u[0], pt.y - u[1]) * cam.z > 3 && desenhoNovo.pontos.length < 600) desenhoNovo.pontos.push([pt.x, pt.y]); }
+  else desenhoNovo.pontos[1] = [pt.x, pt.y];
+  desenhar();
+}
+function terminarDesenho() {
+  const d = desenhoNovo; if (!d) return;
+  const [a, b] = [d.pontos[0], d.pontos[d.pontos.length - 1]];
+  if (d.tipo === 'traco' && d.pontos.length === 1) d.pontos.push([a[0] + 0.5, a[1] + 0.5]);
+  else if (d.tipo !== 'traco' && Math.hypot(b[0] - a[0], b[1] - a[1]) < 2) { desenhoNovo = null; desenhar(); return; }
+  // Fica na tela até o estado novo chegar (sem piscar).
+  post('desenho/novo', d).then(() => { if (desenhoNovo === d) desenhoNovo = null; }).catch(() => { desenhoNovo = null; desenhar(); });
+}
+$('desenho-limpar').onclick = (e) => {
+  const b = e.currentTarget;
+  if (!b.dataset.armado) { b.dataset.armado = '1'; b.textContent = 'Clique de novo para apagar'; setTimeout(() => { delete b.dataset.armado; b.textContent = 'Apagar todos'; }, 3000); return; }
+  delete b.dataset.armado; b.textContent = 'Apagar todos';
+  post('desenho/limpar', {}).then(() => aviso('🧽 Desenhos da cena apagados.', 'ok')).catch(() => {});
+};
+$('elemento-arquivo').onchange = async (e) => {
+  const arquivos = [...e.target.files]; e.target.value = '';
+  const centro = centroDaTela();
+  for (const [k, f] of arquivos.entries()) {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.'); continue; }
+    try {
+      const { i, url } = await carregarImagem(f); URL.revokeObjectURL(url);
+      const blob = await reduzirImagem(f, 1024);
+      const g = estado.mapa.grade, x = Math.min(estado.mapa.largura, centro.x + k * g), y = centro.y;
+      const r = await post(`elemento/novo?l=${i.naturalWidth}&a=${i.naturalHeight}&x=${x}&y=${y}`, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
+      if ($('elemento-oculto').checked) await post('elemento/mudar', { id: r.id, oculto: true });
+      elementoSel = r.id;
+    } catch (err) { if (err && err.message && !/^(Não deu|Só o|Use uma|Imagem)/.test(err.message)) mostrarErro(err.message); }
+  }
+  aviso('🖼️ Elemento no mapa: clique nele para arrastar, girar ou mudar o tamanho.', 'ok', 3500);
+};
+function painelElemento() {
+  const mestre = estado && estado.voce.mestre;
+  $('painel-elementos').hidden = !mestre;
+  const e = mestre && elementoSel ? (estado.elementos || []).find((x) => x.id === elementoSel) : null;
+  if (!e) elementoSel = null;
+  $('barra-elemento').hidden = !e;
+  if (e) $('barra-elemento').querySelector('[data-el=esconder]').textContent = e.oculto ? '👁️' : '🙈';
+}
+for (const b of $('barra-elemento').querySelectorAll('[data-el]')) b.onclick = () => {
+  const e = (estado.elementos || []).find((x) => x.id === elementoSel); if (!e) return;
+  const acao = b.dataset.el, mudar = (corpo) => post('elemento/mudar', { id: e.id, ...corpo }).catch(() => {});
+  if (acao === 'girar-') mudar({ rotacao: e.rotacao - 15 });
+  else if (acao === 'girar+') mudar({ rotacao: e.rotacao + 15 });
+  else if (acao === 'menor') mudar({ largura: e.largura / 1.15, altura: e.altura / 1.15 });
+  else if (acao === 'maior') mudar({ largura: e.largura * 1.15, altura: e.altura * 1.15 });
+  else if (acao === 'frente' || acao === 'tras') mudar({ ordem: acao });
+  else if (acao === 'esconder') mudar({ oculto: !e.oculto });
+  else if (acao === 'copiar') post('elemento/copiar', { id: e.id }).then((r) => { elementoSel = r.id; }).catch(() => {});
+  else if (acao === 'apagar') { post('elemento/apagar', { id: e.id }).catch(() => {}); elementoSel = null; painelElemento(); }
+  else if (acao === 'fechar') { elementoSel = null; painelElemento(); desenhar(); }
+};
+addEventListener('keydown', (e) => {
+  if (!estado || !estado.voce.mestre || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  if (e.key === 'Escape' && (ferrDesenho || elementoSel)) { e.stopImmediatePropagation(); if (ferrDesenho) escolherFerrDesenho(ferrDesenho); else { elementoSel = null; painelElemento(); desenhar(); } return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && elementoSel) { e.preventDefault(); post('elemento/apagar', { id: elementoSel }).catch(() => {}); elementoSel = null; painelElemento(); }
+}, true);
+
 // ---------- Cortina do mestre ----------
 let cortinaAntes = null;
 function painelCortina() {
@@ -4356,6 +4547,7 @@ $('a-cortina').onclick = () => post('cortina', { fechada: !estado.mapa.cortina }
 function painelMesaExtra() {
   painelHolofote();
   painelCortina();
+  painelElemento();
   ajustarAcoes();
   painelRelogios();
   painelCenaExtra();
@@ -4366,7 +4558,17 @@ function painelMesaExtra() {
   const p = minhaPeca();
   $('imprimir-ficha').hidden = !(p && p.ficha);
   $('descansar').hidden = !(p && p.ficha && ehDH());
+  animarGifs();
   estado._carregou = true;
+}
+
+// GIFs animados no mapa (a imagem do mapa, peças ou elementos): o canvas só mostra o quadro atual quando
+// redesenha, então enquanto houver um GIF na tela o mapa redesenha ~12 vezes por segundo.
+let lacoGif = null;
+function animarGifs() {
+  const tem = estado.mapa.gif || estado.pecas.some((p) => p.gif) || (estado.elementos || []).some((e) => e.gif);
+  if (tem && !lacoGif) lacoGif = setInterval(() => { if (!document.hidden) desenhar(); }, 80);
+  else if (!tem && lacoGif) { clearInterval(lacoGif); lacoGif = null; }
 }
 $('descansar').onclick = abrirDescanso;
 $('f-dados').onclick = () => { prefs.dados3d = prefs.dados3d === false; aplicarPrefs(); aviso(prefs.dados3d ? '🎲 Dados animados ligados.' : '🎲 Dados animados desligados.', '', 1800); };

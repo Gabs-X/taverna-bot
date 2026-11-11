@@ -99,3 +99,24 @@ export function validarArea(corpo: Record<string, unknown>, largura: number, alt
   if (Math.hypot(area.x2 - area.x, area.y2 - area.y) < 2) throw new Error('Arraste para dar o tamanho da área.');
   return area;
 }
+
+// ---------- Desenhos permanentes do mestre ----------
+
+export const TIPOS_DESENHO = ['traco', 'linha', 'retangulo', 'circulo'] as const;
+export type Desenho = { tipo: (typeof TIPOS_DESENHO)[number]; pontos: [number, number][]; cor: string; espessura: number; preenchido: boolean };
+
+/** Confere um desenho do mestre: traço livre (até 600 pontos), linha, retângulo ou círculo (dois pontos), dentro do mapa. */
+export function validarDesenho(corpo: Record<string, unknown>, largura: number, altura: number): Desenho {
+  const tipo = String(corpo.tipo) as Desenho['tipo'];
+  if (!TIPOS_DESENHO.includes(tipo)) throw new Error('Tipo de desenho desconhecido.');
+  const brutos = Array.isArray(corpo.pontos) ? corpo.pontos : [];
+  const pontos = brutos
+    .filter((p): p is [unknown, unknown] => Array.isArray(p) && p.length === 2 && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1])))
+    .slice(0, 600)
+    .map(([x, y]) => [Math.round(Math.min(largura, Math.max(0, Number(x))) * 10) / 10, Math.round(Math.min(altura, Math.max(0, Number(y))) * 10) / 10] as [number, number]);
+  if (pontos.length < 2) throw new Error('Desenho vazio.');
+  const final = tipo === 'traco' ? pontos : [pontos[0], pontos[pontos.length - 1]];
+  const cor = typeof corpo.cor === 'string' && /^#[0-9a-f]{6}$/i.test(corpo.cor) ? corpo.cor.toLowerCase() : '#c0392b';
+  const espessura = Math.min(40, Math.max(1, Number(corpo.espessura) || 4));
+  return { tipo, pontos: final, cor, espessura, preenchido: !!corpo.preenchido && (tipo === 'retangulo' || tipo === 'circulo') };
+}

@@ -109,3 +109,14 @@ test('guia de batalha: pontos, ajustes e sugestão dentro do orçamento', () => 
   assert.ok(s.gastos <= s.pontos);
   assert.ok(s.escolhidos.every((a) => a.nivel === 1));
 });
+
+test('desenho permanente: tipos, pontos dentro do mapa e só 2 pontos nas formas', async () => {
+  const { validarDesenho } = await import('./mesa.ts');
+  const t = validarDesenho({ tipo: 'traco', pontos: [[1, 2], [3, 4], [5000, -9]], cor: '#ABCDEF', espessura: 99 }, 100, 100);
+  assert.deepEqual(t, { tipo: 'traco', pontos: [[1, 2], [3, 4], [100, 0]], cor: '#abcdef', espessura: 40, preenchido: false });
+  const r = validarDesenho({ tipo: 'retangulo', pontos: [[0, 0], [5, 5], [10, 20]], preenchido: true, cor: 'vermelho' }, 100, 100);
+  assert.deepEqual([r.pontos, r.preenchido, r.cor], [[[0, 0], [10, 20]], true, '#c0392b']);
+  assert.equal(validarDesenho({ tipo: 'linha', pontos: [[0, 0], [1, 1]], preenchido: true }, 9, 9).preenchido, false);
+  assert.throws(() => validarDesenho({ tipo: 'estrela', pontos: [[0, 0], [1, 1]] }, 9, 9));
+  assert.throws(() => validarDesenho({ tipo: 'linha', pontos: [[0, 0]] }, 9, 9));
+});

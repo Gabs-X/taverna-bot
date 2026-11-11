@@ -673,6 +673,39 @@ const MIGRACOES: (() => void)[] = [
   () => {
     db.exec('ALTER TABLE mapas ADD COLUMN cortina INTEGER NOT NULL DEFAULT 0');
   },
+  // 29: elementos do mestre (imagens soltas na cena: móveis, árvores, armadilhas) e desenhos permanentes.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS mapa_elementos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        cena_id     INTEGER,
+        imagem      TEXT NOT NULL,
+        x           REAL NOT NULL,
+        y           REAL NOT NULL,
+        largura     REAL NOT NULL,
+        altura      REAL NOT NULL,
+        rotacao     REAL NOT NULL DEFAULT 0,
+        oculto      INTEGER NOT NULL DEFAULT 0,
+        ordem       INTEGER NOT NULL DEFAULT 0,
+        criado_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS mapa_elementos_campanha ON mapa_elementos (campanha_id, cena_id);
+      CREATE TABLE IF NOT EXISTS mapa_desenhos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        cena_id     INTEGER,
+        tipo        TEXT NOT NULL,
+        pontos      TEXT NOT NULL,
+        cor         TEXT NOT NULL,
+        espessura   REAL NOT NULL,
+        preenchido  INTEGER NOT NULL DEFAULT 0,
+        oculto      INTEGER NOT NULL DEFAULT 0,
+        criado_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS mapa_desenhos_campanha ON mapa_desenhos (campanha_id, cena_id);
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
