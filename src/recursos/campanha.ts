@@ -16,6 +16,7 @@ import {
   SlashCommandBuilder,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
+  type Client,
   type GuildScheduledEventEditOptions,
   type SlashCommandStringOption,
   type Guild,
@@ -344,6 +345,14 @@ export const campanha: Comando = {
         db.prepare('INSERT INTO campanha_personagens (campanha_id, user_id) VALUES (?, ?)').run(c.id, jogador.id);
         avisarMapa(c.id);
         const semFicha = !fichaDe(c.sistema, g, jogador.id);
+        // Com a sessão já rolando, entra direto: acesso ao canal e à call da mesa e o convite do mapa no privado.
+        if (c.sessao_inicio) {
+          await i.deferReply();
+          const salas = await acessoNaSessao(i.guild!, c, jogador.id, true);
+          const recebeu = await mandarConvite(i.client, c, jogador.id, salas);
+          const extra = recebeu ? '\n🗺️ A sessão está aberta: mandei o link do mapa no privado.' : '\n🗺️ A sessão está aberta, mas a DM está fechada: use `/sessao mapa` para entrar.';
+          return i.editReply({ content: `⚔️ ${jogador} entrou em **${c.nome}**.${extra}`, embeds: [embedCampanha(c, g)] });
+        }
         return i.reply({
           content: `⚔️ ${jogador} entrou em **${c.nome}**.` + (semFicha ? ' O personagem (ficha e foto) é criado no mapa, pelo `/sessao mapa`.' : ''),
           embeds: [embedCampanha(c, g)],
@@ -353,6 +362,7 @@ export const campanha: Comando = {
       if (!ja) return i.reply({ content: `${jogador} não está em **${c.nome}**.`, flags: MessageFlags.Ephemeral });
       db.prepare('DELETE FROM campanha_personagens WHERE campanha_id = ? AND user_id = ?').run(c.id, jogador.id);
       avisarMapa(c.id);
+      if (c.sessao_inicio) await acessoNaSessao(i.guild!, c, jogador.id, false);
       return i.reply({ content: `🚪 ${jogador} saiu de **${c.nome}**.`, embeds: [embedCampanha(c, g)] });
     }
 
@@ -390,6 +400,7 @@ export const campanha: Comando = {
       }
       db.prepare('UPDATE campanhas SET mestre_id = ? WHERE id = ?').run(novo.id, c.id);
       avisarMapa(c.id);
+      if (c.sessao_inicio) await acessoNaSessao(i.guild!, c, novo.id, true);
       return i.reply({ content: `🐉 ${novo} é o novo mestre de **${c.nome}**.`, embeds: [embedCampanha({ ...c, mestre_id: novo.id }, g)] });
     }
 
@@ -397,6 +408,9 @@ export const campanha: Comando = {
       if (!i.options.getBoolean('confirmar', true)) {
         return i.reply({ content: 'Apagar a campanha é definitivo. Rode de novo com `confirmar: Sim` se tiver certeza.', flags: MessageFlags.Ephemeral });
       }
+      // A sessão marcada some do Discord junto.
+      const marcada = await eventoDa(i.guild!, c);
+      if (marcada?.status === GuildScheduledEventStatus.Scheduled) await marcada.edit({ status: GuildScheduledEventStatus.Canceled }).catch(() => {});
       db.exec('BEGIN');
       try {
         db.prepare('DELETE FROM campanha_personagens WHERE campanha_id = ?').run(c.id);
@@ -414,6 +428,64 @@ export const campanha: Comando = {
 };
 
 // ---------- /sessao: tudo da sessão num comando só (marcar, abrir o mapa, iniciar e finalizar) ----------
+
+/** Convite da sessão no privado do jogador, com o link pessoal do mapa. Devolve se conseguiu entregar (DM fechada dá false). */
+async function mandarConvite(client: Client, c: Campanha, id: string, salas?: { texto: string; voz: string }) {
+  const ficha = fichaDe(c.sistema, c.guild_id, id);
+  const botao = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Entrar no mapa').setEmoji('🗺️').setURL(linkDoMapa(c.id, id, DURACAO_CONVITE));
+  const convite = new EmbedBuilder()
+    .setColor(COR)
+    .setTitle(`🗺️ ${c.nome} · a sessão vai começar`)
+    .setDescription(
+      `<@${c.mestre_id}> abriu o mapa da campanha.\n` +
+        (ficha
+          ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n`
+          : 'Você ainda não tem personagem nesta mesa: ao entrar no mapa, crie a ficha com nome e foto.\n') +
+        (salas ? `Sala da mesa: <#${salas.texto}> · call: <#${salas.voz}>\n` : '') +
+        'Clique em **Entrar no mapa**: o link é só seu e vale por 12 horas. Não compartilhe.',
+    )
+    .setFooter({ text: `${SISTEMAS[c.sistema].nome} · se o botão vencer, use /sessao mapa` });
+  try {
+    const usuario = await client.users.fetch(id);
+    await usuario.send({ embeds: [convite], components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botao)] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Dá (ou tira) acesso ao canal e à call da sessão aberta: para quem entra ou sai da mesa no meio da sessão. */
+async function acessoNaSessao(guild: Guild, c: Campanha, userId: string, entrar: boolean) {
+  const texto = await buscarCanal(guild, c.canal_sessao_id).catch(() => null);
+  const voz = await buscarCanal(guild, c.canal_voz_id).catch(() => null);
+  if (texto?.type === ChannelType.GuildText) {
+    await (entrar ? texto.permissionOverwrites.edit(userId, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }) : texto.permissionOverwrites.delete(userId)).catch(() => {});
+  }
+  if (voz?.type === ChannelType.GuildVoice) {
+    await (entrar ? voz.permissionOverwrites.edit(userId, { ViewChannel: true, Connect: true, Speak: true }) : voz.permissionOverwrites.delete(userId)).catch(() => {});
+  }
+  return texto?.type === ChannelType.GuildText && voz?.type === ChannelType.GuildVoice ? { texto: texto.id, voz: voz.id } : undefined;
+}
+
+/** 15 minutos antes da sessão marcada, lembra o mestre (no privado) de abrir a sessão. */
+const avisados = new Set<string>();
+export function iniciarAvisoDeSessao(client: Client) {
+  const passo = async () => {
+    const agora = Date.now();
+    const perto = db
+      .prepare('SELECT * FROM campanhas WHERE evento_id IS NOT NULL AND sessao_inicio IS NULL AND evento_inicio BETWEEN ? AND ?')
+      .all(agora, agora + 15 * 60_000) as Campanha[];
+    for (const c of perto) {
+      if (avisados.has(c.evento_id!)) continue;
+      avisados.add(c.evento_id!);
+      const mestre = await client.users.fetch(c.mestre_id).catch(() => null);
+      await mestre
+        ?.send(`🐉 A sessão de **${c.nome}** começa ${tsRelativo(c.evento_inicio!)}. Quando a mesa estiver pronta, rode \`/sessao iniciar\` no servidor: o bot abre o canal e a call da mesa e manda o mapa para cada jogador.`)
+        .catch(() => {});
+    }
+  };
+  setInterval(() => void passo().catch((e) => console.error('[sessao] aviso:', e)), 60_000);
+}
 
 const opcaoCampanha = (o: SlashCommandStringOption) =>
   o.setName('campanha').setDescription('Campanha (se você está em uma só, pode deixar em branco)').setAutocomplete(true);
@@ -649,27 +721,8 @@ export const sessao: Comando = {
       const enviados: string[] = [];
       const falharam: string[] = [];
       for (const id of jogadores) {
-        const ficha = fichaDe(c.sistema, c.guild_id, id);
-        const botao = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Entrar no mapa').setEmoji('🗺️').setURL(linkDoMapa(c.id, id, DURACAO_CONVITE));
-        const convite = new EmbedBuilder()
-          .setColor(COR)
-          .setTitle(`🗺️ ${c.nome} · a sessão vai começar`)
-          .setDescription(
-            `<@${c.mestre_id}> abriu o mapa da campanha.\n` +
-              (ficha
-                ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n`
-                : 'Você ainda não tem personagem nesta mesa: ao entrar no mapa, crie a ficha com nome e foto.\n') +
-              (salas ? `Sala da mesa: ${salas.texto} · call: ${salas.voz}\n` : '') +
-              'Clique em **Entrar no mapa**: o link é só seu e vale por 12 horas. Não compartilhe.',
-          )
-          .setFooter({ text: `${SISTEMAS[c.sistema].nome} · se o botão vencer, use /sessao mapa` });
-        try {
-          const usuario = await i.client.users.fetch(id);
-          await usuario.send({ embeds: [convite], components: [new ActionRowBuilder<ButtonBuilder>().addComponents(botao)] });
-          enviados.push(id);
-        } catch {
-          falharam.push(id);
-        }
+        if (await mandarConvite(i.client, c, id, salas ? { texto: salas.texto.id, voz: salas.voz.id } : undefined)) enviados.push(id);
+        else falharam.push(id);
       }
 
       // O mestre entra pelo botão desta resposta; se o canal da mesa estiver ligado, avisa lá que a sessão começou.

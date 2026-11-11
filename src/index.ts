@@ -8,7 +8,7 @@ import { botaoMinerador, minerador } from './recursos/minerador.ts';
 import { aoMudarMembro, botaoAniversario, botaoFormulario, modalAniversario, selecaoFormulario } from './recursos/formulario.ts';
 import { aoMudarVoz, call, limparCallsOrfas } from './recursos/calls.ts';
 import { dh } from './recursos/daggerheart.ts';
-import { campanha, sessao } from './recursos/campanha.ts';
+import { campanha, iniciarAvisoDeSessao, sessao } from './recursos/campanha.ts';
 import { aoMensagemDiscord, iniciarMapa } from './recursos/mapa.ts';
 import { botaoGotica, gotica } from './recursos/gotica.ts';
 import { comandosCampeoes, vitimas } from './recursos/campeoes.ts';
@@ -106,6 +106,7 @@ client.once(Events.ClientReady, async (c) => {
 
   await limparCallsOrfas(c);
   iniciarAgenda(c);
+  iniciarAvisoDeSessao(c);
   iniciarAtividade(c);
   iniciarRegistro(c);
   iniciarPermissoes(c);
