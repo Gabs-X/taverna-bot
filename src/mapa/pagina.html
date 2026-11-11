@@ -544,8 +544,16 @@
   #carta-zoom.ampliada img { height: auto; width: min(1100px, 96vw); max-width: none; cursor: zoom-out; }
   #carta-zoom.ampliada .acoes-z { display: none; }
   #carta-zoom .dica-zoom { color: #e3cfa6; font-size: 12px; font-style: italic; }
-  .lupa { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: rgba(30, 15, 5, .78); border: 1px solid #d9a441; cursor: zoom-in; z-index: 2; opacity: .85; transition: transform .12s, opacity .12s; box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
-  .lupa:hover { opacity: 1; transform: scale(1.12); }
+  .lupa { position: absolute; top: 32%; left: 50%; translate: -50% -50%; display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px 6px 10px;
+    border-radius: 999px; font: 700 12px/1 var(--fonte-titulo, serif); letter-spacing: .04em; color: #fbe7b5; white-space: nowrap;
+    background: rgba(28, 15, 5, .82); border: 1px solid rgba(217, 164, 65, .8); backdrop-filter: blur(2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .5); cursor: zoom-in; z-index: 2; opacity: 0; scale: .92; transition: opacity .15s, scale .15s, background .15s; }
+  .lupa svg { width: 14px; height: 14px; display: block; flex: none; }
+  .lupa.mini { padding: 6px; top: 50%; }
+  .lupa.mini b { display: none; }
+  :is(.opcao.carta-op, .cat-carta, .sub-op, .moldura-lupa):hover > .lupa, .lupa:focus-visible { opacity: 1; scale: 1; }
+  .lupa:hover { background: rgba(110, 66, 20, .92); color: #fff6dc; }
+  @media (hover: none) { .lupa { opacity: .92; scale: 1; top: auto; bottom: 8px; translate: -50% 0; } }
   .opcao.carta-op, .cat-carta, .sub-op { position: relative; }
   .opcao.carta-op.sel::after { right: auto; left: 8px; }
   @keyframes treme { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
@@ -2238,7 +2246,7 @@ async function carregarCatalogo() {
 }
 const urlCarta = (id, grande) => api('carta/' + (grande ? 'g' : 'p') + '/' + id);
 /** Lupa no canto da carta: abre a carta grande sem escolher. */
-function lupa(c) { const l = el('span', 'lupa', '🔍'); l.title = 'Ver a carta grande'; l.setAttribute('role', 'button'); l.onclick = (e) => { e.preventDefault(); e.stopPropagation(); zoomCarta(c, null); }; return l; }
+function lupa(c, mini) { const l = el('span', 'lupa' + (mini ? ' mini' : '')); l.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><b>Ampliar</b>'; l.tabIndex = 0; l.title = 'Ver a carta grande'; l.setAttribute('role', 'button'); l.onclick = (e) => { e.preventDefault(); e.stopPropagation(); zoomCarta(c, null); }; return l; }
 /** Uma carta desenhada: a imagem (se o servidor tiver) ou um cartão com o nome, nas cores do domínio. */
 function desenhoCarta(c, grande) {
   if (catalogoCartas && catalogoCartas.imagens) { const i = el('img'); i.src = urlCarta(c.id, grande); i.alt = c.nome; i.loading = 'lazy'; return i; }
@@ -2411,8 +2419,8 @@ function passoSubclasse(p) {
   for (const c of catalogoCartas.cartas.filter((x) => x.tipo === 'subclasse' && x.classe === guia.classe && x.estagio === 'fundacao')) {
     const b = el('button', 'opcao' + (guia.subclasse === c.id ? ' sel' : '')); b.type = 'button';
     const linha = el('div', 'sub-op'), img = desenhoCarta(c, true);
-    const txt = el('div'); txt.append(el('b', '', c.nome), el('small', '', 'Fundação · toque na 🔍 para ler a carta'));
-    const moldura = el('div'); moldura.style.position = 'relative'; moldura.append(img, lupa(c));
+    const txt = el('div'); txt.append(el('b', '', c.nome), el('small', '', 'Fundação · clique em Ampliar para ler a carta'));
+    const moldura = el('div', 'moldura-lupa'); moldura.style.position = 'relative'; moldura.append(img, lupa(c, true));
     linha.append(moldura, txt); b.append(linha);
     img.onclick = (e) => { e.stopPropagation(); zoomCarta(c, null); };
     b.onclick = () => { guia.subclasse = c.id; passoGuia = 2; desenharGuia(); };
@@ -2421,7 +2429,7 @@ function passoSubclasse(p) {
   p.append(op);
 }
 function passoHeranca(p) {
-  tituloPasso(p, 'Ancestralidade e comunidade', 'De onde o seu personagem vem. Toque na 🔍 de uma carta para ler ela grande.');
+  tituloPasso(p, 'Ancestralidade e comunidade', 'De onde o seu personagem vem. Para ler uma carta grande, clique em Ampliar sobre ela.');
   const mista = el('label', 'escondida'); mista.style.color = 'var(--tinta)';
   const cx = el('input'); cx.type = 'checkbox'; cx.checked = guia.mista;
   cx.onchange = () => { guia.mista = cx.checked; if (!guia.mista) guia.ancestralidades = guia.ancestralidades.slice(0, 1); desenharGuia(); };
@@ -2743,7 +2751,7 @@ function zoomCarta(c, m) {
   grande.onclick = (e) => { e.stopPropagation(); z.classList.toggle('ampliada'); };
   box.append(grande);
   const ac = el('div', 'acoes-z'); ac.append(el('h3', '', c.nome));
-  if (grande.tagName === 'IMG') ac.append(el('span', 'dica-zoom', '🔍 Clique na carta para ampliar mais'));
+  if (grande.tagName === 'IMG') ac.append(el('span', 'dica-zoom', 'Clique na carta para ampliar mais · clique fora para voltar'));
   const info = c.tipo === 'dominio' ? `${catalogoCartas.dominios[c.dominio].nome} · nível ${c.nivel} · ${c.natureza} · recuperar custa ${c.custo} de Estresse` : c.tipo === 'subclasse' ? catalogoCartas.estagios[c.estagio].nome : c.tipo === 'ancestralidade' ? 'Ancestralidade' : 'Comunidade';
   ac.append(el('small', '', info));
   const pode = m && pranchetaDe && (pranchetaDe === estado.voce.id || estado.voce.mestre);
@@ -2761,7 +2769,10 @@ function zoomCarta(c, m) {
   }
   const fechar = el('button', 'btn sec', 'Fechar'); fechar.type = 'button'; fechar.onclick = () => z.remove(); ac.append(fechar);
   box.append(ac); z.append(box);
-  z.addEventListener('pointerdown', (e) => { if (e.target === z) { if (z.classList.contains('ampliada')) z.classList.remove('ampliada'); else z.remove(); } });
+  z.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('#carta-zoom img, #carta-zoom .carta-texto, #carta-zoom .acoes-z')) return;
+    if (z.classList.contains('ampliada')) z.classList.remove('ampliada'); else z.remove();
+  });
   document.body.append(z);
 }
 async function desenharCatalogo(corpo, pr) {
