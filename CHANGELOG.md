@@ -1,5 +1,11 @@
 # Novidades do Taverneiro
 
+## v1.14.0 (11/11/2026)
+
+- 🎭 Cortina do mestre: o mestre fecha a cortina para ajeitar a cena e os jogadores veem um palco fechado, sem as peças do mestre. A ficha, o chat e o livro continuam funcionando.
+- 🏁 Quando a sessão começa ou termina, aparece um aviso grande na tela de todo mundo que está no mapa, com o resumo da sessão no final.
+- 🧭 A barra de ações embaixo do mapa fica só com os ícones quando não cabe na tela.
+
 ## v1.13.2 (11/11/2026)
 
 - ⚡ O mapa ficou mais leve: só baixa o que mudou, em vez de recarregar tudo a cada 3 segundos (melhor no celular e em internet fraca).
