@@ -292,8 +292,14 @@
   #ataque .linha > * { min-width: 0; }
 
   /* ---------- Barra de ícones (esquerda) e gaveta das funções ---------- */
-  #dock { position: absolute; left: 14px; top: 78px; display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 12px; max-height: calc(100% - 170px); overflow-y: auto; }
-  #dock .ferr::after { right: auto; left: 48px; }
+  #dock { position: absolute; left: 14px; top: 78px; display: flex; flex-direction: column; gap: 4px; padding: 5px; border-radius: 12px; max-height: calc(100% - 170px); overflow: hidden auto; scrollbar-width: none; }
+  #dock::-webkit-scrollbar { display: none; }
+  /* A dica dos ícones da barra sai fora dela (a barra rola e cortaria a dica). */
+  #dock .ferr::after { display: none; }
+  #dica-dock { position: fixed; z-index: 60; background: var(--papel); color: var(--tinta); border: 1px solid #b08c55; padding: 4px 10px; border-radius: 6px; font-size: 12.5px; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); transform: translateY(-50%); animation: entra .12s ease-out; }
+  /* Telas baixas: ícones menores para a barra caber sem rolar. */
+  @media (max-height: 900px) { #dock .ferr { width: 34px; height: 34px; font-size: 15px; } #dock { gap: 3px; } #dock .sep-mestre { padding: 2px 0 0; } }
+  @media (max-height: 760px) { #dock .ferr { width: 30px; height: 30px; font-size: 14px; } #dock { gap: 2px; padding: 4px; } }
   #dock .ferr.ativo { background: var(--latao); color: #2b1a08; border-color: #7a5218; box-shadow: inset 0 1px rgba(255, 255, 255, .45), 0 1px 0 #4a300e; }
   #dock .sep-mestre { font-family: var(--fonte-titulo); font-size: 9px; letter-spacing: .12em; color: var(--mudo); text-align: center; padding: 4px 0 1px; border-top: 1px solid #5c4026; margin-top: 2px; }
   #gaveta { position: absolute; left: 70px; top: 78px; width: 380px; max-width: calc(100% - 90px); max-height: calc(100% - 170px); display: flex; flex-direction: column; border-radius: 12px; z-index: 4 !important; animation: gaveta .18s ease-out; }
@@ -1606,6 +1612,12 @@ let gavetaAberta = null;
     if (d.sep) { const s = el('div', 'sep-mestre', d.sep); s.dataset.sep = '1'; $('dock').append(s); continue; }
     const b = el('button', 'ferr', d.ico); b.dataset.dica = d.nome; b.dataset.k = d.k;
     b.onclick = () => (d.acao ? d.acao() : abrirGaveta(d.k));
+    // Dica fora da barra: aparece ao lado do ícone, sem ser cortada pela rolagem.
+    b.onmouseenter = () => {
+      let dica = $('dica-dock'); if (!dica) { dica = el('div'); dica.id = 'dica-dock'; document.body.append(dica); }
+      const r = b.getBoundingClientRect(); dica.textContent = d.nome; dica.style.left = r.right + 10 + 'px'; dica.style.top = r.top + r.height / 2 + 'px'; dica.hidden = false;
+    };
+    b.onmouseleave = () => { const dica = $('dica-dock'); if (dica) dica.hidden = true; };
     $('dock').append(b);
   }
 })();
