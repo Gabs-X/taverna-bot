@@ -1,5 +1,15 @@
 # Novidades do Taverneiro
 
+## v1.11.0 (11/11/2026)
+
+- 🍺 Mapa da campanha de cara nova: mesa de madeira, pergaminho, luz de vela e dados de osso que rolam no chat (com faixa de VINTE NATURAL e FALHA CRÍTICA)
+- 🗣️ O que você escreve direto no canal da campanha também aparece com o nome e a foto do seu personagem (para falar fora do personagem, comece com "(", "//" ou "ooc")
+- 📖 Livro de regras dentro do mapa (botão 📖 ou tecla L): abre como um livro de verdade, com busca, sumário, marcadores e "À mesa" para mostrar uma página para todo mundo
+- ✨ Criação de personagem do Daggerheart passo a passo: escolha classe, subclasse, ancestralidade, comunidade, traços, armadura e armas, e a ficha se preenche sozinha com os números do livro
+- 🃏 Prancheta de cartas (botão 🃏 ou tecla C): as cartas do livro básico, já filtradas pela sua classe e nível; arraste entre o Carregamento e o Cofre (trazer do Cofre marca o Estresse sozinho) e use a carta para mostrar à mesa e no Discord
+- ⚔️ Ataque pelo mapa com a sua arma: escolha a arma e o traço, o dano e o bônus já vêm prontos
+- ⬆️ Subir de nível guiado: mostra o que vem automático e deixa você escolher os dois avanços do livro
+
 ## v1.10.0 (11/11/2026)
 
 - 🧙 Mapa da campanha: entrou na mesa? Crie o seu personagem lá dentro, com nome, ficha e foto
