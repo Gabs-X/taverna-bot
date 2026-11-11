@@ -248,6 +248,8 @@
     <button class="ferr on" id="f-grade" data-dica="Mostrar grade (G)">▦</button>
     <button class="ferr on" id="f-encaixar" data-dica="Encaixar na casa ao soltar">🧲</button>
     <button class="ferr" id="f-regua" data-dica="Régua: arraste para medir (R)">📏</button>
+    <button class="ferr" id="f-revelar" data-dica="Névoa: arraste para revelar uma área" hidden>🔦</button>
+    <button class="ferr" id="f-cobrir" data-dica="Névoa: arraste para cobrir uma área" hidden>☁️</button>
     <div class="sep"></div>
     <button class="ferr" id="f-painel" data-dica="Mostrar/esconder o painel (P)">◧</button>
   </div>
@@ -288,6 +290,7 @@
       <div class="linha pv-edit" id="linha-pv" hidden><span class="mudo" style="flex:1">PV desta cópia</span><button class="btn sec" id="pv-menos" title="Tirar 1 PV">−</button><input id="pv-valor" type="text" inputmode="numeric" title="Número exato, ou -7 para tirar e +5 para curar (Enter)"><button class="btn sec" id="pv-mais" title="Curar 1 PV">＋</button></div>
       <div class="linha"><span class="mudo" style="flex:1">Tamanho no mapa</span><button class="btn sec" id="tam-menos" title="Diminuir">−</button><b id="tam-valor" style="min-width:34px;text-align:center">1×</b><button class="btn sec" id="tam-mais" title="Aumentar">＋</button></div>
       <div class="linha" id="linha-npc-img"><label class="btn sec" for="arquivo-npc">🖼️ Imagem do NPC</label><input id="arquivo-npc" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button class="btn sec" id="tirar-imagem">Tirar</button></div>
+      <div class="linha"><button id="esconder" class="btn sec" hidden>🙈 Esconder dos jogadores</button></div>
       <div class="linha"><button id="rolar-como" class="btn" hidden>🎲 Falar e rolar como esta peça</button><button id="editar-criatura" class="btn sec" hidden>✏️ Biblioteca</button></div>
     </div>
     <div class="linha"><button id="remover-npc" class="btn perigo" hidden>Tirar do mapa</button></div>
@@ -342,6 +345,13 @@
       <div class="linha"><span class="mudo" style="white-space:nowrap">Vida dos inimigos</span><select id="vida-inimigos" title="O que os jogadores veem da vida dos NPCs e inimigos">
         <option value="estado">Só o estado (Ferido…)</option><option value="exata">O número de PV</option><option value="escondida">Escondida</option>
       </select></div>
+    </section>
+    <section id="painel-cenas" hidden>
+      <h2>Cenas e névoa</h2>
+      <div id="cenas"></div>
+      <div class="linha"><input id="cena-nome" type="text" maxlength="40" placeholder="Nome da nova cena (ex.: Masmorra)"><button id="nova-cena" class="btn sec">+ Cena</button></div>
+      <div class="linha"><label class="escondida" style="color:var(--texto)"><input type="checkbox" id="nevoa-ligada"> ☁️ Névoa de guerra</label><span style="flex:1"></span><button id="revelar-tudo" class="btn sec">Revelar tudo</button><button id="cobrir-tudo" class="btn sec">Cobrir</button></div>
+      <div class="mudo" style="margin-top:6px">Com a névoa ligada, use 🔦 e ☁️ na barra do mapa e arraste sobre a área. Peças do mestre na névoa somem para os jogadores.</div>
     </section>
     <section id="painel-biblioteca" hidden>
       <h2>Biblioteca de personagens</h2>
@@ -408,7 +418,7 @@ let cam = { x: 0, y: 0, z: 1 }, ajustou = false;
 let selecionada = null, arrasto = null, regua = null, usandoRegua = false;
 let chat = [], ultimoChat = 0, novas = 0, primeiroChat = true;
 let sigEstado = '', sigChat = ''; // para não redesenhar à toa quando nada mudou
-let online = false, passoPendente = null, ultimoPasso = 0, filtroLib = 'todos';
+let online = false, passoPendente = null, ultimoPasso = 0, filtroLib = 'todos', pincel = null;
 const avatares = new Map();
 const CORES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
 
@@ -508,7 +518,7 @@ function zoomCentro(f) {
 
 function painel() {
   const nomeCamp = estado.campanha.nome, sistema = estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D 3.5';
-  $('titulo').textContent = nomeCamp; $('sub').textContent = sistema + ' · mestre ' + estado.campanha.mestre;
+  $('titulo').textContent = nomeCamp + (estado.mapa.cena ? ' · ' + estado.mapa.cena : ''); $('sub').textContent = sistema + ' · mestre ' + estado.campanha.mestre;
   $('titulo2').textContent = '🐉 ' + nomeCamp; $('sub2').textContent = sistema + ' · mestre ' + estado.campanha.mestre;
   document.title = '🗺️ ' + nomeCamp;
   $('eu-nome').textContent = estado.voce.nome; $('eu-papel').textContent = estado.voce.mestre ? '🐉 Mestre' : '⚔️ Jogador';
@@ -544,6 +554,7 @@ function painel() {
   painelBiblioteca();
   painelMeu();
   painelCombate();
+  painelCenas();
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
@@ -623,6 +634,8 @@ function fichaCard() {
   if (comPV && document.activeElement !== $('pv-valor')) $('pv-valor').value = String(f.pv_atual);
   cardCombate(p);
   $('remover-npc').hidden = !(p.npc && estado.voce.mestre);
+  $('esconder').hidden = !(p.npc && estado.voce.mestre);
+  $('esconder').textContent = p.escondida ? '👁️ Mostrar aos jogadores' : '🙈 Esconder dos jogadores';
   // Só o mestre mexe no tamanho (de qualquer peça) e na imagem e nas rolagens dos NPCs.
   $('gestao').hidden = !estado.voce.mestre;
   $('tam-valor').textContent = String(p.tamanho || 1).replace('.', ',') + '×';
@@ -668,6 +681,9 @@ function pintar() {
     for (let y = 0; y <= altura; y += grade) { ctx.moveTo(0, y); ctx.lineTo(largura, y); }
     ctx.stroke();
   }
+  // Névoa: opaca para os jogadores, translúcida para o mestre (ele precisa ver o mapa para revelar).
+  const nev = camadaNevoa();
+  if (nev) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = estado.voce.mestre ? 0.55 : 1; ctx.drawImage(nev, 0, 0, nev.width * grade, nev.height * grade); ctx.restore(); }
   ctx.strokeStyle = 'rgba(166,108,255,.7)'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
 
   const px = 1 / cam.z;
@@ -675,6 +691,7 @@ function pintar() {
   for (const p of [...estado.pecas].sort((a, b) => (b.tamanho || 1) - (a.tamanho || 1))) {
     const r = grade * 0.42 * (p.tamanho || 1);
     const cor = corDe(p), sel = p.id === selecionada;
+    ctx.globalAlpha = p.escondida ? 0.45 : 1; // escondida: o mestre vê meio apagada
     // sombra e halo
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10 * px; ctx.shadowOffsetY = 3 * px;
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = cor; ctx.fill(); ctx.restore();
@@ -722,7 +739,16 @@ function pintar() {
     ctx.font = `600 ${fs}px 'Segoe UI', system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     const tw = ctx.measureText(p.nome).width + fs * 0.9, th = fs * 1.5;
     rodada(ctx, p.x - tw / 2, yBase, tw, th, th / 2); ctx.fillStyle = 'rgba(12,6,20,.82)'; ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText(p.nome, p.x, yBase + fs * 0.22);
+    ctx.fillStyle = '#fff'; ctx.fillText((p.escondida ? '🙈 ' : '') + p.nome, p.x, yBase + fs * 0.22);
+    ctx.globalAlpha = 1;
+  }
+
+  // Área da névoa sendo pintada pelo mestre.
+  if (arrasto && arrasto.nevoa && arrasto.b) {
+    const { a, b } = arrasto, x0 = Math.floor(Math.min(a.x, b.x) / grade) * grade, y0 = Math.floor(Math.min(a.y, b.y) / grade) * grade;
+    const x1 = (Math.floor(Math.max(a.x, b.x) / grade) + 1) * grade, y1 = (Math.floor(Math.max(a.y, b.y) / grade) + 1) * grade;
+    ctx.fillStyle = arrasto.revelar ? 'rgba(245,196,81,.18)' : 'rgba(10,5,18,.45)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.strokeStyle = arrasto.revelar ? '#f5c451' : '#a899c0'; ctx.lineWidth = 2 * px; ctx.setLineDash([8 * px, 6 * px]); ctx.strokeRect(x0, y0, x1 - x0, y1 - y0); ctx.setLineDash([]);
   }
 
   // Régua
@@ -761,6 +787,7 @@ cv.addEventListener('pointerdown', (e) => {
   if (!estado) return; cv.setPointerCapture(e.pointerId);
   const pt = mundo(e);
   if (usandoRegua) { regua = { a: pt, b: pt }; arrasto = { regua: true }; desenhar(); return; }
+  if (pincel) { arrasto = { nevoa: true, revelar: pincel === 'revelar', a: pt, b: pt }; desenhar(); return; }
   const p = pecaEm(pt);
   if (p) {
     selecionada = p.id; painel();
@@ -771,11 +798,16 @@ cv.addEventListener('pointerdown', (e) => {
 cv.addEventListener('pointermove', (e) => {
   if (!arrasto) return;
   if (arrasto.regua) { regua.b = mundo(e); desenhar(); return; }
+  if (arrasto.nevoa) { arrasto.b = mundo(e); desenhar(); return; }
   if (arrasto.mapa) { const dpr = devicePixelRatio || 1; cam.x = arrasto.cx + (e.clientX - arrasto.sx) * dpr; cam.y = arrasto.cy + (e.clientY - arrasto.sy) * dpr; }
   else { const pt = mundo(e); arrasto.peca.x = Math.min(estado.mapa.largura, Math.max(0, pt.x + arrasto.dx)); arrasto.peca.y = Math.min(estado.mapa.altura, Math.max(0, pt.y + arrasto.dy)); enviarMover(arrasto.peca, false); }
   desenhar();
 });
 function soltar() {
+  if (arrasto && arrasto.nevoa) {
+    const g = estado.mapa.grade, { a, b } = arrasto;
+    post('nevoa/pintar', { c0: Math.floor(a.x / g), r0: Math.floor(a.y / g), c1: Math.floor(b.x / g), r1: Math.floor(b.y / g), revelar: arrasto.revelar }).catch(() => {});
+  }
   if (arrasto && arrasto.peca) {
     const g = estado.mapa.grade, p = arrasto.peca; // encaixa no centro da casa
     if (prefs.encaixar) { p.x = encaixe(p.x, g, p.tamanho || 1, estado.mapa.largura); p.y = encaixe(p.y, g, p.tamanho || 1, estado.mapa.altura); }
@@ -799,7 +831,7 @@ function aplicarPrefs() {
   $('f-grade').classList.toggle('on', prefs.grade);
   $('f-encaixar').classList.toggle('on', prefs.encaixar);
   $('f-regua').classList.toggle('on', usandoRegua);
-  cv.classList.toggle('regua', usandoRegua);
+  cv.classList.toggle('regua', usandoRegua || !!pincel);
   document.body.classList.toggle('recolhido', !prefs.painel);
   $('f-painel').classList.toggle('on', prefs.painel);
   setTimeout(desenhar, 260);
@@ -835,7 +867,7 @@ function andar(dx, dy, repetida) {
 addEventListener('keydown', (e) => {
   const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
   const aberta = document.querySelector('.modal:not([hidden])');
-  if (e.key === 'Escape') { if (aberta) aberta.hidden = true; else if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
+  if (e.key === 'Escape') { if (aberta) aberta.hidden = true; else if (pincel) escolherPincel(pincel); else if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
   if (aberta || digitando || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (PASSOS[k]) { if (andar(PASSOS[k][0], PASSOS[k][1], e.repeat)) e.preventDefault(); return; }
@@ -1296,6 +1328,75 @@ $('atacar').onclick = () => {
   if (mestre) corpo.como = Number($('ataque-como').value);
   else if (ehDH()) corpo.traco = $('ataque-traco').value;
   post('ataque', corpo).then((r) => { if (!prefs.painel) alternar('painel'); abrirAba('chat'); if (r.acertou === false) aviso('Errou!', '', 1800); }).catch(() => {});
+};
+
+// ---------- Exploração: névoa, peças escondidas e cenas ----------
+let nevoaCache = { sig: '', canvas: null };
+/** Uma imagem com 1 pixel por casa (preto onde está coberto), esticada sobre o mapa: rápida mesmo com muitas casas. */
+function camadaNevoa() {
+  const n = estado && estado.mapa.nevoa; if (!n) return null;
+  const sig = n.cols + 'x' + n.rows + ':' + n.bits;
+  if (nevoaCache.sig === sig) return nevoaCache.canvas;
+  const bin = atob(n.bits), c = document.createElement('canvas'); c.width = n.cols; c.height = n.rows;
+  const g = c.getContext('2d'), img = g.createImageData(n.cols, n.rows);
+  for (let i = 0; i < n.cols * n.rows; i++) {
+    const revelada = (bin.charCodeAt(i >> 3) & (1 << (i & 7))) !== 0;
+    img.data[i * 4] = 11; img.data[i * 4 + 1] = 6; img.data[i * 4 + 2] = 18; img.data[i * 4 + 3] = revelada ? 0 : 255;
+  }
+  g.putImageData(img, 0, 0);
+  nevoaCache = { sig, canvas: c };
+  return c;
+}
+function escolherPincel(qual) {
+  pincel = pincel === qual ? null : qual;
+  if (pincel && usandoRegua) { usandoRegua = false; regua = null; }
+  if (pincel && estado && !estado.mapa.nevoa) post('nevoa/ligar', { ligada: true }).then(() => aviso('Névoa ligada: o mapa começa todo coberto para os jogadores.', 'ok')).catch(() => {});
+  $('f-revelar').classList.toggle('on', pincel === 'revelar'); $('f-cobrir').classList.toggle('on', pincel === 'cobrir');
+  cv.classList.toggle('regua', !!pincel || usandoRegua); aplicarPrefs();
+}
+$('f-revelar').onclick = () => escolherPincel('revelar');
+$('f-cobrir').onclick = () => escolherPincel('cobrir');
+$('nevoa-ligada').onchange = (e) => post('nevoa/ligar', { ligada: e.target.checked }).catch(() => {});
+$('revelar-tudo').onclick = () => post('nevoa/tudo', { revelar: true }).catch(() => {});
+$('cobrir-tudo').onclick = () => post('nevoa/tudo', { revelar: false }).catch(() => {});
+$('esconder').onclick = () => {
+  const p = estado.pecas.find((q) => q.id === selecionada);
+  if (p) post('peca/esconder', { peca: p.id, escondida: !p.escondida }).catch(() => {});
+};
+
+function painelCenas() {
+  const mestre = estado.voce.mestre;
+  $('painel-cenas').hidden = !mestre;
+  $('f-revelar').hidden = $('f-cobrir').hidden = !mestre;
+  if (!mestre) return;
+  $('nevoa-ligada').checked = !!estado.mapa.nevoa;
+  const caixa = $('cenas'); caixa.textContent = '';
+  if (!estado.cenas.length) caixa.append(el('div', 'mudo', 'Uma cena só por enquanto. Crie outra (taverna, masmorra…) e troque com um clique: todo mundo vai junto.'));
+  for (const c of estado.cenas) {
+    const d = el('div', 'item' + (c.ativa ? ' sel' : ''));
+    const info = el('div', 'info'); info.style.flex = '1';
+    info.append(el('div', 'nome', (c.ativa ? '🎬 ' : '') + c.nome), el('small', '', c.ativa ? 'aberta agora' : 'clique para abrir'));
+    d.append(info);
+    if (!c.ativa) d.onclick = () => post('cena/abrir', { id: c.id }).then(() => { selecionada = null; ajustou = false; }).catch(() => {});
+    const ren = el('button', 'mini', '✏️'); ren.className = 'btn-redondo'; ren.title = 'Renomear (usa o nome escrito abaixo)';
+    ren.onclick = (e) => { e.stopPropagation(); const nome = $('cena-nome').value.trim(); if (!nome) return mostrarErro('Escreva o novo nome no campo abaixo e clique em ✏️.'); post('cena/renomear', { id: c.id, nome }).then(() => ($('cena-nome').value = '')).catch(() => {}); };
+    d.append(ren);
+    if (!c.ativa) {
+      const apagar = el('button', '', '🗑️'); apagar.className = 'btn-redondo'; apagar.title = 'Apagar a cena (clique duas vezes)';
+      apagar.onclick = (e) => {
+        e.stopPropagation();
+        if (!apagar.dataset.armado) { apagar.dataset.armado = '1'; apagar.textContent = '❗'; setTimeout(() => { delete apagar.dataset.armado; apagar.textContent = '🗑️'; }, 3000); return; }
+        post('cena/apagar', { id: c.id }).catch(() => {});
+      };
+      d.append(apagar);
+    }
+    caixa.append(d);
+  }
+}
+$('nova-cena').onclick = () => {
+  const nome = $('cena-nome').value.trim();
+  if (!nome) return mostrarErro('Dê um nome para a cena.');
+  post('cena/nova', { nome }).then(() => { $('cena-nome').value = ''; selecionada = null; ajustou = false; aviso(`Cena "${nome}" aberta. Importe o mapa dela.`, 'ok'); }).catch(() => {});
 };
 
 // ---------- Abas ----------

@@ -7,6 +7,7 @@ import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeV
 import { rolar } from '../lib/dados.ts';
 import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
+import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa } from '../lib/nevoa.ts';
 import { nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
@@ -47,11 +48,28 @@ type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'd
 type Mapa = {
   campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number;
   combate: number; rodada: number; vez: number | null; vida_inimigos: 'escondida' | 'estado' | 'exata';
+  nevoa_ligada: number; nevoa: string | null; cena_id: number | null;
 };
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
   criatura_id: number | null; tipo: string | null; pv: number | null; condicoes: string; iniciativa: number | null; agiu: number;
+  escondida: number; cena_id: number | null;
 };
+type Cena = {
+  id: number; campanha_id: number; nome: string; imagem: string | null; largura: number; altura: number; grade: number;
+  nevoa_ligada: number; nevoa: string | null; ambiente: string | null;
+};
+
+/** Peças da cena aberta: os jogadores (que andam junto entre as cenas) e as peças do mestre desta cena. */
+const pecasDaCena = (c: { id: number }, m: Mapa) =>
+  db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ? AND (user_id IS NOT NULL OR cena_id IS NULL OR cena_id = ?) ORDER BY id').all(c.id, m.cena_id ?? -1) as Peca[];
+const cenasDe = (id: number) => db.prepare('SELECT * FROM mapa_cenas WHERE campanha_id = ? ORDER BY id').all(id) as Cena[];
+
+/** Névoa da cena aberta já lida (bits, colunas e linhas). */
+function nevoaDe(m: Mapa) {
+  const { cols, rows } = dimensoesNevoa(m.largura, m.altura, m.grade);
+  return { cols, rows, bits: lerNevoa(m.nevoa, cols, rows) };
+}
 type CriaturaSalva = {
   id: number; campanha_id: number; tipo: 'npc' | 'inimigo'; nome: string; imagem: string | null; versao_img: number; tamanho: number;
   pv_max: number | null; defesa: number | null; ataque: number | null; dano: string; limiar_maior: number | null; limiar_grave: number | null; notas: string;
@@ -205,8 +223,13 @@ const lerMedo = (g: string) => (db.prepare('SELECT medo FROM dh_medo WHERE guild
 async function montarEstado(c: Campanha, userId: string) {
   const m = mapaDe(c.id);
   sincronizarPecas(c, m);
-  const pecas = db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ? ORDER BY id').all(c.id) as Peca[];
   const souMestre = c.mestre_id === userId;
+  const nevoa = m.nevoa_ligada ? nevoaDe(m) : null;
+  // Os jogadores nem recebem as peças do mestre escondidas ou debaixo da névoa (não dá para espiar pelo navegador).
+  const pecas = pecasDaCena(c, m).filter(
+    (p) => souMestre || p.user_id || (!p.escondida && !(nevoa && pecaNaNevoa(nevoa.bits, nevoa.cols, nevoa.rows, m.grade, p.x, p.y))),
+  );
+  const cenaAtiva = m.cena_id ? (db.prepare('SELECT nome FROM mapa_cenas WHERE id = ?').get(m.cena_id) as { nome: string } | undefined) : undefined;
   const criaturas = criaturasDe(c.id);
   const porCriatura = new Map(criaturas.map((cr) => [cr.id, cr]));
   const donos = new Map<string, Awaited<ReturnType<typeof quem>>>();
@@ -217,7 +240,12 @@ async function montarEstado(c: Campanha, userId: string) {
   return {
     campanha: { nome: c.nome, sistema: c.sistema, mestre: donos.get(c.mestre_id)?.nome ?? 'Mestre', mestreId: c.mestre_id, mestreAvatar: donos.get(c.mestre_id)?.avatar ?? null },
     voce: { id: userId, mestre: souMestre, jogador: !!minha, pecaId: minha?.id ?? null, temFicha: !!fichaDe(c, userId), ...donos.get(userId)! },
-    mapa: { versao: m.versao, temImagem: !!m.imagem, largura: m.largura, altura: m.altura, grade: m.grade },
+    mapa: {
+      versao: m.versao, temImagem: !!m.imagem, largura: m.largura, altura: m.altura, grade: m.grade,
+      nevoa: nevoa ? { cols: nevoa.cols, rows: nevoa.rows, bits: gravarNevoa(nevoa.bits) } : null,
+      cena: cenaAtiva?.nome ?? null,
+    },
+    cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente })) : [],
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
       const cr = p.criatura_id ? porCriatura.get(p.criatura_id) : undefined;
@@ -254,6 +282,7 @@ async function montarEstado(c: Campanha, userId: string) {
         condicoes: p.condicoes ? p.condicoes.split(',') : [],
         iniciativa: p.iniciativa,
         agiu: !!p.agiu,
+        escondida: !!p.escondida,
       };
     }),
     combate: {
@@ -410,6 +439,29 @@ function salvarFichaDnd(c: Campanha, u: string, f: FichaDnd) {
     f.pv_max, f.pv_max, f.ca, f.bba, f.fort, f.ref, f.von, f.ini_extra,
   );
 }
+
+// ---------- Cenas ----------
+
+/**
+ * Troca a cena aberta: guarda a de agora (imagem, grade e névoa) na tabela de cenas e traz a outra para a tabela mapas.
+ * O combate acaba e os jogadores vão junto, no mesmo lugar (puxados para dentro se o mapa novo for menor).
+ */
+function abrirCena(c: Campanha, m: Mapa, cena: Cena) {
+  if (m.cena_id) {
+    db.prepare('UPDATE mapa_cenas SET imagem = ?, largura = ?, altura = ?, grade = ?, nevoa_ligada = ?, nevoa = ? WHERE id = ?').run(
+      m.imagem, m.largura, m.altura, m.grade, m.nevoa_ligada, m.nevoa, m.cena_id,
+    );
+  }
+  db.prepare(
+    `UPDATE mapas SET imagem = ?, largura = ?, altura = ?, grade = ?, nevoa_ligada = ?, nevoa = ?, cena_id = ?, versao = versao + 1,
+     combate = 0, rodada = 0, vez = NULL WHERE campanha_id = ?`,
+  ).run(cena.imagem, cena.largura, cena.altura, cena.grade, cena.nevoa_ligada, cena.nevoa, cena.id, c.id);
+  db.prepare('UPDATE mapa_pecas SET iniciativa = NULL, agiu = 0 WHERE campanha_id = ?').run(c.id);
+  db.prepare('UPDATE mapa_pecas SET x = MIN(x, ?), y = MIN(y, ?) WHERE campanha_id = ? AND user_id IS NOT NULL').run(cena.largura, cena.altura, c.id);
+  aoTrocarCena?.(c, cena);
+}
+/** Gancho para a música da cena (ligado pela ponte com os bardos). */
+let aoTrocarCena: ((c: Campanha, cena: Cena) => void) | undefined;
 
 // ---------- Dano do ataque ----------
 
@@ -762,8 +814,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if (!souMestre) return json(res, 403, { erro: 'Só o mestre faz isso.' });
 
   if (acao === 'combate/iniciar') {
-    mapaDe(c.id);
-    const pecas = db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ?').all(c.id) as Peca[];
+    const pecas = pecasDaCena(c, mapaDe(c.id));
     let texto: string;
     if (c.sistema === 'dnd') {
       // D&D: d20 + Destreza + bônus extra (jogadores) ou o bônus de iniciativa da biblioteca.
@@ -795,7 +846,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       db.prepare('UPDATE mapa_pecas SET agiu = 0 WHERE campanha_id = ?').run(c.id);
       db.prepare('UPDATE mapas SET rodada = rodada + 1, vez = NULL WHERE campanha_id = ?').run(c.id);
     } else {
-      const pecas = (db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ? AND iniciativa IS NOT NULL').all(c.id) as Peca[]);
+      const pecas = pecasDaCena(c, m).filter((q) => q.iniciativa !== null);
       const { vez, rodada } = proximoTurno(ordenarIniciativa(pecas).map((p) => p.id), m.vez, m.rodada);
       db.prepare('UPDATE mapas SET vez = ?, rodada = ? WHERE campanha_id = ?').run(vez, rodada, c.id);
     }
@@ -974,8 +1025,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const nome = nomeDaCopia(cr.nome, pecas.map((p) => p.nome));
     // Entrou no meio de um combate de D&D: já rola a iniciativa e entra na ordem.
     const iniciativa = m.combate && c.sistema === 'dnd' ? rolar('1d20').total + (cr.iniciativa ?? 0) : null;
-    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv, iniciativa) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max, iniciativa,
+    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv, iniciativa, cena_id) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max, iniciativa, m.cena_id,
     );
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true, peca: Number(nova.lastInsertRowid), nome });
@@ -1018,6 +1069,84 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // ---------- Névoa de guerra ----------
+  if (acao === 'nevoa/ligar' || acao === 'nevoa/pintar' || acao === 'nevoa/tudo') {
+    const m = mapaDe(c.id);
+    const { cols, rows, bits } = nevoaDe(m);
+    if (cols * rows > MAX_CASAS_NEVOA) return json(res, 400, { erro: 'A grade está pequena demais para a névoa neste mapa: aumente o tamanho da casa.' });
+    let novos: Uint8Array = bits;
+    if (acao === 'nevoa/tudo') novos = nevoaToda(cols, rows, !!b.revelar);
+    if (acao === 'nevoa/pintar') {
+      const ponta = (v: unknown, max: number) => Math.round(limitar(v, -1, max, 0));
+      novos = pintarNevoa(bits, cols, rows, [ponta(b.c0, cols), ponta(b.r0, rows)], [ponta(b.c1, cols), ponta(b.r1, rows)], !!b.revelar);
+    }
+    const ligada = acao === 'nevoa/ligar' ? (b.ligada ? 1 : 0) : 1;
+    db.prepare('UPDATE mapas SET nevoa_ligada = ?, nevoa = ? WHERE campanha_id = ?').run(ligada, gravarNevoa(novos), c.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // Peça escondida: os jogadores não recebem nem a posição dela até o mestre mostrar.
+  if (acao === 'peca/esconder') {
+    const p = pecaDoMestre(c, b.peca);
+    if (!p) return json(res, 404, { erro: 'Só as peças do mestre podem ser escondidas.' });
+    db.prepare('UPDATE mapa_pecas SET escondida = ? WHERE id = ?').run(b.escondida ? 1 : 0, p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // ---------- Cenas ----------
+  if (acao === 'cena/nova') {
+    const nome = String(b.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!nome) return json(res, 400, { erro: 'Dê um nome para a cena.' });
+    if (cenasDe(c.id).length >= 50) return json(res, 400, { erro: 'A campanha chegou a 50 cenas. Apague alguma antes.' });
+    let m = mapaDe(c.id);
+    // Primeira vez: o mapa de agora vira a primeira cena (com as peças do mestre que já estão nele).
+    if (!m.cena_id) {
+      const primeira = Number(db.prepare('INSERT INTO mapa_cenas (campanha_id, nome, criada_em) VALUES (?, ?, ?)').run(c.id, 'Primeira cena', Date.now()).lastInsertRowid);
+      db.prepare('UPDATE mapas SET cena_id = ? WHERE campanha_id = ?').run(primeira, c.id);
+      db.prepare('UPDATE mapa_pecas SET cena_id = ? WHERE campanha_id = ? AND user_id IS NULL AND cena_id IS NULL').run(primeira, c.id);
+      m = mapaDe(c.id);
+    }
+    const id = Number(db.prepare('INSERT INTO mapa_cenas (campanha_id, nome, grade, criada_em) VALUES (?, ?, ?, ?)').run(c.id, nome, m.grade, Date.now()).lastInsertRowid);
+    abrirCena(c, m, db.prepare('SELECT * FROM mapa_cenas WHERE id = ?').get(id) as Cena);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id });
+  }
+
+  if (acao === 'cena/abrir') {
+    const cena = db.prepare('SELECT * FROM mapa_cenas WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as Cena | undefined;
+    if (!cena) return json(res, 404, { erro: 'Cena não encontrada.' });
+    const m = mapaDe(c.id);
+    if (m.cena_id !== cena.id) {
+      abrirCena(c, m, cena);
+      gravarChat(c, userId, await autorDe(c, userId), 'msg', `🎬 Nova cena: ${cena.nome}`, null, false);
+    }
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'cena/renomear') {
+    const nome = String(b.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!nome) return json(res, 400, { erro: 'Dê um nome para a cena.' });
+    const r = db.prepare('UPDATE mapa_cenas SET nome = ? WHERE id = ? AND campanha_id = ?').run(nome, Number(b.id), c.id);
+    if (!r.changes) return json(res, 404, { erro: 'Cena não encontrada.' });
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'cena/apagar') {
+    const cena = db.prepare('SELECT * FROM mapa_cenas WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as Cena | undefined;
+    if (!cena) return json(res, 404, { erro: 'Cena não encontrada.' });
+    if (mapaDe(c.id).cena_id === cena.id) return json(res, 400, { erro: 'Esta é a cena aberta: abra outra antes de apagar.' });
+    apagarImagem(cena.imagem);
+    for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE cena_id = ? AND campanha_id = ?').all(cena.id, c.id) as { imagem: string | null }[]) apagarImagem(p.imagem);
+    db.prepare('DELETE FROM mapa_pecas WHERE cena_id = ? AND campanha_id = ? AND user_id IS NULL').run(cena.id, c.id);
+    db.prepare('DELETE FROM mapa_cenas WHERE id = ?').run(cena.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
   if (acao === 'npc/remover') {
     const npc = pecaDoMestre(c, b.peca);
     apagarImagem(npc?.imagem);
@@ -1036,6 +1165,8 @@ export function apagarMapa(campanhaId: number) {
   for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) apagarImagem(p.imagem);
   for (const cr of db.prepare('SELECT imagem FROM campanha_criaturas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) apagarImagem(cr.imagem);
   db.prepare('DELETE FROM mapa_pecas WHERE campanha_id = ?').run(campanhaId);
+  for (const cn of cenasDe(campanhaId)) if (cn.imagem && cn.imagem !== m?.imagem) apagarImagem(cn.imagem);
+  db.prepare('DELETE FROM mapa_cenas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM campanha_criaturas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);

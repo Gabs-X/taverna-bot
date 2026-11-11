@@ -179,3 +179,45 @@ test('condições e recursos da ficha pelo mapa', async () => {
   assert.equal((await chamar(J, 'ficha/recurso', { campo: 'pv_max', delta: 9 })).status, 400);
   assert.equal((await chamar(J, 'ficha/recurso', { user: '100000000000000001', campo: 'pv', delta: 1 })).status, 403);
 });
+
+test('névoa e peça escondida: o jogador nem recebe o que está coberto', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  const { corpo } = await chamar(M, 'criatura', { tipo: 'inimigo', nome: 'Espreitador' });
+  const peca = (await chamar(M, 'criatura/colocar', { id: corpo.id, x: 1025, y: 525 })).corpo.peca; // casa (20, 10)
+  const vejo = async () => (await estado(J)).pecas.some((p: any) => p.id === peca);
+  assert.equal(await vejo(), true);
+  await chamar(M, 'nevoa/ligar', { ligada: true });
+  assert.equal(await vejo(), false);
+  assert.equal((await estado(M)).pecas.some((p: any) => p.id === peca), true); // o mestre vê tudo
+  assert.ok((await estado(J)).mapa.nevoa.bits);
+  await chamar(M, 'nevoa/pintar', { c0: 19, r0: 9, c1: 21, r1: 11, revelar: true });
+  assert.equal(await vejo(), true);
+  await chamar(M, 'peca/esconder', { peca, escondida: true });
+  assert.equal(await vejo(), false);
+  await chamar(M, 'peca/esconder', { peca, escondida: false });
+  await chamar(M, 'nevoa/ligar', { ligada: false });
+  assert.equal(await vejo(), true);
+  assert.equal((await chamar(J, 'nevoa/tudo', { revelar: true })).status, 403);
+});
+
+test('cenas: cada uma com as suas peças do mestre; os jogadores vão junto', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  const antes = await estado(M);
+  const doMestre = antes.pecas.filter((p: any) => p.npc).map((p: any) => p.id);
+  assert.ok(doMestre.length > 0);
+  const nova = (await chamar(M, 'cena/nova', { nome: 'Masmorra' })).corpo.id;
+  let e = await estado(M);
+  assert.equal(e.mapa.cena, 'Masmorra');
+  assert.deepEqual(e.cenas.map((c: any) => [c.nome, c.ativa]), [['Primeira cena', false], ['Masmorra', true]]);
+  assert.equal(e.pecas.filter((p: any) => p.npc).length, 0);
+  assert.equal((await estado(J)).voce.pecaId !== null, true);
+  assert.equal((await chamar(M, 'cena/apagar', { id: nova })).status, 400);
+  await chamar(M, 'cena/abrir', { id: e.cenas[0].id });
+  e = await estado(M);
+  assert.deepEqual(e.pecas.filter((p: any) => p.npc).map((p: any) => p.id), doMestre);
+  assert.equal((await chamar(M, 'cena/renomear', { id: nova, nome: 'Cripta' })).status, 200);
+  assert.equal((await chamar(M, 'cena/apagar', { id: nova })).status, 200);
+  assert.equal((await estado(M)).cenas.length, 1);
+});

@@ -533,6 +533,31 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE campanha_criaturas ADD COLUMN iniciativa INTEGER;
     `);
   },
+  // 21: exploração. Névoa de guerra (uma casa por bit), peças escondidas dos jogadores e várias cenas por campanha:
+  // a tabela mapas guarda a cena aberta; as outras ficam em mapa_cenas, e as peças do mestre pertencem a uma cena.
+  () => {
+    db.exec(`
+      ALTER TABLE mapas ADD COLUMN nevoa_ligada INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapas ADD COLUMN nevoa TEXT;
+      ALTER TABLE mapas ADD COLUMN cena_id INTEGER;
+      ALTER TABLE mapa_pecas ADD COLUMN escondida INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapa_pecas ADD COLUMN cena_id INTEGER;
+      CREATE TABLE IF NOT EXISTS mapa_cenas (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id  INTEGER NOT NULL,
+        nome         TEXT NOT NULL,
+        imagem       TEXT,
+        largura      INTEGER NOT NULL DEFAULT 1500,
+        altura       INTEGER NOT NULL DEFAULT 1000,
+        grade        INTEGER NOT NULL DEFAULT 50,
+        nevoa_ligada INTEGER NOT NULL DEFAULT 0,
+        nevoa        TEXT,
+        ambiente     TEXT,
+        criada_em    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS mapa_cenas_campanha ON mapa_cenas (campanha_id);
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };
