@@ -1,5 +1,25 @@
 # Novidades do Taverneiro
 
+## v1.10.0 (11/11/2026)
+
+- 🧙 Mapa da campanha: entrou na mesa? Crie o seu personagem lá dentro, com nome, ficha e foto
+- 🗣️ O que você manda pelo mapa chega ao canal da campanha com o nome e a foto do seu personagem
+- ⌨️ Ande com o seu personagem pelas teclas WASD ou pelas setas
+- 👹 Biblioteca de NPCs e inimigos do Mestre: é só arrastar para o mapa, e cada cópia tem a sua própria vida (Goblin, Goblin 2…)
+- ⚔️ Combate no mapa: ordem de iniciativa no D&D, holofote e Medo do Mestre no Daggerheart
+- 🩸 Vida e condições (caído, envenenado, amedrontado…) aparecem em cima das peças
+- 🎯 Clique num inimigo e ataque: o mapa rola, confere a defesa e desconta o dano sozinho
+- ❤️ PV, Estresse, Esperança e Armadura da ficha mudam direto no mapa
+- ☁️ Névoa de guerra e inimigos escondidos: o mapa só mostra o que o grupo já descobriu
+- 🎬 Várias cenas por campanha (taverna, masmorra…): quando o Mestre troca, todo mundo vai junto, com a trilha da cena
+- 🎵 O Mestre controla a música da mesa pelo próprio mapa
+- 📜 Handouts: o Mestre mostra uma imagem (carta, mapa do tesouro) na tela de todos
+- 📍 Ping: botão do meio do mouse (ou Alt + clique) marca um ponto no mapa para todos
+- 💰 Ouro e inventário do grupo, compartilhados no mapa
+- 📖 Diário da campanha: cada sessão finalizada fica com o resumo do Mestre e o registro do chat
+- 🏁 /campanha finalizar guarda o resumo num canal de resumos da campanha e apaga as salas da sessão
+- 📻 Rádio: agora segue o estilo da música inicial, e /radio com o rádio ligado troca de estação na hora
+
 ## v1.9.1 (10/11/2026)
 
 - Mapa da campanha: quando o Mestre fala ou rola como um NPC, o chat mostra a foto do NPC
