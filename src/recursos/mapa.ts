@@ -3,6 +3,10 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { ChannelType, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
+import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeVida, proximoTurno, resolverAtaque } from '../lib/combate.ts';
+import { rolar } from '../lib/dados.ts';
+import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
+import { modificador } from '../lib/dnd35.ts';
 import { nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
@@ -40,14 +44,18 @@ const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
 type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null };
-type Mapa = { campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number };
+type Mapa = {
+  campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number;
+  combate: number; rodada: number; vez: number | null; vida_inimigos: 'escondida' | 'estado' | 'exata';
+};
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
-  criatura_id: number | null; tipo: string | null; pv: number | null;
+  criatura_id: number | null; tipo: string | null; pv: number | null; condicoes: string; iniciativa: number | null; agiu: number;
 };
 type CriaturaSalva = {
   id: number; campanha_id: number; tipo: 'npc' | 'inimigo'; nome: string; imagem: string | null; versao_img: number; tamanho: number;
   pv_max: number | null; defesa: number | null; ataque: number | null; dano: string; limiar_maior: number | null; limiar_grave: number | null; notas: string;
+  iniciativa: number | null;
 };
 type Foto = { imagem: string; versao: number };
 
@@ -180,8 +188,19 @@ function fichaDaCriatura(cr: CriaturaSalva, p: Peca) {
     limiar_maior: cr.limiar_maior,
     limiar_grave: cr.limiar_grave,
     notas: cr.notas,
+    iniciativa: cr.iniciativa,
   };
 }
+
+/** Vida de uma peça do mestre como os jogadores a veem (o mestre escolhe: escondida, só o estado ou o número). */
+function vidaParaJogadores(m: Mapa, cr: CriaturaSalva | undefined, p: Peca) {
+  if (!cr || cr.pv_max === null || m.vida_inimigos === 'escondida') return null;
+  const restante = p.pv ?? cr.pv_max;
+  return m.vida_inimigos === 'exata'
+    ? { frac: Math.max(0, Math.min(1, restante / cr.pv_max)), texto: `${restante}/${cr.pv_max} PV` }
+    : { frac: null, texto: estadoDaVida(restante, cr.pv_max) };
+}
+const lerMedo = (g: string) => (db.prepare('SELECT medo FROM dh_medo WHERE guild_id = ?').get(g) as { medo: number } | undefined)?.medo ?? 0;
 
 async function montarEstado(c: Campanha, userId: string) {
   const m = mapaDe(c.id);
@@ -207,7 +226,8 @@ async function montarEstado(c: Campanha, userId: string) {
       let dadosFicha: Record<string, unknown> | null = null;
       if (ficha) {
         const { guild_id: _g, user_id: _u, ...resto } = ficha;
-        dadosFicha = meu || souMestre ? resto : { nome: resto.nome, classe: resto.classe, nivel: resto.nivel };
+        // O grupo vê a vida dos companheiros; o resto da ficha fica com o dono e o mestre.
+        dadosFicha = meu || souMestre ? resto : { nome: resto.nome, classe: resto.classe, nivel: resto.nivel, pv: resto.pv, pv_atual: resto.pv_atual, pv_max: resto.pv_max };
       } else if (cr && souMestre) dadosFicha = fichaDaCriatura(cr, p);
       const foto = p.user_id ? fotoDe(c, p.user_id) : undefined;
       let avatar: string | null;
@@ -230,13 +250,25 @@ async function montarEstado(c: Campanha, userId: string) {
         avatar,
         imagemPropria: !!p.imagem,
         ficha: dadosFicha,
+        vida: !p.user_id && !souMestre ? vidaParaJogadores(m, cr, p) : null,
+        condicoes: p.condicoes ? p.condicoes.split(',') : [],
+        iniciativa: p.iniciativa,
+        agiu: !!p.agiu,
       };
     }),
+    combate: {
+      ativo: !!m.combate,
+      rodada: m.rodada,
+      vez: m.vez,
+      ordem: m.combate ? ordenarIniciativa(pecas).map((p) => p.id) : [],
+    },
+    medo: c.sistema === 'dh' ? lerMedo(c.guild_id) : null,
+    vidaInimigos: souMestre ? m.vida_inimigos : undefined,
     // A biblioteca de NPCs e inimigos é só do mestre: os jogadores não sabem o que vem pela frente.
     biblioteca: souMestre
       ? criaturas.map((cr) => ({
           id: cr.id, tipo: cr.tipo, nome: cr.nome, tamanho: cr.tamanho, pv_max: cr.pv_max, defesa: cr.defesa, ataque: cr.ataque, dano: cr.dano,
-          limiar_maior: cr.limiar_maior, limiar_grave: cr.limiar_grave, notas: cr.notas, avatar: urlCriatura(c, cr),
+          limiar_maior: cr.limiar_maior, limiar_grave: cr.limiar_grave, notas: cr.notas, iniciativa: cr.iniciativa, avatar: urlCriatura(c, cr),
           noMapa: pecas.filter((p) => p.criatura_id === cr.id).length,
         }))
       : [],
@@ -377,6 +409,33 @@ function salvarFichaDnd(c: Campanha, u: string, f: FichaDnd) {
     c.guild_id, u, f.nome, f.classe, f.raca, f.nivel, f.forca, f.destreza, f.constituicao, f.inteligencia, f.sabedoria, f.carisma,
     f.pv_max, f.pv_max, f.ca, f.bba, f.fort, f.ref, f.von, f.ini_extra,
   );
+}
+
+// ---------- Dano do ataque ----------
+
+/** Desconta o dano do alvo (cópia da biblioteca ou personagem de jogador) e diz como ficou, do jeito que a mesa pode ver. */
+function aplicarDano(c: Campanha, alvo: Peca, cr: CriaturaSalva | undefined, ficha: Record<string, unknown> | undefined, dano: number) {
+  if (cr && cr.pv_max !== null) {
+    const perda = perdaDeVida(c.sistema, dano, { maior: cr.limiar_maior, grave: cr.limiar_grave });
+    const depois = Math.max(0, (alvo.pv ?? cr.pv_max) - perda);
+    db.prepare('UPDATE mapa_pecas SET pv = ? WHERE id = ?').run(depois, alvo.id);
+    const modo = mapaDe(c.id).vida_inimigos;
+    const como = modo === 'exata' ? `${depois}/${cr.pv_max} PV` : modo === 'estado' ? estadoDaVida(depois, cr.pv_max) : null;
+    const marcas = c.sistema === 'dh' ? `${perda} PV marcado${perda === 1 ? '' : 's'}` : null;
+    return [marcas, como].filter(Boolean).join(' · ') || null;
+  }
+  if (ficha && alvo.user_id) {
+    if (c.sistema === 'dh') {
+      const perda = perdaDeVida('dh', dano, { maior: Number(ficha.limiar_maior), grave: Number(ficha.limiar_grave) });
+      const marcados = Math.min(Number(ficha.pv_max), Number(ficha.pv) + perda);
+      db.prepare('UPDATE fichas_dh SET pv = ? WHERE guild_id = ? AND user_id = ?').run(marcados, c.guild_id, alvo.user_id);
+      return `${perda} PV marcado${perda === 1 ? '' : 's'} · ${Number(ficha.pv_max) - marcados}/${ficha.pv_max} livres`;
+    }
+    const pv = Math.max(-10, Number(ficha.pv_atual) - dano);
+    db.prepare('UPDATE fichas SET pv_atual = ? WHERE guild_id = ? AND user_id = ?').run(pv, c.guild_id, alvo.user_id);
+    return `${pv}/${ficha.pv_max} PV`;
+  }
+  return null;
 }
 
 // ---------- Servidor HTTP ----------
@@ -587,8 +646,208 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // Ataque clicando no alvo: rola contra a defesa dele e, se acertar, rola o dano e desconta da vida.
+  if (acao === 'ataque') {
+    const b = await lerJson<Record<string, unknown>>(req);
+    const alvo = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.alvo), c.id) as Peca | undefined;
+    if (!alvo) return json(res, 404, { erro: 'O alvo não está mais no mapa.' });
+    const vazio = (v: unknown) => v === undefined || v === null || v === '';
+    let autor = await autorDe(c, userId);
+    let pecaId: number | null = null;
+    let atacante: string;
+    let bonus: number;
+    let dano = String(b.dano ?? '').replace(/\s/g, '').toLowerCase();
+    if (!vazio(b.como)) {
+      if (!souMestre) return json(res, 403, { erro: 'Só o mestre ataca por um NPC.' });
+      const npc = pecaDoMestre(c, b.como);
+      if (!npc) return json(res, 404, { erro: 'Esse NPC não está mais no mapa.' });
+      const cr = npc.criatura_id ? criaturaPorId(c, npc.criatura_id) : undefined;
+      autor = `${npc.tipo === 'inimigo' ? '👹' : '🎭'} ${npc.nome} (${npc.tipo === 'inimigo' ? 'inimigo' : 'NPC'})`;
+      pecaId = npc.id;
+      atacante = npc.nome;
+      bonus = vazio(b.bonus) ? (cr?.ataque ?? 0) : Number(b.bonus);
+      if (!dano) dano = cr?.dano ?? '';
+    } else {
+      const ficha = souJogador ? fichaDe(c, userId) : undefined;
+      if (!ficha && !souMestre) return json(res, 400, { erro: 'Crie o seu personagem antes de atacar.' });
+      if (alvo.user_id === userId) return json(res, 400, { erro: 'Você não pode atacar a si mesmo.' });
+      atacante = String(ficha?.nome ?? 'O mestre');
+      if (!vazio(b.bonus)) bonus = Number(b.bonus);
+      else if (c.sistema === 'dh') bonus = Number(ficha?.[String(b.traco ?? 'agilidade')] ?? 0);
+      else bonus = Number(ficha?.bba ?? 0) + modificador(Number(ficha?.forca ?? 10));
+    }
+    if (alvo.id === pecaId) return json(res, 400, { erro: 'Uma peça não ataca a si mesma.' });
+    if (!Number.isInteger(bonus) || Math.abs(bonus) > 60) return json(res, 400, { erro: 'Bônus de ataque inválido.' });
+    const vantagem = b.vantagem === 1 ? 1 : b.vantagem === -1 ? -1 : 0;
+    const sinal = bonus >= 0 ? `+${bonus}` : `${bonus}`;
+    const rotulo = `⚔️ Ataque em ${alvo.nome}`.slice(0, 60);
+    const comando =
+      c.sistema === 'dh'
+        ? `/dh ${sinal}${vantagem > 0 ? ' vantagem' : vantagem < 0 ? ' desvantagem' : ''} # ${rotulo}`
+        : `/r ${vantagem > 0 ? '2d20kh1' : vantagem < 0 ? '2d20kl1' : '1d20'}${bonus ? sinal : ''} # ${rotulo}`;
+    let entradaAtaque;
+    let entradaDano;
+    try {
+      entradaAtaque = interpretarEntrada(comando);
+      entradaDano = dano ? interpretarEntrada(`/r ${dano} # ${`🩸 Dano em ${alvo.nome}`.slice(0, 60)}`) : null;
+    } catch (e) {
+      return json(res, 400, { erro: `Dano: ${(e as Error).message}` });
+    }
+    if (entradaAtaque.tipo === 'msg' || entradaDano?.tipo === 'msg') return json(res, 400, { erro: 'Ataque inválido.' });
+    const crAlvo = alvo.criatura_id ? criaturaPorId(c, alvo.criatura_id) : undefined;
+    const fichaAlvo = alvo.user_id ? fichaDe(c, alvo.user_id) : undefined;
+    const defesa = crAlvo ? crAlvo.defesa : fichaAlvo ? Number(c.sistema === 'dh' ? fichaAlvo.evasao : fichaAlvo.ca) : null;
+    const rolagem = rolarEntrada(entradaAtaque);
+    gravarChat(c, userId, autor, entradaAtaque.tipo, entradaAtaque.rotulo, rolagem, false, true, pecaId);
+    const r = resolverAtaque(rolagem, defesa);
+    let desfecho: string;
+    if (!r) desfecho = `🎯 ${atacante} atacou ${alvo.nome}: total ${rolagem.total}. O mestre decide se acertou.`;
+    else if (!r.acertou) desfecho = `🛡️ ${atacante} errou ${alvo.nome}.`;
+    else {
+      desfecho = `💥 ${atacante} acertou ${alvo.nome}${r.critico ? ' com um crítico' : ''}!`;
+      if (entradaDano) {
+        const rd = rolarEntrada(entradaDano);
+        gravarChat(c, userId, autor, 'dados', entradaDano.rotulo, rd, false, true, pecaId);
+        const vida = aplicarDano(c, alvo, crAlvo, fichaAlvo, rd.total);
+        desfecho += ` ${rd.total} de dano${vida ? ` (${vida})` : ''}.`;
+      }
+    }
+    gravarChat(c, userId, autor, 'msg', desfecho, null, false, true, pecaId);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, acertou: r?.acertou ?? null });
+  }
+
+  // Condições: o mestre em qualquer peça, o jogador na dele.
+  if (acao === 'peca/condicao') {
+    const b = await lerJson<{ peca: number; condicao: string; ligar: boolean }>(req);
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.peca), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
+    if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só muda as condições do seu personagem.' });
+    if (!ehCondicao(b.condicao)) return json(res, 400, { erro: 'Condição desconhecida.' });
+    db.prepare('UPDATE mapa_pecas SET condicoes = ? WHERE id = ?').run(alternarCondicao(p.condicoes, b.condicao, !!b.ligar), p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // PV, Estresse, Esperança e Armadura do personagem (o dono ou o mestre), sem sair do mapa.
+  if (acao === 'ficha/recurso') {
+    const b = await lerJson<{ user: string; campo: string; delta: number }>(req);
+    const alvo = String(b.user ?? userId);
+    if (alvo !== userId && !souMestre) return json(res, 403, { erro: 'Você só mexe na sua ficha.' });
+    if (!idsJogadores(c.id).includes(alvo)) return json(res, 404, { erro: 'Esse jogador não está na campanha.' });
+    const limites: Record<string, string | number> = c.sistema === 'dh' ? { pv: 'pv_max', estresse: 'estresse_max', esperanca: MAX_ESPERANCA, armadura: 'armadura_max' } : { pv_atual: 'pv_max' };
+    const campo = String(b.campo);
+    if (!Object.hasOwn(limites, campo)) return json(res, 400, { erro: 'Campo desconhecido.' });
+    const ficha = fichaDe(c, alvo);
+    if (!ficha) return json(res, 404, { erro: 'Esse personagem ainda não tem ficha.' });
+    const max = typeof limites[campo] === 'number' ? (limites[campo] as number) : Number(ficha[limites[campo] as string]);
+    const novo = Math.min(max, Math.max(campo === 'pv_atual' ? -10 : 0, Number(ficha[campo]) + Math.trunc(Number(b.delta) || 0)));
+    db.prepare(`UPDATE ${TABELA_FICHA[c.sistema]} SET ${campo} = ? WHERE guild_id = ? AND user_id = ?`).run(novo, c.guild_id, alvo);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, valor: novo });
+  }
+
+  // Holofote do Daggerheart: quem já agiu nesta rodada (o mestre marca qualquer um, o jogador o dele).
+  if (acao === 'combate/agiu') {
+    const b = await lerJson<{ peca: number; agiu: boolean }>(req);
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.peca), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
+    if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só marca o seu personagem.' });
+    db.prepare('UPDATE mapa_pecas SET agiu = ? WHERE id = ?').run(b.agiu ? 1 : 0, p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
   // Daqui para baixo, só o mestre da campanha.
   if (!souMestre) return json(res, 403, { erro: 'Só o mestre faz isso.' });
+
+  if (acao === 'combate/iniciar') {
+    mapaDe(c.id);
+    const pecas = db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ?').all(c.id) as Peca[];
+    let texto: string;
+    if (c.sistema === 'dnd') {
+      // D&D: d20 + Destreza + bônus extra (jogadores) ou o bônus de iniciativa da biblioteca.
+      for (const p of pecas) {
+        const ficha = p.user_id ? fichaDe(c, p.user_id) : undefined;
+        const cr = p.criatura_id ? criaturaPorId(c, p.criatura_id) : undefined;
+        const bonus = ficha ? modificador(Number(ficha.destreza)) + Number(ficha.ini_extra ?? 0) : (cr?.iniciativa ?? 0);
+        p.iniciativa = rolar('1d20').total + bonus;
+        db.prepare('UPDATE mapa_pecas SET iniciativa = ?, agiu = 0 WHERE id = ?').run(p.iniciativa, p.id);
+      }
+      const ordem = ordenarIniciativa(pecas);
+      db.prepare('UPDATE mapas SET combate = 1, rodada = 1, vez = ? WHERE campanha_id = ?').run(ordem[0]?.id ?? null, c.id);
+      texto = `⚔️ Combate! Iniciativa: ${ordem.map((p) => `${p.nome} (${p.iniciativa})`).join(', ') || 'ninguém no mapa'}.`;
+    } else {
+      db.prepare('UPDATE mapa_pecas SET iniciativa = NULL, agiu = 0 WHERE campanha_id = ?').run(c.id);
+      db.prepare('UPDATE mapas SET combate = 1, rodada = 1, vez = NULL WHERE campanha_id = ?').run(c.id);
+      texto = '⚔️ Combate! O holofote passa entre os personagens; o mestre age quando alguém falha ou rola com Medo.';
+    }
+    gravarChat(c, userId, await autorDe(c, userId), 'msg', texto.slice(0, LIMITE_TEXTO), null, false);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'combate/proximo') {
+    const m = mapaDe(c.id);
+    if (!m.combate) return json(res, 400, { erro: 'Não há combate em andamento.' });
+    if (c.sistema === 'dh') {
+      // Daggerheart: "nova rodada" zera quem já agiu.
+      db.prepare('UPDATE mapa_pecas SET agiu = 0 WHERE campanha_id = ?').run(c.id);
+      db.prepare('UPDATE mapas SET rodada = rodada + 1, vez = NULL WHERE campanha_id = ?').run(c.id);
+    } else {
+      const pecas = (db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ? AND iniciativa IS NOT NULL').all(c.id) as Peca[]);
+      const { vez, rodada } = proximoTurno(ordenarIniciativa(pecas).map((p) => p.id), m.vez, m.rodada);
+      db.prepare('UPDATE mapas SET vez = ?, rodada = ? WHERE campanha_id = ?').run(vez, rodada, c.id);
+    }
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'combate/vez') {
+    const b = await lerJson<{ peca: number }>(req);
+    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(b.peca), c.id) as Peca | undefined;
+    if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
+    db.prepare('UPDATE mapas SET vez = ? WHERE campanha_id = ?').run(p.id, c.id);
+    if (c.sistema === 'dh') db.prepare('UPDATE mapa_pecas SET agiu = 1 WHERE id = ?').run(p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'combate/iniciativa') {
+    const b = await lerJson<{ peca: number; valor: number | null }>(req);
+    const valor = b.valor === null || b.valor === undefined || (b.valor as unknown) === '' ? null : Math.round(limitar(b.valor, -20, 99, 0));
+    const r = db.prepare('UPDATE mapa_pecas SET iniciativa = ? WHERE id = ? AND campanha_id = ?').run(valor, Number(b.peca), c.id);
+    if (!r.changes) return json(res, 404, { erro: 'Peça não encontrada.' });
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'combate/encerrar') {
+    db.prepare('UPDATE mapa_pecas SET iniciativa = NULL, agiu = 0 WHERE campanha_id = ?').run(c.id);
+    db.prepare('UPDATE mapas SET combate = 0, rodada = 0, vez = NULL WHERE campanha_id = ?').run(c.id);
+    gravarChat(c, userId, await autorDe(c, userId), 'msg', '🏳️ Fim do combate.', null, false);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // Medo do Mestre (Daggerheart): o mesmo do /dh medo, do servidor inteiro.
+  if (acao === 'medo') {
+    if (c.sistema !== 'dh') return json(res, 400, { erro: 'Medo é do Daggerheart.' });
+    const b = await lerJson<{ delta: number }>(req);
+    const novo = Math.max(0, Math.min(MAX_MEDO, lerMedo(c.guild_id) + Math.trunc(Number(b.delta) || 0)));
+    db.prepare('INSERT INTO dh_medo (guild_id, medo) VALUES (?, ?) ON CONFLICT (guild_id) DO UPDATE SET medo = excluded.medo').run(c.guild_id, novo);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, medo: novo });
+  }
+
+  if (acao === 'vida-inimigos') {
+    const b = await lerJson<{ modo: string }>(req);
+    if (!['escondida', 'estado', 'exata'].includes(String(b.modo))) return json(res, 400, { erro: 'Modo inválido.' });
+    mapaDe(c.id);
+    db.prepare('UPDATE mapas SET vida_inimigos = ? WHERE campanha_id = ?').run(String(b.modo), c.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
 
   if (acao === 'chat/revelar') {
     const b = await lerJson<{ id: number }>(req);
@@ -663,8 +922,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
       db.prepare(
         `UPDATE campanha_criaturas SET tipo = ?, nome = ?, tamanho = ?, pv_max = ?, defesa = ?, ataque = ?, dano = ?, limiar_maior = ?,
-         limiar_grave = ?, notas = ? WHERE id = ?`,
-      ).run(v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, cr.id);
+         limiar_grave = ?, notas = ?, iniciativa = ? WHERE id = ?`,
+      ).run(v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, v.iniciativa, cr.id);
       db.prepare('UPDATE mapa_pecas SET tipo = ?, tamanho = ?, pv = CASE WHEN ? IS NULL THEN NULL ELSE MIN(COALESCE(pv, ?), ?) END WHERE criatura_id = ? AND campanha_id = ?').run(
         v.tipo, v.tamanho, v.pv_max, v.pv_max, v.pv_max, cr.id, c.id,
       );
@@ -674,9 +933,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const total = (db.prepare('SELECT COUNT(*) AS n FROM campanha_criaturas WHERE campanha_id = ?').get(c.id) as { n: number }).n;
     if (total >= 300) return json(res, 400, { erro: 'A biblioteca chegou a 300 personagens. Apague alguns antes.' });
     const novo = db.prepare(
-      `INSERT INTO campanha_criaturas (campanha_id, tipo, nome, tamanho, pv_max, defesa, ataque, dano, limiar_maior, limiar_grave, notas, criada_em)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(c.id, v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, Date.now());
+      `INSERT INTO campanha_criaturas (campanha_id, tipo, nome, tamanho, pv_max, defesa, ataque, dano, limiar_maior, limiar_grave, notas, iniciativa, criada_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(c.id, v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, v.iniciativa, Date.now());
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
   }
@@ -713,8 +972,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const x = limitar(b.x, 0, m.largura, padrao.x);
     const y = limitar(b.y, 0, m.altura, padrao.y);
     const nome = nomeDaCopia(cr.nome, pecas.map((p) => p.nome));
-    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)').run(
-      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max,
+    // Entrou no meio de um combate de D&D: já rola a iniciativa e entra na ordem.
+    const iniciativa = m.combate && c.sistema === 'dnd' ? rolar('1d20').total + (cr.iniciativa ?? 0) : null;
+    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv, iniciativa) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max, iniciativa,
     );
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true, peca: Number(nova.lastInsertRowid), nome });

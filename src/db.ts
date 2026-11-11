@@ -519,6 +519,20 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE mapa_pecas ADD COLUMN pv INTEGER;
     `);
   },
+  // 20: combate no mapa (iniciativa ou holofote, peça da vez, rodada), condições das peças, o que os jogadores
+  // sabem da vida dos inimigos e o bônus de iniciativa dos personagens da biblioteca.
+  () => {
+    db.exec(`
+      ALTER TABLE mapa_pecas ADD COLUMN condicoes TEXT NOT NULL DEFAULT '';
+      ALTER TABLE mapa_pecas ADD COLUMN iniciativa REAL;
+      ALTER TABLE mapa_pecas ADD COLUMN agiu INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapas ADD COLUMN combate INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapas ADD COLUMN rodada INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapas ADD COLUMN vez INTEGER;
+      ALTER TABLE mapas ADD COLUMN vida_inimigos TEXT NOT NULL DEFAULT 'estado';
+      ALTER TABLE campanha_criaturas ADD COLUMN iniciativa INTEGER;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

@@ -122,3 +122,60 @@ test('só o dono (ou o mestre) move a peça', async () => {
   const npc = (await chamar('100000000000000001', 'criatura/colocar', { id: corpo.id })).corpo;
   assert.equal((await chamar('200000000000000002', 'mover', { peca: npc.peca, x: 1, y: 1 })).status, 403);
 });
+
+test('combate no Daggerheart: holofote, nova rodada e Medo do Mestre', async () => {
+  const J = '200000000000000002';
+  assert.equal((await chamar(J, 'combate/iniciar', {})).status, 403);
+  assert.equal((await chamar('100000000000000001', 'combate/iniciar', {})).status, 200);
+  let e = await estado(J);
+  assert.equal(e.combate.ativo, true);
+  assert.equal(e.combate.rodada, 1);
+  const minha = e.pecas.find((p: any) => p.meu);
+  assert.equal((await chamar(J, 'combate/agiu', { peca: minha.id, agiu: true })).status, 200);
+  assert.equal((await estado(J)).pecas.find((p: any) => p.meu).agiu, true);
+  assert.equal((await chamar('100000000000000001', 'combate/proximo', {})).status, 200);
+  e = await estado(J);
+  assert.equal(e.combate.rodada, 2);
+  assert.equal(e.pecas.find((p: any) => p.meu).agiu, false);
+  assert.equal((await chamar('100000000000000001', 'medo', { delta: 3 })).corpo.medo, 3);
+  assert.equal((await estado(J)).medo, 3);
+  assert.equal((await chamar('100000000000000001', 'combate/encerrar', {})).status, 200);
+  assert.equal((await estado(J)).combate.ativo, false);
+});
+
+test('ataque clicando no alvo: acerta a Dificuldade, rola o dano e marca PV pelos limiares', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  const { corpo } = await chamar(M, 'criatura', { tipo: 'inimigo', nome: 'Bandido', pv_max: 3, defesa: 1, dano: '5', limiar_maior: 4, limiar_grave: 8 });
+  const alvo = (await chamar(M, 'criatura/colocar', { id: corpo.id })).corpo.peca;
+  const r = await chamar(J, 'ataque', { alvo, dano: '5', traco: 'instinto' });
+  assert.equal(r.status, 200);
+  assert.equal(r.corpo.acertou, true); // Dificuldade 1: qualquer dualidade acerta
+  const e = await estado(M);
+  assert.equal(e.pecas.find((p: any) => p.id === alvo).ficha.pv_atual, 1); // 5 de dano ≥ Maior 4: marca 2
+  const chat = (await chamar(M, 'chat')).corpo;
+  assert.match(chat.at(-1).texto, /acertou Bandido.*5 de dano \(2 PV marcados · Muito ferido\)/);
+  assert.equal(chat.at(-3).texto, '⚔️ Ataque em Bandido');
+
+  // O jogador vê só o estado da vida; o mestre pode mostrar o número ou esconder.
+  assert.deepEqual((await estado(J)).pecas.find((p: any) => p.id === alvo).vida, { frac: null, texto: 'Muito ferido' });
+  await chamar(M, 'vida-inimigos', { modo: 'exata' });
+  assert.equal((await estado(J)).pecas.find((p: any) => p.id === alvo).vida.texto, '1/3 PV');
+  await chamar(M, 'vida-inimigos', { modo: 'escondida' });
+  assert.equal((await estado(J)).pecas.find((p: any) => p.id === alvo).vida, null);
+  assert.equal((await chamar(J, 'ataque', { alvo: (await estado(J)).voce.pecaId, dano: '1' })).status, 400);
+});
+
+test('condições e recursos da ficha pelo mapa', async () => {
+  const J = '200000000000000002';
+  const e = await estado(J);
+  const minha = e.voce.pecaId;
+  const outra = e.pecas.find((p: any) => !p.meu).id;
+  assert.equal((await chamar(J, 'peca/condicao', { peca: minha, condicao: 'envenenado', ligar: true })).status, 200);
+  assert.equal((await chamar(J, 'peca/condicao', { peca: outra, condicao: 'caido', ligar: true })).status, 403);
+  assert.equal((await chamar(J, 'peca/condicao', { peca: minha, condicao: 'pegando-fogo', ligar: true })).status, 400);
+  assert.deepEqual((await estado(J)).pecas.find((p: any) => p.meu).condicoes, ['envenenado']);
+  assert.equal((await chamar(J, 'ficha/recurso', { campo: 'esperanca', delta: 9 })).corpo.valor, 6);
+  assert.equal((await chamar(J, 'ficha/recurso', { campo: 'pv_max', delta: 9 })).status, 400);
+  assert.equal((await chamar(J, 'ficha/recurso', { user: '100000000000000001', campo: 'pv', delta: 1 })).status, 403);
+});

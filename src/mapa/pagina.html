@@ -194,6 +194,29 @@
   .pv-edit input { width: 76px; text-align: center; }
   .item small .tag { margin-left: 0; }
 
+  /* ---------- Combate ---------- */
+  #combate { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 14px; max-width: calc(100% - 120px); overflow-x: auto; z-index: 3; }
+  body.em-combate #ficha-card { top: 124px; max-height: calc(100% - 238px); }
+  #combate .rodada { font-size: 12px; font-weight: 700; color: var(--ouro); white-space: nowrap; padding: 0 4px; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px; border-radius: 99px; background: var(--painel2); border: 2px solid transparent; cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: 600; flex: none; }
+  .chip .avatar { width: 24px; height: 24px; font-size: 10px; border-width: 2px; }
+  .chip b { color: var(--ouro); }
+  .chip.vez { border-color: var(--ouro); box-shadow: 0 0 12px rgba(245, 196, 81, .35); }
+  .chip.agiu { opacity: .45; }
+  .chip.medo { cursor: default; background: #3a1d5c; padding-left: 9px; }
+  .chip .mini { width: 20px; height: 20px; border-radius: 6px; border: 0; background: #0005; cursor: pointer; padding: 0; }
+  .btn-redondo { width: 32px; height: 32px; border-radius: 10px; border: 0; background: var(--painel3); cursor: pointer; flex: none; }
+  .btn-redondo:hover { background: var(--acento); }
+  .conds { display: flex; flex-wrap: wrap; gap: 4px; }
+  .conds button, .conds span { font-size: 11.5px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; }
+  .conds button.on, .conds span { background: #4a2a6e; border-color: var(--acento); }
+  .conds span { cursor: default; }
+  .recurso { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 13px; }
+  .recurso .rot { flex: 1; color: var(--mudo); }
+  .recurso b { min-width: 46px; text-align: center; }
+  .recurso button { width: 28px; height: 28px; border-radius: 8px; border: 0; background: var(--painel3); cursor: pointer; }
+  #ataque .linha > * { min-width: 0; }
+
   @media (max-width: 820px) {
     body { flex-direction: column; }
     aside { width: 100%; height: 48vh; border-left: 0; border-top: 1px solid var(--borda); }
@@ -214,6 +237,8 @@
     <div style="min-width:0"><h1 id="titulo">Carregando…</h1><small id="sub"></small></div>
     <span class="ponto" id="ponto" title="Conexão com a mesa"></span>
   </div>
+
+  <div id="combate" class="vidro" hidden></div>
 
   <div id="ferramentas" class="vidro">
     <button class="ferr" id="f-enquadrar" data-dica="Enquadrar o mapa (F)">⛶</button>
@@ -243,6 +268,15 @@
     <button class="fechar" id="fechar-ficha" title="Fechar (Esc)">✕</button>
     <div class="cab"><div class="avatar" id="ficha-avatar"></div><div><h2 id="ficha-titulo">Ficha</h2><small id="ficha-sub"></small></div></div>
     <div id="ficha-pv"></div>
+    <div id="recursos"></div>
+    <div class="rotulo-sec" id="rotulo-conds">Condições</div>
+    <div class="conds" id="conds"></div>
+    <div id="ataque" hidden>
+      <div class="rotulo-sec">⚔️ Atacar este alvo</div>
+      <div class="linha" id="ataque-como-linha"><span class="mudo" style="white-space:nowrap">Quem ataca</span><select id="ataque-como"></select></div>
+      <div class="linha"><select id="ataque-traco" title="Traço do ataque"></select><input id="ataque-bonus" type="number" placeholder="bônus" title="Bônus do ataque" style="width:82px;flex:none"><input id="ataque-dano" type="text" maxlength="30" placeholder="dano: 1d8+2"></div>
+      <div class="linha"><button id="atacar" class="btn">⚔️ Atacar</button><small class="mudo">usa a vantagem marcada no chat</small></div>
+    </div>
     <div class="rotulo-sec" id="rotulo-tracos">Rolar</div>
     <div class="tracos" id="tracos"></div>
     <div class="rotulo-sec">Ficha</div>
@@ -250,6 +284,7 @@
     <div class="linha"><button id="editar-ficha" class="btn" hidden>✏️ Editar meu personagem</button></div>
     <div id="gestao" hidden>
       <div class="rotulo-sec">Mestre</div>
+      <div class="linha pv-edit" id="linha-ini" hidden><span class="mudo" style="flex:1">Iniciativa</span><input id="ini-valor" type="number" min="-20" max="99" title="Enter para gravar; vazio tira da ordem"></div>
       <div class="linha pv-edit" id="linha-pv" hidden><span class="mudo" style="flex:1">PV desta cópia</span><button class="btn sec" id="pv-menos" title="Tirar 1 PV">−</button><input id="pv-valor" type="text" inputmode="numeric" title="Número exato, ou -7 para tirar e +5 para curar (Enter)"><button class="btn sec" id="pv-mais" title="Curar 1 PV">＋</button></div>
       <div class="linha"><span class="mudo" style="flex:1">Tamanho no mapa</span><button class="btn sec" id="tam-menos" title="Diminuir">−</button><b id="tam-valor" style="min-width:34px;text-align:center">1×</b><button class="btn sec" id="tam-mais" title="Aumentar">＋</button></div>
       <div class="linha" id="linha-npc-img"><label class="btn sec" for="arquivo-npc">🖼️ Imagem do NPC</label><input id="arquivo-npc" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button class="btn sec" id="tirar-imagem">Tirar</button></div>
@@ -303,6 +338,10 @@
       <div class="mudo" style="margin-top:6px">PNG, JPG, WEBP ou GIF. Também dá para arrastar o arquivo para o mapa. Imagens muito grandes são reduzidas.</div>
       <div class="linha"><input id="grade" type="number" min="10" max="400" placeholder="Tamanho da casa (px)"><button id="salvar-grade" class="btn sec">Aplicar</button></div>
       <div class="linha"><button id="limpar-chat" class="btn sec">🧹 Limpar o chat</button></div>
+      <div class="linha"><button id="iniciar-combate" class="btn">⚔️ Iniciar combate</button></div>
+      <div class="linha"><span class="mudo" style="white-space:nowrap">Vida dos inimigos</span><select id="vida-inimigos" title="O que os jogadores veem da vida dos NPCs e inimigos">
+        <option value="estado">Só o estado (Ferido…)</option><option value="exata">O número de PV</option><option value="escondida">Escondida</option>
+      </select></div>
     </section>
     <section id="painel-biblioteca" hidden>
       <h2>Biblioteca de personagens</h2>
@@ -504,6 +543,8 @@ function painel() {
   }
   painelBiblioteca();
   painelMeu();
+  painelCombate();
+  if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
   const bandeja = $('bandeja'); bandeja.textContent = '';
@@ -580,6 +621,7 @@ function fichaCard() {
   const comPV = daBiblioteca && estado.voce.mestre && typeof f.pv_max === 'number';
   $('linha-pv').hidden = !comPV;
   if (comPV && document.activeElement !== $('pv-valor')) $('pv-valor').value = String(f.pv_atual);
+  cardCombate(p);
   $('remover-npc').hidden = !(p.npc && estado.voce.mestre);
   // Só o mestre mexe no tamanho (de qualquer peça) e na imagem e nas rolagens dos NPCs.
   $('gestao').hidden = !estado.voce.mestre;
@@ -650,13 +692,30 @@ function pintar() {
       ctx.fillStyle = inimigo ? '#8f1d2ce6' : '#111c'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.34}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(inimigo ? '☠' : 'N', p.x + r * 0.78, p.y - r * 0.76);
     }
-    // barra de PV (só quem pode ver a ficha)
-    const pv = fracPV(p); let yBase = p.y + r + 5 * px;
+    // Peça da vez no combate: anel dourado tracejado.
+    if (estado.combate.ativo && estado.combate.vez === p.id) {
+      ctx.save(); ctx.setLineDash([7 * px, 5 * px]); ctx.beginPath(); ctx.arc(p.x, p.y, r + 12 * px, 0, Math.PI * 2);
+      ctx.lineWidth = 3 * px; ctx.strokeStyle = '#f5c451'; ctx.stroke(); ctx.restore();
+    }
+    // Condições: os ícones em cima da peça.
+    if (p.condicoes && p.condicoes.length) {
+      const fsC = Math.max(11 * px, r * 0.42), icones = p.condicoes.map((c) => (CONDICOES[c] || '?').split(' ')[0]).join('');
+      ctx.font = `${fsC}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      const wC = ctx.measureText(icones).width + fsC * 0.6;
+      rodada(ctx, p.x - wC / 2, p.y - r - fsC * 1.45, wC, fsC * 1.3, fsC * 0.65); ctx.fillStyle = 'rgba(12,6,20,.75)'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillText(icones, p.x, p.y - r - fsC * 0.22);
+    }
+    // barra de PV (a ficha do grupo, ou o que o mestre deixa ver dos inimigos)
+    const pv = fracPV(p) || (p.vida && p.vida.frac !== null ? p.vida : null); let yBase = p.y + r + 5 * px;
     if (pv) {
       const w = r * 1.7, h = Math.max(4 * px, grade * 0.09), x0 = p.x - w / 2;
       rodada(ctx, x0, yBase, w, h, h / 2); ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fill();
       rodada(ctx, x0, yBase, Math.max(h, w * pv.frac), h, h / 2); ctx.fillStyle = pv.frac <= 0.25 ? '#ff5d6c' : pv.frac <= 0.55 ? '#f5c451' : '#3ecf8e'; ctx.fill();
       yBase += h + 3 * px;
+    } else if (p.vida) { // só o estado: "Ferido", "Quase morto"...
+      const fsV = Math.max(10 * px, grade * 0.2); ctx.font = `700 ${fsV}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = p.vida.texto === 'Ileso' ? '#3ecf8e' : p.vida.texto === 'Ferido' ? '#f5c451' : '#ff5d6c';
+      ctx.fillText(p.vida.texto, p.x, yBase); yBase += fsV * 1.25;
     }
     // nome em uma etiqueta
     const fs = Math.max(12 * px, grade * 0.26);
@@ -780,6 +839,7 @@ addEventListener('keydown', (e) => {
   if (aberta || digitando || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (PASSOS[k]) { if (andar(PASSOS[k][0], PASSOS[k][1], e.repeat)) e.preventDefault(); return; }
+  if (k === 'n' && estado && estado.voce.mestre && estado.combate.ativo) { post('combate/proximo', {}).catch(() => {}); return; }
   if (k === '/') { e.preventDefault(); abrirAba('chat'); if (!prefs.painel) alternar('painel'); $('texto').focus(); }
   else if (k === 'f') $('f-enquadrar').onclick();
   else if (k === 'g') $('f-grade').onclick();
@@ -1012,6 +1072,7 @@ function camposCriatura() {
     num('pv_max', dh ? 'PV (espaços)' : 'PV', 1, 9999, null),
     num('defesa', dh ? 'Dificuldade' : 'CA', 0, 99, null),
     num('ataque', 'Ataque (bônus)', -20, 50, null),
+    ...(dh ? [] : [num('iniciativa', 'Iniciativa (bônus)', -10, 30, null)]),
     txt('dano', 'Dano', 30, { dica: '1d8+2' }),
     ...(dh ? [num('limiar_maior', 'Limiar Maior', 1, 99, null), num('limiar_grave', 'Limiar Grave', 2, 199, null)] : []),
     { k: 'notas', r: 'Notas (só você vê)', t: 'area', max: 1000, largo: true },
@@ -1114,6 +1175,128 @@ $('pv-valor').addEventListener('keydown', (e) => {
   mudarPV(/^[+-]/.test(v) ? { delta: Number(v) } : { valor: Number(v) });
   e.target.blur();
 });
+
+// ---------- Combate ----------
+const CONDICOES = { caido: '🛌 Caído', envenenado: '🤢 Envenenado', atordoado: '💫 Atordoado', amedrontado: '😱 Amedrontado', contido: '⛓️ Contido',
+  vulneravel: '🎯 Vulnerável', escondido: '🫥 Escondido', sangrando: '🩸 Sangrando', inspirado: '✨ Inspirado', concentrado: '🧠 Concentrado' };
+const ehDH = () => estado.campanha.sistema === 'dh';
+
+function painelCombate() {
+  const cb = estado.combate, box = $('combate');
+  $('iniciar-combate').textContent = cb.ativo ? '🏳️ Encerrar combate' : '⚔️ Iniciar combate';
+  box.hidden = !cb.ativo;
+  document.body.classList.toggle('em-combate', cb.ativo);
+  if (!cb.ativo) return;
+  box.textContent = '';
+  box.append(el('span', 'rodada', `⚔️ Rodada ${cb.rodada}`));
+  const dh = ehDH();
+  for (const id of cb.ordem) {
+    const p = estado.pecas.find((q) => q.id === id); if (!p) continue;
+    const chip = el('button', 'chip' + (cb.vez === p.id ? ' vez' : '') + (dh && p.agiu ? ' agiu' : ''));
+    const av = el('div', 'avatar'); pintarAvatar(av, p.nome, p.avatar, corDe(p));
+    chip.append(av, el('span', '', p.nome));
+    if (!dh && p.iniciativa !== null) chip.append(el('b', '', String(p.iniciativa)));
+    if (dh && p.agiu) chip.append(el('b', '', '✓'));
+    // Mestre: no D&D passa a vez para a peça; no Daggerheart marca quem agiu. Jogador: marca o dele no Daggerheart.
+    chip.title = dh ? (estado.voce.mestre || p.meu ? 'Clique para marcar se já agiu nesta rodada' : p.nome) : estado.voce.mestre ? 'Clique para passar a vez para esta peça' : p.nome;
+    chip.onclick = () => {
+      selecionada = p.id; painel(); desenhar();
+      if (dh && (estado.voce.mestre || p.meu)) post('combate/agiu', { peca: p.id, agiu: !p.agiu }).catch(() => {});
+      else if (!dh && estado.voce.mestre) post('combate/vez', { peca: p.id }).catch(() => {});
+    };
+    box.append(chip);
+  }
+  if (dh && estado.medo !== null) {
+    const m = el('span', 'chip medo'); m.append(el('span', '', `😱 Medo ${estado.medo}`));
+    if (estado.voce.mestre) for (const [t, d] of [['−', -1], ['+', 1]]) { const b = el('button', 'mini', t); b.onclick = () => post('medo', { delta: d }).catch(() => {}); m.append(b); }
+    box.append(m);
+  }
+  if (estado.voce.mestre) {
+    const prox = el('button', 'btn-redondo', '⏭'); prox.title = dh ? 'Nova rodada (N): todos podem agir de novo' : 'Próximo turno (N)';
+    prox.onclick = () => post('combate/proximo', {}).catch(() => {});
+    const fim = el('button', 'btn-redondo', '🏳️'); fim.title = 'Encerrar o combate';
+    fim.onclick = () => post('combate/encerrar', {}).catch(() => {});
+    box.append(prox, fim);
+  }
+}
+$('iniciar-combate').onclick = () => post(estado.combate.ativo ? 'combate/encerrar' : 'combate/iniciar', {}).catch(() => {});
+$('vida-inimigos').onchange = (e) => post('vida-inimigos', { modo: e.target.value }).catch(() => {});
+
+/** Parte de combate do card da peça: vida, recursos da ficha, condições, iniciativa e o ataque. */
+function cardCombate(p) {
+  const f = p.ficha || {}, mestre = estado.voce.mestre, podeEditar = mestre || p.meu, dh = ehDH();
+  if (!fracPV(p) && p.vida) $('ficha-pv').append(el('small', '', '❤️ ' + p.vida.texto));
+  // Recursos da ficha do jogador (o dono e o mestre mexem): PV, Estresse, Esperança, Armadura.
+  const rec = $('recursos'); rec.textContent = '';
+  if (p.userId && p.ficha && podeEditar && typeof f.pv_max === 'number') {
+    const linhas = dh
+      ? [['pv', '❤️ PV marcados', f.pv, f.pv_max], ['estresse', '😰 Estresse', f.estresse, f.estresse_max], ['esperanca', '✨ Esperança', f.esperanca, 6], ['armadura', '🛡️ Armadura usada', f.armadura, f.armadura_max]]
+      : [['pv_atual', '❤️ PV', f.pv_atual, f.pv_max]];
+    for (const [campo, rotulo, v, max] of linhas) {
+      if (typeof v !== 'number') continue;
+      const d = el('div', 'recurso'); d.append(el('span', 'rot', rotulo));
+      const menos = el('button', '', '−'), mais = el('button', '', '+');
+      const passo = campo === 'pv_atual' ? 1 : 1;
+      menos.onclick = () => post('ficha/recurso', { user: p.userId, campo, delta: -passo }).catch(() => {});
+      mais.onclick = () => post('ficha/recurso', { user: p.userId, campo, delta: passo }).catch(() => {});
+      d.append(menos, el('b', '', `${v}/${max}`), mais); rec.append(d);
+    }
+  }
+  // Condições: quem pode mudar vê todas para ligar e desligar; os outros veem só as ativas.
+  const conds = $('conds'); conds.textContent = '';
+  for (const [k, rotulo] of Object.entries(CONDICOES)) {
+    const ativa = (p.condicoes || []).includes(k);
+    if (podeEditar) { const b = el('button', ativa ? 'on' : '', rotulo); b.onclick = () => post('peca/condicao', { peca: p.id, condicao: k, ligar: !ativa }).catch(() => {}); conds.append(b); }
+    else if (ativa) conds.append(el('span', '', rotulo));
+  }
+  $('rotulo-conds').hidden = !conds.children.length;
+  // Iniciativa à mão (D&D, durante o combate).
+  $('linha-ini').hidden = !(mestre && estado.combate.ativo && !dh);
+  if (!$('linha-ini').hidden && document.activeElement !== $('ini-valor')) $('ini-valor').value = p.iniciativa ?? '';
+  montarAtaque(p);
+}
+$('ini-valor').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !selecionada) return;
+  post('combate/iniciativa', { peca: selecionada, valor: e.target.value === '' ? null : Number(e.target.value) }).then(() => e.target.blur()).catch(() => {});
+});
+
+const chaveDano = () => 'mapa_dano_' + ID;
+function montarAtaque(p) {
+  const mestre = estado.voce.mestre, eu = minhaPeca(), dh = ehDH();
+  const podeAtacar = mestre ? estado.pecas.some((q) => q.npc && q.id !== p.id) : !!(eu && eu.ficha && !p.meu);
+  $('ataque').hidden = !podeAtacar;
+  if (!podeAtacar) return;
+  // Mestre escolhe quem ataca (as peças dele; começa pela da vez ou pela do "Falar como").
+  $('ataque-como-linha').hidden = !mestre;
+  if (mestre) {
+    const sel = $('ataque-como'), atual = sel.value; sel.textContent = '';
+    for (const q of estado.pecas) if (q.npc && q.id !== p.id) sel.append(new Option((q.tipo === 'inimigo' ? '👹 ' : '🎭 ') + q.nome, String(q.id)));
+    const preferida = [atual, String(estado.combate.vez), $('como').value].find((v) => [...sel.options].some((o) => o.value === v));
+    if (preferida) sel.value = preferida;
+  }
+  // Jogador do Daggerheart escolhe o traço; no D&D o bônus já vem (ataque base + Força) e pode ser trocado.
+  const tr = $('ataque-traco');
+  tr.hidden = mestre || !dh;
+  if (!tr.hidden && !tr.options.length) for (const t of TRACOS_DH) tr.append(new Option(`${NOMES[t]} ${sinal(eu.ficha[t] ?? 0)}`, t));
+  if (!tr.hidden) for (const o of tr.options) o.textContent = `${NOMES[o.value]} ${sinal(eu.ficha[o.value] ?? 0)}`;
+  const bonus = $('ataque-bonus');
+  bonus.hidden = !mestre && dh;
+  if (document.activeElement !== bonus) bonus.value = '';
+  bonus.placeholder = mestre ? 'da biblioteca' : dh ? '' : sinal((eu.ficha.bba || 0) + Math.floor(((eu.ficha.forca || 10) - 10) / 2));
+  const dano = $('ataque-dano');
+  dano.placeholder = mestre ? 'da biblioteca' : 'dano: 1d8+2';
+  if (!mestre && document.activeElement !== dano && !dano.value) { try { dano.value = localStorage.getItem(chaveDano()) || ''; } catch {} }
+}
+$('atacar').onclick = () => {
+  const alvo = selecionada; if (!alvo) return;
+  const mestre = estado.voce.mestre, dano = $('ataque-dano').value.trim();
+  if (!mestre && !dano) return mostrarErro('Escreva o dano da sua arma (ex.: 1d8+2).');
+  if (!mestre) { try { localStorage.setItem(chaveDano(), dano); } catch {} }
+  const corpo = { alvo, dano, vantagem: vantagem(), bonus: $('ataque-bonus').value === '' ? null : Number($('ataque-bonus').value) };
+  if (mestre) corpo.como = Number($('ataque-como').value);
+  else if (ehDH()) corpo.traco = $('ataque-traco').value;
+  post('ataque', corpo).then((r) => { if (!prefs.painel) alternar('painel'); abrirAba('chat'); if (r.acertou === false) aviso('Errou!', '', 1800); }).catch(() => {});
+};
 
 // ---------- Abas ----------
 

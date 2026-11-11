@@ -113,7 +113,7 @@ const NOMES: Record<string, string> = {
 export type TipoCriatura = 'npc' | 'inimigo';
 export type Criatura = {
   tipo: TipoCriatura; nome: string; tamanho: number; pv_max: number | null; defesa: number | null; ataque: number | null;
-  dano: string; limiar_maior: number | null; limiar_grave: number | null; notas: string;
+  dano: string; limiar_maior: number | null; limiar_grave: number | null; notas: string; iniciativa: number | null;
 };
 
 /** Dano no formato das rolagens: 1d8+2, 2d6, 7. */
@@ -139,6 +139,7 @@ export function validarCriatura(corpo: Record<string, unknown>): Resultado<Criat
       limiar_maior,
       limiar_grave,
       notas: String(corpo.notas ?? '').trim().slice(0, 1000),
+      iniciativa: opcional(corpo, 'iniciativa', 'Iniciativa', -10, 30),
     };
   });
 }
