@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.15.2 (11/11/2026)
+
+- 💬 Status nas peças: escreva um texto curto (ex.: Envenenado, escondido na moita) no card da peça e ele aparece num balão em cima dela para todos. O jogador escreve no personagem dele; o mestre, em qualquer peça.
+
 ## v1.15.1 (11/11/2026)
 
 - 🖱️ Mestre: botão Selecionar na barra do mapa, que solta qualquer ferramenta (Esc também) e deixa selecionar várias peças de uma vez arrastando uma caixa no mapa.
