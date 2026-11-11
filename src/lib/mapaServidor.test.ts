@@ -452,3 +452,13 @@ test('cartas do Daggerheart: escolher pelo filtro da ficha, Carregamento e Cofre
   assert.equal((await chamar(M, 'cartas/usar', { user: '999', carta: 'dominio-arcana-talisma-runico' })).status, 404);
   assert.ok((await estado(M)).pecas.find((p: any) => p.userId === J).prancheta);
 });
+
+test('subir de nível: a carta de domínio extra escolhida como avanço (guia da ficha) aumenta o limite', async () => {
+  const J = '200000000000000002';
+  db.prepare("UPDATE personagem_cartas_extras SET extras = 0 WHERE user_id = ?").run(J);
+  assert.equal((await chamar(J, 'ficha', { ...FICHA, nivel: 3, guia: JSON.stringify({ classe: 'feiticeiro', cartasAvanco: 1 }) })).status, 200);
+  const pr = (await estado(J)).pecas.find((p: any) => p.meu).prancheta;
+  assert.equal(pr.limites.dominio.max, 5, 'nível 3 + 1, mais a carta do avanço');
+  assert.equal((await chamar(J, 'ficha', { ...FICHA, nivel: 3, guia: '{"cartasAvanco":"muitas"}' })).status, 200);
+  assert.equal((await estado(J)).pecas.find((p: any) => p.meu).prancheta.limites.dominio.max, 4, 'valor estranho na guia não vale nada');
+});

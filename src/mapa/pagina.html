@@ -456,6 +456,25 @@
   .resumo .falta li.nao { color: #a3291f; } .resumo .falta li.nao::before { content: '• '; font-weight: 900; }
   @media (max-width: 820px) { .guia-corpo { grid-template-columns: 1fr; } .resumo { position: static; order: -1; } .sub-op { grid-template-columns: 100px 1fr; } .sub-op img { width: 100px; } }
 
+  /* ---------- Subir de nível ---------- */
+  .modal > .caixa.nivel { width: min(860px, 100%); }
+  .ganhos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+  .ganho { border: 1px solid #b08c55; border-radius: 9px; padding: 9px 11px; background: #fff8e6; font-size: 13.5px; }
+  .ganho b { font-family: var(--fonte-titulo); color: #5a300a; display: block; font-size: 14px; }
+  .avanco-op { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; text-align: left; width: 100%; border: 2px solid #d8c393; border-radius: 10px; padding: 9px 12px; background: rgba(255, 252, 240, .75); cursor: pointer; font: inherit; color: var(--tinta); margin-top: 6px; transition: border-color .12s, background .12s; }
+  .avanco-op:hover:not(:disabled) { border-color: #b08c55; }
+  .avanco-op.sel { border-color: #8e5a1c; background: #fff8e6; box-shadow: 0 0 0 3px rgba(217, 164, 65, .3); }
+  .avanco-op:disabled { opacity: .5; cursor: not-allowed; }
+  .avanco-op .marca { width: 24px; height: 24px; border-radius: 6px; border: 2px solid #b08c55; display: grid; place-items: center; font-weight: 900; color: #2b1a08; }
+  .avanco-op.sel .marca { background: var(--latao); border-color: #7a5218; }
+  .avanco-op .usos { font-size: 11.5px; color: var(--mudo); white-space: nowrap; }
+  .avanco-op .det { font-size: 12.5px; color: var(--mudo); display: block; }
+  .escolha-extra { margin: 6px 0 0 34px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .escolha-extra button { border: 1px solid #b08c55; background: #fffaf0; border-radius: 99px; padding: 3px 10px; cursor: pointer; font-size: 12.5px; }
+  .escolha-extra button.on { background: var(--latao); border-color: #7a5218; font-weight: 700; }
+  .escolha-extra button:disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+  .slots { font-family: var(--fonte-titulo); font-weight: 700; color: #5a3d1a; margin-left: 8px; }
+
   /* ---------- Prancheta de cartas ---------- */
   .modal > .caixa.prancheta { width: min(1180px, 100%); }
   .pr-topo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 4px; }
@@ -688,7 +707,7 @@
     <section id="painel-meu" hidden>
       <h2>Meu personagem</h2>
       <div class="item" id="meu-resumo"><div class="avatar" id="meu-avatar"></div><div><div class="nome" id="meu-nome"></div><small id="meu-sub"></small></div></div>
-      <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button><button id="minhas-cartas" class="btn sec" hidden>🃏 Minhas cartas</button></div>
+      <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button><button id="minhas-cartas" class="btn sec" hidden>🃏 Minhas cartas</button><button id="subir-nivel" class="btn sec" hidden>⬆️ Subir de nível</button></div>
     </section>
     <section>
       <h2>Personagens</h2>
@@ -715,6 +734,15 @@
     <form id="mf-form" autocomplete="off"></form>
     <div class="acoes"><button class="btn sec" data-fecha="modal-ficha">Depois</button><button class="btn" id="mf-salvar">💾 Salvar personagem</button></div>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-nivel" hidden>
+  <div class="caixa nivel">
+    <button class="fechar" data-fecha="modal-nivel" title="Fechar (Esc)">✕</button>
+    <h2 id="mn-titulo">⬆️ Subir de nível</h2>
+    <small id="mn-sub"></small>
+    <div id="mn-corpo"></div>
   </div>
 </div>
 
@@ -1950,7 +1978,10 @@ function novoGuia(p) {
     avancoTracos: salvo.avancoTracos || {},
     armadura: salvo.armadura || null,
     armas: Object.assign({ primaria: null, secundaria: null }, salvo.armas || {}),
-    extras: Object.assign({ pv: 0, estresse: 0, evasao: 0 }, salvo.extras || {}),
+    extras: Object.assign({ pv: 0, estresse: 0, evasao: 0, proficiencia: 0 }, salvo.extras || {}),
+    historico: salvo.historico || [],
+    marcados: salvo.marcados || [],
+    cartasAvanco: salvo.cartasAvanco || 0,
     experiencias: salvo.experiencias || (f && f.experiencias ? String(f.experiencias).split(',').filter(Boolean).map((i) => { const [nome, b] = i.split('|'); return { nome, bonus: Number(b) || 2 }; }) : []),
     nome: (f && f.nome) || '',
     nivel: (f && f.nivel) || 1,
@@ -1971,7 +2002,7 @@ function calcularGuia(g) {
     armadura_max: arm.pontos + somaArmas('arm'),
     limiar_maior: arm.maior === null ? n : arm.maior + n,
     limiar_grave: arm.grave === null ? 2 * n : arm.grave + n,
-    proficiencia: 1 + tiers(n),
+    proficiencia: 1 + tiers(n) + (Number(g.extras.proficiencia) || 0),
     experiencias: 2 + tiers(n),
     esperanca: 2,
   };
@@ -2271,6 +2302,20 @@ function passoNome(p, calc) {
   foto.append(av, botoes); p.append(foto);
 }
 
+function dadosDaGuia(g) {
+  const calc = calcularGuia(g), nomeDe = (id) => (catalogoCartas.mapa.get(id) || {}).nome || '';
+  const sub = g.subclasse ? catalogoCartas.mapa.get(g.subclasse) : null;
+  return {
+    nome: g.nome.trim(), classe: CLASSES_DH[g.classe].nome + (sub ? ' (' + sub.nome + ')' : ''),
+    ancestralidade: g.ancestralidades.map(nomeDe).join(' / ').slice(0, 40), comunidade: nomeDe(g.comunidade).slice(0, 40), nivel: calc.nivel,
+    ...calc.tracos,
+    evasao: calc.evasao, proficiencia: Math.min(6, calc.proficiencia), pv_max: Math.min(12, calc.pv_max), estresse_max: Math.min(12, calc.estresse_max), armadura_max: Math.min(12, calc.armadura_max),
+    limiar_maior: calc.limiar_maior, limiar_grave: calc.limiar_grave,
+    experiencias: g.experiencias.filter((e) => String(e.nome || '').trim()).map((e) => `${e.nome.trim().replace(/[,|+]/g, ' ')} +${e.bonus || 2}`).join(', '),
+    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, armas: g.armas, extras: g.extras, experiencias: g.experiencias, historico: g.historico, marcados: g.marcados, cartasAvanco: g.cartasAvanco }),
+  };
+}
+
 async function salvarFichaGuiada() {
   const g = guia, calc = calcularGuia(g), pend = pendenciasGuia(g), faltando = pend.filter(([, ok]) => !ok).map(([n]) => n);
   if (!g.classe || !String(g.nome).trim()) { aviso('Falta ' + (!g.classe ? 'escolher a classe' : 'o nome do personagem') + '.', 'erro'); passoGuia = !g.classe ? 0 : 7; return desenharGuia(); }
@@ -2283,7 +2328,7 @@ async function salvarFichaGuiada() {
     evasao: calc.evasao, proficiencia: calc.proficiencia, pv_max: calc.pv_max, estresse_max: calc.estresse_max, armadura_max: calc.armadura_max,
     limiar_maior: calc.limiar_maior, limiar_grave: calc.limiar_grave,
     experiencias: g.experiencias.filter((e) => String(e.nome || '').trim()).map((e) => `${e.nome.trim().replace(/[,|+]/g, ' ')} +${e.bonus || 2}`).join(', '),
-    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, armas: g.armas, extras: g.extras, experiencias: g.experiencias }),
+    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, armas: g.armas, extras: g.extras, experiencias: g.experiencias, historico: g.historico, marcados: g.marcados, cartasAvanco: g.cartasAvanco }),
   };
   await post('ficha', dados);
   // Cartas de base na prancheta: tira as que mudaram e põe as escolhidas.
@@ -2460,6 +2505,121 @@ async function desenharCatalogo(corpo, pr) {
   corpo.append(grade);
 }
 
+// ---------- Subir de nível (livro p. 24) ----------
+// Em todo nível: limiares +1 (pelo nível) e uma carta de domínio a mais. Nos níveis 2, 5 e 8: +1 Experiência (+2) e
+// +1 de Proficiência; no 5 e no 8 as marcas dos traços se apagam. E o jogador escolhe dois avanços do patamar.
+const AVANCOS = [
+  { k: 'tracos', nome: '+1 em dois traços não marcados', det: 'Os dois ficam marcados até o nível 5 (ou 8).', max: 3 },
+  { k: 'pv', nome: '+1 espaço de Pontos de Vida', max: 2 },
+  { k: 'estresse', nome: '+1 espaço de Estresse', max: 2 },
+  { k: 'experiencias', nome: '+1 em duas Experiências', max: 1 },
+  { k: 'carta', nome: 'Uma carta de domínio extra', det: 'Do seu nível ou menor, dos domínios da sua classe.', max: 1 },
+  { k: 'evasao', nome: '+1 de Evasão', max: 1 },
+  { k: 'subclasse', nome: 'Carta de subclasse melhorada', det: 'Especialização a partir do nível 5 e Maestria a partir do 8 (na prancheta).', max: 1, desde: 3 },
+  { k: 'proficiencia', nome: '+1 de Proficiência', det: 'Ocupa os dois avanços deste nível.', max: 1, desde: 3, custo: 2 },
+];
+const patamar = (n) => (n <= 1 ? 1 : n <= 4 ? 2 : n <= 7 ? 3 : 4);
+let subida = null;
+async function abrirSubirNivel() {
+  const p = minhaPeca(); if (!p || !p.ficha) return;
+  try { await carregarCatalogo(); } catch { return; }
+  const g = novoGuia(p);
+  if (!g.classe) { aviso('Esta ficha foi feita à mão: abra a ficha e use a criação guiada para subir de nível automaticamente.', 'erro', 7000); return; }
+  const novo = Number(g.nivel) + 1;
+  if (novo > 10) return aviso('O personagem já está no nível 10.', 'ok');
+  subida = { g, novo, escolhas: [], tracos: [], exps: [], novaExp: '' };
+  $('mn-titulo').textContent = '⬆️ ' + g.nome + ': nível ' + g.nivel + ' → ' + novo;
+  $('mn-sub').textContent = 'Patamar ' + patamar(novo) + ' · escolha 2 avanços · o resto é automático';
+  desenharSubida();
+  $('modal-nivel').hidden = false;
+}
+function usosNoPatamar(g, k, t) { return g.historico.filter((h) => patamar(h.nivel) === t).reduce((n, h) => n + h.avancos.filter((a) => a === k).length, 0); }
+function desenharSubida() {
+  const { g, novo } = subida, t = patamar(novo), corpo = $('mn-corpo'), marco = novo === 2 || novo === 5 || novo === 8;
+  corpo.textContent = '';
+  const depois = calcularGuia({ ...g, nivel: novo });
+  corpo.append(el('div', 'rotulo-sec', 'O que vem sozinho'));
+  const ganhos = el('div', 'ganhos');
+  const ganho = (titulo, txt) => { const d = el('div', 'ganho'); d.append(el('b', '', titulo), document.createTextNode(txt)); ganhos.append(d); };
+  ganho('Limiares', `${calcularGuia(g).limiar_maior}/${calcularGuia(g).limiar_grave} → ${depois.limiar_maior}/${depois.limiar_grave}`);
+  ganho('Carta de domínio', 'mais uma, até o nível ' + novo + ' (escolha na prancheta)');
+  if (marco) ganho('Proficiência', `${calcularGuia(g).proficiencia} → ${depois.proficiencia} (o dano rola mais um dado)`);
+  if (novo === 5 || novo === 8) ganho('Traços', 'as marcas se apagam: dá para subir qualquer traço de novo');
+  corpo.append(ganhos);
+  if (marco) {
+    const c = el('label', 'campo largo'); c.append(document.createTextNode('Nova Experiência (+2) *'));
+    const i = el('input'); i.type = 'text'; i.maxLength = 40; i.placeholder = 'ex.: Veterano de Guerra'; i.value = subida.novaExp; i.oninput = () => { subida.novaExp = i.value; };
+    c.append(i); corpo.append(c);
+  }
+  const usados = subida.escolhas.reduce((n, k) => n + (AVANCOS.find((a) => a.k === k).custo || 1), 0);
+  const tit = el('div', 'rotulo-sec', 'Escolha dois avanços'); tit.append(el('span', 'slots', usados + '/2')); corpo.append(tit);
+  const marcadosAgora = novo === 5 || novo === 8 ? [] : g.marcados;
+  for (const a of AVANCOS) {
+    const usos = usosNoPatamar(g, a.k, t), escolhido = subida.escolhas.includes(a.k);
+    let bloqueio = null;
+    if (a.desde && t < a.desde) bloqueio = 'a partir do nível 5';
+    else if (usos >= a.max) bloqueio = 'já usado ' + usos + 'x neste patamar';
+    else if (!escolhido && usados + (a.custo || 1) > 2) bloqueio = 'sem avanço sobrando';
+    const b = el('button', 'avanco-op' + (escolhido ? ' sel' : '')); b.type = 'button'; b.disabled = !!bloqueio && !escolhido;
+    const txt = el('div'); txt.append(document.createTextNode(a.nome)); if (a.det) txt.append(el('span', 'det', a.det));
+    b.append(el('span', 'marca', escolhido ? '✓' : ''), txt, el('span', 'usos', bloqueio || `${usos}/${a.max} no patamar`));
+    b.onclick = () => { subida.escolhas = escolhido ? subida.escolhas.filter((k) => k !== a.k) : [...subida.escolhas, a.k]; desenharSubida(); };
+    corpo.append(b);
+    if (escolhido && a.k === 'tracos') {
+      const ex = el('div', 'escolha-extra');
+      for (const tr of TRACOS_DH) {
+        const on = subida.tracos.includes(tr), marcado = marcadosAgora.includes(tr);
+        const bt = el('button', on ? 'on' : '', NOMES[tr] + ' ' + sinal(calcularGuia(g).tracos[tr])); bt.type = 'button'; bt.disabled = marcado; if (marcado) bt.title = 'Marcado: libera no nível 5 ou 8';
+        bt.onclick = () => { subida.tracos = on ? subida.tracos.filter((x) => x !== tr) : [...subida.tracos, tr].slice(-2); desenharSubida(); };
+        ex.append(bt);
+      }
+      corpo.append(ex);
+    }
+    if (escolhido && a.k === 'experiencias') {
+      const ex = el('div', 'escolha-extra');
+      g.experiencias.filter((e) => String(e.nome || '').trim()).forEach((e, i) => {
+        const on = subida.exps.includes(i), bt = el('button', on ? 'on' : '', e.nome + ' +' + (e.bonus || 2)); bt.type = 'button';
+        bt.onclick = () => { subida.exps = on ? subida.exps.filter((x) => x !== i) : [...subida.exps, i].slice(-2); desenharSubida(); };
+        ex.append(bt);
+      });
+      corpo.append(ex);
+    }
+  }
+  const nav = el('div', 'guia-nav');
+  if (estado.livro) { const lv = el('button', 'btn sec', '📖 Avanços (p. 24)'); lv.type = 'button'; lv.onclick = () => abrirLivro(24); nav.append(lv); }
+  nav.append(el('span', 'esp'));
+  const ok = el('button', 'btn', '⬆️ Subir para o nível ' + novo); ok.type = 'button'; ok.onclick = () => confirmarSubida().catch(() => {});
+  nav.append(ok); corpo.append(nav);
+}
+async function confirmarSubida() {
+  const { g, novo } = subida, marco = novo === 2 || novo === 5 || novo === 8;
+  const usados = subida.escolhas.reduce((n, k) => n + (AVANCOS.find((a) => a.k === k).custo || 1), 0);
+  if (usados !== 2) return aviso('Escolha dois avanços (a Proficiência conta como os dois).', 'erro');
+  if (subida.escolhas.includes('tracos') && subida.tracos.length !== 2) return aviso('Escolha os dois traços que sobem.', 'erro');
+  if (subida.escolhas.includes('experiencias') && subida.exps.length !== 2) return aviso('Escolha as duas Experiências que sobem.', 'erro');
+  if (marco && !subida.novaExp.trim()) return aviso('Dê um nome para a nova Experiência.', 'erro');
+  if (novo === 5 || novo === 8) g.marcados = [];
+  for (const k of subida.escolhas) {
+    if (k === 'tracos') for (const tr of subida.tracos) { g.avancoTracos[tr] = (Number(g.avancoTracos[tr]) || 0) + 1; g.marcados = [...new Set([...g.marcados, tr])]; }
+    if (k === 'pv') g.extras.pv = (Number(g.extras.pv) || 0) + 1;
+    if (k === 'estresse') g.extras.estresse = (Number(g.extras.estresse) || 0) + 1;
+    if (k === 'evasao') g.extras.evasao = (Number(g.extras.evasao) || 0) + 1;
+    if (k === 'proficiencia') g.extras.proficiencia = (Number(g.extras.proficiencia) || 0) + 1;
+    if (k === 'carta') g.cartasAvanco = (Number(g.cartasAvanco) || 0) + 1;
+    if (k === 'experiencias') { const nomeadas = g.experiencias.filter((e) => String(e.nome || '').trim()); for (const i of subida.exps) if (nomeadas[i]) nomeadas[i].bonus = (Number(nomeadas[i].bonus) || 2) + 1; }
+  }
+  if (marco) g.experiencias = [...g.experiencias.filter((e) => String(e.nome || '').trim()), { nome: subida.novaExp.trim(), bonus: 2 }];
+  g.historico = [...g.historico, { nivel: novo, avancos: [...subida.escolhas] }];
+  g.nivel = novo;
+  await post('ficha', dadosDaGuia(g));
+  const nomes = subida.escolhas.map((k) => AVANCOS.find((a) => a.k === k).nome.replace(/^\+1 /, '+1 ')).join(' e ');
+  await post('chat', { texto: `⬆️ ${g.nome} subiu para o nível ${novo}! (${nomes})` }).catch(() => {});
+  $('modal-nivel').hidden = true;
+  aviso('⬆️ Nível ' + novo + '! Escolha a nova carta de domínio na prancheta.', 'ok', 6000);
+  setTimeout(() => abrirPrancheta(estado.voce.id, true), 600);
+}
+$('subir-nivel').onclick = abrirSubirNivel;
+
 $('ver-cartas').onclick = () => { const p = estado.pecas.find((q) => q.id === selecionada); if (p && p.userId) abrirPrancheta(p.userId); };
 $('minhas-cartas').onclick = () => abrirPrancheta(estado.voce.id);
 // Esc fecha a carta em destaque antes das janelas.
@@ -2472,6 +2632,8 @@ function painelMeu() {
   pintarAvatar($('meu-avatar'), p.nome, p.avatar, corDe(p));
   $('meu-nome').textContent = p.ficha ? p.nome : 'Personagem ainda não criado';
   $('minhas-cartas').hidden = !(estado.campanha.sistema === 'dh' && p.ficha);
+  $('subir-nivel').hidden = !(estado.campanha.sistema === 'dh' && p.ficha && p.ficha.guia && Number(p.ficha.nivel) < 10);
+  if (!$('subir-nivel').hidden) $('subir-nivel').textContent = '⬆️ Nível ' + (Number(p.ficha.nivel) + 1);
   $('meu-sub').textContent = p.ficha ? [p.ficha.classe, p.ficha.nivel ? 'nível ' + p.ficha.nivel : ''].filter(Boolean).join(' · ') : 'Crie a ficha e escolha a foto';
   $('abrir-ficha').textContent = p.ficha ? '✏️ Ficha e foto' : '✨ Criar meu personagem';
   $('meu-resumo').onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };

@@ -255,6 +255,15 @@ const cartasDe = (c: { guild_id: string }, u: string) =>
     .map((m) => ({ carta: m.carta, lugar: m.lugar, usada: !!m.usada }));
 const extrasDe = (c: { guild_id: string }, u: string) =>
   (db.prepare('SELECT extras FROM personagem_cartas_extras WHERE guild_id = ? AND user_id = ?').get(c.guild_id, u) as { extras: number } | undefined)?.extras ?? 0;
+/** Cartas de domínio extras: as que o mestre libera e as que o jogador ganhou como avanço ao subir de nível (na guia da ficha). */
+function extrasTotais(c: { guild_id: string }, u: string, ficha: Record<string, unknown> | undefined) {
+  let doAvanco = 0;
+  try {
+    const g = JSON.parse(String(ficha?.guia || '{}')) as { cartasAvanco?: number };
+    doAvanco = Math.max(0, Math.min(10, Math.floor(Number(g.cartasAvanco) || 0)));
+  } catch {}
+  return extrasDe(c, u) + doAvanco;
+}
 const assinarCarta = (id: string) => assinarArquivo(`carta:${id}`);
 /** Endereço aberto (assinado) da imagem da carta, para o Discord mostrar no webhook. */
 const cartaPublica = (id: string) => (SEGURO && temImagensDeCartas() ? `${ENDERECO}/carta/${id}.jpg?k=${assinarCarta(id)}` : null);
@@ -272,7 +281,7 @@ function servirCarta(res: ServerResponse, tamanho: string, id: string) {
 
 /** Cartas do personagem e o que a ficha permite (para a prancheta). */
 function pranchetaDe(c: Campanha, u: string) {
-  const minhas = cartasDe(c, u), extras = extrasDe(c, u), ficha = fichaDe(c, u);
+  const ficha = fichaDe(c, u), minhas = cartasDe(c, u), extras = extrasTotais(c, u, ficha);
   return { minhas, extras, limites: limites({ classe: ficha?.classe as string, nivel: ficha?.nivel as number }, minhas, extras), tocados: dominiosTocados(minhas) };
 }
 
@@ -1179,7 +1188,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       gravarChat(c, alvo, `${personagem} (${jogador})`, 'msg', texto, resultado, false, discord);
 
     if (acao === 'cartas/escolher') {
-      const motivo = motivoParaNaoEscolher(String(b.carta), { classe: ficha.classe as string, nivel: ficha.nivel as number }, minhas, extrasDe(c, alvo));
+      const motivo = motivoParaNaoEscolher(String(b.carta), { classe: ficha.classe as string, nivel: ficha.nivel as number }, minhas, extrasTotais(c, alvo, ficha));
       if (motivo) return json(res, 400, { erro: motivo });
       const lugar = lugarAoEscolher(carta!.id, minhas);
       db.prepare('INSERT INTO personagem_cartas (guild_id, user_id, carta, lugar, criada_em) VALUES (?, ?, ?, ?, ?)').run(c.guild_id, alvo, carta!.id, lugar, Date.now());
