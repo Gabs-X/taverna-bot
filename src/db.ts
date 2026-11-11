@@ -571,6 +571,32 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE mapas ADD COLUMN handout_id INTEGER;
     `);
   },
+  // 23: entre sessões. Diário (cada /campanha finalizar vira uma entrada, com o registro e as notas do mestre)
+  // e o que o grupo carrega junto: ouro e inventário compartilhados.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS campanha_sessoes (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        inicio      INTEGER NOT NULL,
+        fim         INTEGER NOT NULL,
+        mensagens   INTEGER NOT NULL DEFAULT 0,
+        rolagens    INTEGER NOT NULL DEFAULT 0,
+        arquivo     TEXT,
+        notas       TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS campanha_sessoes_campanha ON campanha_sessoes (campanha_id);
+      CREATE TABLE IF NOT EXISTS campanha_inventario (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        item        TEXT NOT NULL,
+        qtd         INTEGER NOT NULL DEFAULT 1,
+        criada_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS campanha_inventario_campanha ON campanha_inventario (campanha_id);
+      ALTER TABLE campanhas ADD COLUMN ouro INTEGER NOT NULL DEFAULT 0;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

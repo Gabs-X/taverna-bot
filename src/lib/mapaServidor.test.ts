@@ -16,7 +16,7 @@ const { criarSessao } = await import('./mapa.ts');
 
 const SEGREDO = 'segredo-de-teste';
 db.prepare("INSERT INTO bot_estado (chave, valor) VALUES ('mapa_segredo', ?)").run(SEGREDO);
-const falso = { guilds: { cache: new Map() }, users: { fetch: async () => { throw new Error('offline'); } }, user: { id: 'bot' } } as unknown as Client;
+const falso = { guilds: { cache: new Map() }, channels: { fetch: async () => null }, users: { fetch: async () => { throw new Error('offline'); } }, user: { id: 'bot' } } as unknown as Client;
 const log = console.log;
 console.log = () => {};
 const servidor = iniciarMapa(falso);
@@ -284,4 +284,37 @@ test('ponte com os bardos: só entra com a chave, recebe o pedido do mestre e de
   assert.equal(e.musica.fila.bardo, 'Claudinho');
   assert.equal((await estado('200000000000000002')).musica, null);
   controle.abort();
+});
+
+test('grupo: ouro e inventário compartilhados, com registro no chat', async () => {
+  const J = '200000000000000002';
+  assert.equal((await chamar(J, 'grupo/ouro', { delta: 50 })).status, 200);
+  assert.equal((await chamar(J, 'grupo/ouro', { delta: -80 })).status, 200); // não fica negativo
+  assert.equal((await estado(J)).grupo.ouro, 0);
+  await chamar(J, 'grupo/item', { item: 'Poção de cura', qtd: 2 });
+  await chamar(J, 'grupo/item', { item: 'poção de cura', qtd: 1 }); // mesmo item, junta
+  let itens = (await estado(J)).grupo.itens;
+  assert.deepEqual(itens.map((i: any) => [i.item, i.qtd]), [['Poção de cura', 3]]);
+  await chamar(J, 'grupo/item/qtd', { id: itens[0].id, delta: -1 });
+  assert.match((await chamar(J, 'chat')).corpo.at(-1).texto, /Usou 1× Poção de cura \(sobram 2\)/);
+  await chamar(J, 'grupo/item/remover', { id: itens[0].id });
+  itens = (await estado(J)).grupo.itens;
+  assert.equal(itens.length, 0);
+  assert.equal((await chamar(J, 'grupo/item', { item: '' })).status, 400);
+});
+
+test('diário: cada sessão finalizada aparece com o registro, e o mestre escreve as notas', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync('dados/campanhas', { recursive: true });
+  writeFileSync(`dados/campanhas/${campanha}-mesa-teste.txt`, 'Campanha: Mesa\n[20:00] Lyra: olá');
+  const id = Number(db.prepare('INSERT INTO campanha_sessoes (campanha_id, inicio, fim, mensagens, rolagens, arquivo) VALUES (?, 1, 2, 1, 0, ?)').run(campanha, `${campanha}-mesa-teste.txt`).lastInsertRowid);
+  const e = await estado(J);
+  assert.equal(e.diario[0].id, id);
+  const r = await fetch(`${base}/api/m/${campanha}/diario/${id}`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, J)}` } });
+  assert.match(await r.text(), /Lyra: olá/);
+  assert.equal((await chamar(J, 'diario/notas', { id, notas: 'x' })).status, 403);
+  assert.equal((await chamar(M, 'diario/notas', { id, notas: 'O grupo achou a cripta.' })).status, 200);
+  assert.equal((await estado(J)).diario[0].notas, 'O grupo achou a cripta.');
 });

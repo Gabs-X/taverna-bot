@@ -464,6 +464,10 @@ export const campanha: Comando = {
           },
           () => {
             db.prepare('UPDATE campanhas SET sessao_inicio = NULL WHERE id = ?').run(c.id);
+            // Entrada no diário da campanha (o mapa mostra a lista e o registro de cada sessão).
+            db.prepare('INSERT INTO campanha_sessoes (campanha_id, inicio, fim, mensagens, rolagens, arquivo) VALUES (?, ?, ?, ?, ?, ?)').run(
+              c.id, c.sessao_inicio, fim, mensagens, rolagens, `${c.id}-${arquivo}`,
+            );
             encerrada = true;
           },
           ids.map((id) => ({ id, apagar: async () => {

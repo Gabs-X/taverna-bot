@@ -219,7 +219,7 @@ function pedirAosBardos(pedido: PedidoMusica): Promise<{ ok: boolean; msg: strin
     pendentes.set(id, ok);
     setTimeout(() => {
       if (pendentes.delete(id)) ok({ ok: false, msg: 'Os bardos não responderam a tempo.' });
-    }, 25_000);
+    }, 25_000).unref();
   });
 }
 
@@ -339,6 +339,11 @@ async function montarEstado(c: Campanha, userId: string) {
     handout: handoutDe(c, m.handout_id),
     handouts: (db.prepare('SELECT id FROM mapa_handouts WHERE campanha_id = ? ORDER BY id DESC').all(c.id) as { id: number }[]).map((h) => handoutDe(c, h.id)),
     musica: souMestre ? musicaDaMesa(c) : null,
+    diario: (db.prepare('SELECT id, inicio, fim, mensagens, rolagens, notas FROM campanha_sessoes WHERE campanha_id = ? ORDER BY inicio DESC LIMIT 100').all(c.id) as Record<string, unknown>[]).map((s) => ({ ...s })),
+    grupo: {
+      ouro: (db.prepare('SELECT ouro FROM campanhas WHERE id = ?').get(c.id) as { ouro: number }).ouro,
+      itens: (db.prepare('SELECT id, item, qtd FROM campanha_inventario WHERE campanha_id = ? ORDER BY item COLLATE NOCASE').all(c.id) as Record<string, unknown>[]).map((i) => ({ ...i })),
+    },
     cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente })) : [],
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
@@ -716,6 +721,19 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const foto = acao.match(/^foto\/(\d+)$/);
     if (foto) return servirImagem(res, idsJogadores(c.id).includes(foto[1]) ? fotoDe(c, foto[1])?.imagem : null);
+    // Registro de uma sessão do diário (o mesmo arquivo do /campanha finalizar; rolagens escondidas não entram).
+    const registro = acao.match(/^diario\/(\d+)$/);
+    if (registro) {
+      const sessao = db.prepare('SELECT arquivo FROM campanha_sessoes WHERE id = ? AND campanha_id = ?').get(Number(registro[1]), c.id) as { arquivo: string | null } | undefined;
+      try {
+        if (!sessao?.arquivo || /[\\/]/.test(sessao.arquivo)) throw new Error('sem registro');
+        const conteudo = readFileSync(`dados/campanhas/${sessao.arquivo}`, 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+        return void res.end(conteudo);
+      } catch {
+        return json(res, 404, { erro: 'O registro dessa sessão não está mais no servidor.' });
+      }
+    }
     const imgHandout = acao.match(/^handout-imagem\/(\d+)$/);
     if (imgHandout) {
       const h = db.prepare('SELECT imagem FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(Number(imgHandout[1]), c.id) as { imagem: string } | undefined;
@@ -907,6 +925,43 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
     if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só marca o seu personagem.' });
     db.prepare('UPDATE mapa_pecas SET agiu = ? WHERE id = ?').run(b.agiu ? 1 : 0, p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // ---------- Grupo: ouro e inventário compartilhados (qualquer um da mesa mexe; o chat registra) ----------
+  if (acao.startsWith('grupo/')) {
+    const b = await lerJson<Record<string, unknown>>(req);
+    const autor = await autorDe(c, userId);
+    const registrar = (texto: string) => gravarChat(c, userId, autor, 'msg', texto.slice(0, LIMITE_TEXTO), null, false);
+    if (acao === 'grupo/ouro') {
+      const delta = Math.trunc(Number(b.delta));
+      if (!delta || Math.abs(delta) > 1_000_000) return json(res, 400, { erro: 'Quanto de ouro?' });
+      const atual = (db.prepare('SELECT ouro FROM campanhas WHERE id = ?').get(c.id) as { ouro: number }).ouro;
+      const novo = Math.max(0, atual + delta);
+      db.prepare('UPDATE campanhas SET ouro = ? WHERE id = ?').run(novo, c.id);
+      registrar(`💰 ${delta > 0 ? `+${delta}` : `${novo - atual}`} de ouro para o grupo (agora ${novo}).`);
+    } else if (acao === 'grupo/item') {
+      const item = String(b.item ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      const qtd = Math.trunc(Number(b.qtd ?? 1));
+      if (!item) return json(res, 400, { erro: 'Qual item?' });
+      if (!(qtd >= 1 && qtd <= 9999)) return json(res, 400, { erro: 'Quantidade de 1 a 9999.' });
+      const igual = db.prepare('SELECT id FROM campanha_inventario WHERE campanha_id = ? AND item = ? COLLATE NOCASE').get(c.id, item) as { id: number } | undefined;
+      if (igual) db.prepare('UPDATE campanha_inventario SET qtd = MIN(qtd + ?, 9999) WHERE id = ?').run(qtd, igual.id);
+      else {
+        const total = (db.prepare('SELECT COUNT(*) AS n FROM campanha_inventario WHERE campanha_id = ?').get(c.id) as { n: number }).n;
+        if (total >= 200) return json(res, 400, { erro: 'O inventário chegou a 200 itens.' });
+        db.prepare('INSERT INTO campanha_inventario (campanha_id, item, qtd, criada_em) VALUES (?, ?, ?, ?)').run(c.id, item, qtd, Date.now());
+      }
+      registrar(`🎒 Guardou ${qtd}× ${item} no inventário do grupo.`);
+    } else if (acao === 'grupo/item/qtd' || acao === 'grupo/item/remover') {
+      const it = db.prepare('SELECT * FROM campanha_inventario WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as { id: number; item: string; qtd: number } | undefined;
+      if (!it) return json(res, 404, { erro: 'Esse item não está mais no inventário.' });
+      const novo = acao === 'grupo/item/remover' ? 0 : Math.min(9999, it.qtd + Math.trunc(Number(b.delta) || 0));
+      if (novo <= 0) db.prepare('DELETE FROM campanha_inventario WHERE id = ?').run(it.id);
+      else db.prepare('UPDATE campanha_inventario SET qtd = ? WHERE id = ?').run(novo, it.id);
+      registrar(novo <= 0 ? `🎒 Tirou ${it.item} do inventário do grupo.` : novo < it.qtd ? `🎒 Usou ${it.qtd - novo}× ${it.item} (sobram ${novo}).` : `🎒 Guardou ${novo - it.qtd}× ${it.item} (agora ${novo}).`);
+    } else return json(res, 404, { erro: 'Ação desconhecida.' });
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
   }
@@ -1300,6 +1355,14 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // Diário: o mestre escreve o resumo de cada sessão (os jogadores leem no mapa).
+  if (acao === 'diario/notas') {
+    const r = db.prepare('UPDATE campanha_sessoes SET notas = ? WHERE id = ? AND campanha_id = ?').run(String(b.notas ?? '').trim().slice(0, 4000), Number(b.id), c.id);
+    if (!r.changes) return json(res, 404, { erro: 'Sessão não encontrada no diário.' });
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
   if (acao === 'cena/renomear') {
     const nome = String(b.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
     if (!nome) return json(res, 400, { erro: 'Dê um nome para a cena.' });
@@ -1343,6 +1406,8 @@ export function apagarMapa(campanhaId: number) {
   db.prepare('DELETE FROM mapa_cenas WHERE campanha_id = ?').run(campanhaId);
   for (const h of db.prepare('SELECT imagem FROM mapa_handouts WHERE campanha_id = ?').all(campanhaId) as { imagem: string }[]) apagarImagem(h.imagem);
   db.prepare('DELETE FROM mapa_handouts WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM campanha_inventario WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM campanha_sessoes WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM campanha_criaturas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);

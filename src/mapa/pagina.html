@@ -372,6 +372,18 @@
       <div class="linha"><button id="nova-npc" class="btn sec">+ NPC</button><button id="nova-inimigo" class="btn sec">+ Inimigo</button></div>
       <div class="mudo" style="margin-top:6px">Arraste da lista para o mapa (ou use 📍). Cada cópia ganha um número e a sua própria vida.</div>
     </section>
+    <section id="painel-grupo">
+      <h2>Grupo</h2>
+      <div class="recurso"><span class="rot">💰 Ouro do grupo</span><b id="ouro">0</b></div>
+      <div class="linha"><input id="ouro-valor" type="number" min="1" placeholder="quanto" style="width:90px;flex:none"><button id="ouro-mais" class="btn sec">+ Ganhar</button><button id="ouro-menos" class="btn sec">− Gastar</button></div>
+      <div class="rotulo-sec">🎒 Inventário</div>
+      <div id="itens"></div>
+      <div class="linha"><input id="item-nome" type="text" maxlength="60" placeholder="Item (ex.: Corda de 15 m)"><input id="item-qtd" type="number" min="1" value="1" style="width:62px;flex:none"><button id="item-add" class="btn sec">+</button></div>
+    </section>
+    <section id="painel-diario" hidden>
+      <h2>Diário da campanha</h2>
+      <div id="diario"></div>
+    </section>
     <section id="painel-meu" hidden>
       <h2>Meu personagem</h2>
       <div class="item" id="meu-resumo"><div class="avatar" id="meu-avatar"></div><div><div class="nome" id="meu-nome"></div><small id="meu-sub"></small></div></div>
@@ -407,6 +419,21 @@
     <button class="fechar" data-fecha="modal-handout" title="Fechar (Esc)">✕</button>
     <h2 id="mh-titulo"></h2>
     <img id="mh-img" alt="" style="width:100%;border-radius:12px;margin-top:10px;display:block">
+  </div>
+</div>
+
+<div class="modal" id="modal-registro" hidden>
+  <div class="caixa" style="width:min(760px,100%)">
+    <button class="fechar" data-fecha="modal-registro" title="Fechar (Esc)">✕</button>
+    <h2 id="mr-titulo">📖 Sessão</h2>
+    <div id="mr-notas-caixa">
+      <div class="rotulo-sec">Resumo do mestre</div>
+      <div id="mr-notas" style="white-space:pre-wrap;font-size:13.5px;line-height:1.45"></div>
+      <textarea id="mr-editar" maxlength="4000" placeholder="O que aconteceu nesta sessão (os jogadores leem aqui)" hidden style="min-height:110px"></textarea>
+      <div class="acoes" id="mr-acoes" hidden><button class="btn" id="mr-salvar">💾 Salvar resumo</button></div>
+    </div>
+    <div class="rotulo-sec">Registro do chat</div>
+    <pre id="mr-registro" style="white-space:pre-wrap;font-size:12.5px;background:var(--bg);border:1px solid var(--borda);border-radius:10px;padding:10px;max-height:46vh;overflow:auto;margin:0"></pre>
   </div>
 </div>
 
@@ -576,6 +603,7 @@ function painel() {
   painelCombate();
   painelCenas();
   painelImersao();
+  painelEntreSessoes();
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
@@ -1527,6 +1555,69 @@ function receberPing(d) {
   requestAnimationFrame(animar);
 }
 cv.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); }); // sem a rolagem automática do Windows
+
+// ---------- Entre sessões: grupo (ouro e inventário) e diário ----------
+const dataBR = (ms) => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const duracao = (ms) => { const min = Math.round(ms / 60000); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`; };
+let sessaoAberta = null;
+
+function painelEntreSessoes() {
+  const g = estado.grupo;
+  $('ouro').textContent = g.ouro.toLocaleString('pt-BR');
+  const itens = $('itens'); itens.textContent = '';
+  if (!g.itens.length) itens.append(el('div', 'mudo', 'Nada guardado ainda.'));
+  for (const it of g.itens) {
+    const d = el('div', 'recurso'); d.append(el('span', 'rot', it.item));
+    const menos = el('button', '', '−'), mais = el('button', '', '+'), tirar = el('button', '', '✕');
+    menos.title = 'Usar um'; mais.title = 'Guardar mais um'; tirar.title = 'Tirar do inventário';
+    menos.onclick = () => post('grupo/item/qtd', { id: it.id, delta: -1 }).catch(() => {});
+    mais.onclick = () => post('grupo/item/qtd', { id: it.id, delta: 1 }).catch(() => {});
+    tirar.onclick = () => post('grupo/item/remover', { id: it.id }).catch(() => {});
+    d.append(menos, el('b', '', '×' + it.qtd), mais, tirar); itens.append(d);
+  }
+  // Diário: uma linha por sessão finalizada; clique abre o resumo do mestre e o registro do chat.
+  $('painel-diario').hidden = !estado.diario.length;
+  const di = $('diario'); di.textContent = '';
+  for (const s of estado.diario) {
+    const d = el('div', 'item');
+    const info = el('div'); info.style.flex = '1'; info.style.minWidth = '0';
+    info.append(el('div', 'nome', `📖 ${dataBR(s.inicio)} · ${duracao(s.fim - s.inicio)}`), el('small', '', s.notas ? s.notas.split('\n')[0].slice(0, 70) : `${s.mensagens} mensagens · ${s.rolagens} rolagens${estado.voce.mestre ? ' · escreva o resumo' : ''}`));
+    d.append(info); d.onclick = () => abrirSessao(s);
+    di.append(d);
+  }
+  if (sessaoAberta && !$('modal-registro').hidden && document.activeElement !== $('mr-editar')) {
+    const s = estado.diario.find((x) => x.id === sessaoAberta);
+    if (s) $('mr-notas').textContent = s.notas || (estado.voce.mestre ? '' : 'O mestre ainda não escreveu o resumo.');
+  }
+}
+async function abrirSessao(s) {
+  sessaoAberta = s.id;
+  const mestre = estado.voce.mestre;
+  $('mr-titulo').textContent = `📖 Sessão de ${dataBR(s.inicio)} (${duracao(s.fim - s.inicio)})`;
+  $('mr-notas').textContent = s.notas || (mestre ? '' : 'O mestre ainda não escreveu o resumo.');
+  $('mr-notas').hidden = mestre; $('mr-editar').hidden = !mestre; $('mr-acoes').hidden = !mestre;
+  if (mestre) $('mr-editar').value = s.notas || '';
+  $('mr-registro').textContent = 'Carregando…';
+  $('modal-registro').hidden = false;
+  try {
+    const r = await fetch(api('diario/' + s.id));
+    $('mr-registro').textContent = r.ok ? await r.text() : ((await r.json().catch(() => ({}))).erro || 'Não consegui abrir o registro.');
+  } catch { $('mr-registro').textContent = 'Não consegui abrir o registro.'; }
+}
+$('mr-salvar').onclick = () => post('diario/notas', { id: sessaoAberta, notas: $('mr-editar').value }).then(() => aviso('Resumo salvo no diário.', 'ok')).catch(() => {});
+function mexerNoOuro(sinalOuro) {
+  const v = Math.trunc(Number($('ouro-valor').value));
+  if (!(v > 0)) return mostrarErro('Quanto de ouro?');
+  post('grupo/ouro', { delta: sinalOuro * v }).then(() => ($('ouro-valor').value = '')).catch(() => {});
+}
+$('ouro-mais').onclick = () => mexerNoOuro(1);
+$('ouro-menos').onclick = () => mexerNoOuro(-1);
+$('item-add').onclick = () => {
+  const item = $('item-nome').value.trim();
+  if (!item) return mostrarErro('Qual item?');
+  post('grupo/item', { item, qtd: Number($('item-qtd').value) || 1 }).then(() => { $('item-nome').value = ''; $('item-qtd').value = 1; }).catch(() => {});
+};
+$('item-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('item-add').onclick(); } });
 
 // ---------- Abas ----------
 
