@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.13.1 (11/11/2026)
+
+- 🧭 A barra de ícones da esquerda do mapa voltou ao normal: cabe na tela sem rolar e o nome de cada ícone aparece ao passar o mouse.
+
 ## v1.13.0 (11/11/2026)
 
 - 📅 /sessao agora é o comando da sessão: mapa, proximas, marcar, desmarcar, iniciar e finalizar. Se você está numa campanha só, nem precisa escolher.
