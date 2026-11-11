@@ -371,6 +371,7 @@
   .achado.sub { padding-left: 20px; font-size: 13px; }
   .lateral-vazio { padding: 12px; color: #7b6040; font-style: italic; font-family: var(--fonte-texto); }
   .link-livro { margin-top: 6px; }
+  .carta-chat { width: 120px; margin-top: 6px; }
   @media (max-width: 820px) {
     .modal > .caixa.livro { padding: 12px 10px 10px; height: calc(100vh - 16px); }
     .livro-topo { padding-right: 40px; }
@@ -380,6 +381,124 @@
     #ml-folha { padding: 10px 10px 30px; }
     .virar { display: none; }
   }
+
+  /* ---------- Ficha guiada (Daggerheart) ---------- */
+  .modal > .caixa.guia { width: min(1120px, 100%); }
+  .guia-topo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .guia-topo .trocar { margin-left: auto; font-size: 12.5px; color: var(--mudo); background: none; border: 0; text-decoration: underline; cursor: pointer; }
+  .passos { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0 10px; }
+  .passos button { display: flex; align-items: center; gap: 6px; padding: 6px 11px 6px 7px; border-radius: 99px; border: 1px solid var(--borda); background: rgba(255, 250, 235, .5); cursor: pointer; font-family: var(--fonte-titulo); font-size: 12px; font-weight: 700; color: var(--mudo); transition: background .12s, color .12s, border-color .12s; }
+  .passos button .n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: #e3d1aa; color: #5a3d1a; }
+  .passos button.feito .n { background: #3f7d2c; color: #fff; }
+  .passos button.feito .n::after { content: '✓'; } .passos button.feito .n span { display: none; }
+  .passos button.atual { background: #fff8e6; color: #4a2a0c; border-color: #8e5a1c; box-shadow: 0 2px 8px rgba(120, 80, 30, .2); }
+  .passos button.atual .n { background: var(--latao); color: #2b1a08; }
+  .guia-corpo { display: grid; grid-template-columns: 1fr 270px; gap: 16px; align-items: start; }
+  .guia-passo { min-width: 0; animation: entra .2s ease-out; }
+  .guia-passo h3 { font-family: var(--fonte-titulo); font-size: 17px; margin: 2px 0 4px; color: #4a2a0c; }
+  .guia-passo > p.ajuda { margin: 0 0 12px; font-family: var(--fonte-texto); font-size: 14.5px; line-height: 1.45; color: var(--mudo); }
+  .opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 9px; }
+  .opcao { text-align: left; border: 2px solid #d8c393; background: rgba(255, 252, 240, .75); border-radius: 10px; padding: 10px 11px; cursor: pointer; font: inherit; color: var(--tinta); transition: border-color .12s, transform .12s, box-shadow .12s; position: relative; }
+  .opcao:hover { border-color: #b08c55; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(120, 80, 30, .18); }
+  .opcao.sel { border-color: #8e5a1c; background: #fff8e6; box-shadow: 0 0 0 3px rgba(217, 164, 65, .35); }
+  .opcao.sel::after { content: '✓'; position: absolute; right: 8px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--latao); color: #2b1a08; display: grid; place-items: center; font-weight: 900; font-size: 13px; }
+  .opcao b { font-family: var(--fonte-titulo); font-size: 15px; display: block; color: #4a2a0c; }
+  .opcao small { display: block; margin-top: 3px; }
+  .opcao .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+  .chip-dom { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; text-shadow: 0 1px 1px #0006; }
+  .stat { display: inline-flex; gap: 3px; align-items: baseline; font-size: 12.5px; margin-right: 10px; color: var(--mudo); }
+  .stat b { font-size: 14px; display: inline; color: #5a300a; }
+  .opcoes.cartas { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .opcao.carta-op { padding: 5px; text-align: center; }
+  .opcao.carta-op img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 6px; display: block; background: #e8dcc2; }
+  .opcao.carta-op span { display: block; font-family: var(--fonte-titulo); font-size: 12px; font-weight: 700; margin-top: 4px; }
+  .sub-op { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: center; }
+  .sub-op img { width: 150px; border-radius: 8px; display: block; }
+  .tracos-guia { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .traco-g { border: 1px solid #d8c393; border-radius: 10px; padding: 9px 10px; background: rgba(255, 252, 240, .75); }
+  .traco-g .nome { font-family: var(--fonte-titulo); font-weight: 700; font-size: 13.5px; color: #4a2a0c; display: flex; justify-content: space-between; }
+  .traco-g .nome .final { font-size: 20px; color: #5a300a; }
+  .traco-g small { display: block; margin: 2px 0 6px; font-style: italic; }
+  .traco-g select { padding: 5px 6px; }
+  .traco-g .avanco { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; color: var(--mudo); }
+  .traco-g .avanco button, .contador button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--borda); background: #fff8e6; cursor: pointer; font-weight: 700; padding: 0; }
+  .bolsa { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; }
+  .bolsa .v { min-width: 34px; padding: 4px 8px; border-radius: 8px; text-align: center; font-family: var(--fonte-titulo); font-weight: 900; background: var(--latao); color: #2b1a08; box-shadow: 0 2px 0 #7a5218; }
+  .bolsa .v.usado { background: #e3d1aa; color: #a08a66; box-shadow: none; text-decoration: line-through; }
+  .exps { display: grid; gap: 7px; }
+  .exp-linha { display: grid; grid-template-columns: 1fr 70px; gap: 6px; }
+  .exemplos { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; }
+  .exemplos button { border: 1px dashed #b08c55; background: transparent; border-radius: 99px; padding: 3px 10px; font-size: 12px; cursor: pointer; color: #7a5218; }
+  .contador { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .contador b { min-width: 24px; text-align: center; font-family: var(--fonte-titulo); }
+  .avancos { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 8px; }
+  .avancos .contador { justify-content: space-between; border: 1px solid #d8c393; border-radius: 8px; padding: 6px 9px; background: rgba(255, 252, 240, .6); }
+  .guia-nav { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  .guia-nav .esp { flex: 1; }
+  /* Resumo ao lado: a ficha se preenchendo sozinha */
+  .resumo { position: sticky; top: 0; border: 1px solid #b08c55; border-radius: 8px; padding: 12px; background: rgba(255, 250, 235, .7); box-shadow: inset 0 0 20px rgba(140, 90, 30, .12); }
+  .resumo h4 { margin: 0 0 2px; font-family: var(--fonte-titulo); font-size: 16px; color: #4a2a0c; }
+  .resumo .quem { font-style: italic; font-size: 13px; color: var(--mudo); margin-bottom: 8px; }
+  .resumo .grade-r { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .resumo .cx { text-align: center; border: 1px solid #d8c393; border-radius: 7px; padding: 4px 2px; background: #fffaf0; }
+  .resumo .cx b { display: block; font-family: var(--fonte-titulo); font-size: 18px; color: #5a300a; line-height: 1.1; }
+  .resumo .cx small { font-size: 10.5px; }
+  .resumo .cx.muda b { animation: pulsa .5s ease-out; }
+  @keyframes pulsa { 0% { transform: scale(1.5); color: #c0901f; } 100% { transform: none; } }
+  .resumo .falta { margin: 10px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
+  .resumo .falta li { padding: 2px 0; }
+  .resumo .falta li.ok { color: #3f7d2c; } .resumo .falta li.ok::before { content: '✓ '; font-weight: 900; }
+  .resumo .falta li.nao { color: #a3291f; } .resumo .falta li.nao::before { content: '• '; font-weight: 900; }
+  @media (max-width: 820px) { .guia-corpo { grid-template-columns: 1fr; } .resumo { position: static; order: -1; } .sub-op { grid-template-columns: 100px 1fr; } .sub-op img { width: 100px; } }
+
+  /* ---------- Prancheta de cartas ---------- */
+  .modal > .caixa.prancheta { width: min(1180px, 100%); }
+  .pr-topo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 4px; }
+  .pr-topo .esp { flex: 1; }
+  .medidor { font-family: var(--fonte-titulo); font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: #fff8e6; border: 1px solid #c4a46f; color: #5a3d1a; }
+  .medidor.cheio { background: #e8f3dc; border-color: #6a9a4a; color: #2f5a1a; }
+  .pr-secao { margin-top: 14px; }
+  .pr-secao > .titulo { display: flex; align-items: center; gap: 10px; font-family: var(--fonte-titulo); font-weight: 900; font-size: 14px; color: #4a2a0c; margin-bottom: 8px; }
+  .pr-secao > .titulo::before, .pr-secao > .titulo::after { content: ''; flex: 1; border-top: 1px dashed #b08c55; }
+  .pr-linha { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .pr-grupo { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .pr-grupo > small { font-family: var(--fonte-titulo); font-weight: 700; }
+  .vaga { width: 132px; aspect-ratio: 5 / 7; border: 2px dashed #b08c55; border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: #9a7b4c; background: rgba(255, 250, 235, .45); transition: background .15s, border-color .15s; }
+  .vaga.alvo { background: #fff3cf; border-color: #8e5a1c; }
+  .vaga button { font-size: 12px; }
+  .carta-pr { width: 132px; position: relative; border-radius: 9px; cursor: pointer; transition: transform .15s, box-shadow .15s; box-shadow: 0 4px 10px rgba(60, 35, 10, .35); background: #f3e6c8; }
+  .carta-pr:hover { transform: translateY(-5px) rotate(-1deg); box-shadow: 0 12px 22px rgba(60, 35, 10, .45); z-index: 2; }
+  .carta-pr img { width: 100%; display: block; border-radius: 9px; aspect-ratio: 5 / 7; object-fit: cover; }
+  .carta-pr.usada img { filter: grayscale(.85) brightness(.85); }
+  .carta-pr.usada::after { content: 'USADA'; position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) rotate(-14deg); font-family: var(--fonte-titulo); font-weight: 900; font-size: 18px; color: #a3291f; border: 3px solid #a3291f; border-radius: 6px; padding: 1px 8px; background: rgba(255, 250, 235, .8); }
+  .carta-pr.arrastando { opacity: .4; }
+  .carta-pr .custo { position: absolute; top: -7px; right: -7px; min-width: 24px; height: 24px; border-radius: 99px; display: grid; place-items: center; font-size: 11.5px; font-weight: 900; background: #2b1b10; color: #f0c35a; border: 2px solid #f0c35a; padding: 0 5px; }
+  .carta-texto { width: 100%; aspect-ratio: 5 / 7; border-radius: 9px; padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; color: #fff; text-shadow: 0 1px 2px #0008; text-align: center; justify-content: center; font-family: var(--fonte-titulo); }
+  .carta-texto b { font-size: 14px; } .carta-texto small { color: #fff; opacity: .9; }
+  .cofre { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; justify-items: center; padding: 10px; border-radius: 10px; border: 2px dashed transparent; min-height: 90px; transition: background .15s, border-color .15s; }
+  .cofre.alvo { background: #fff3cf; border-color: #8e5a1c; }
+  .tocado { font-size: 12px; font-weight: 700; color: #2f5a1a; background: #e8f3dc; border: 1px solid #6a9a4a; border-radius: 99px; padding: 2px 9px; }
+  /* Carta em destaque, com as ações */
+  #carta-zoom { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(10, 5, 2, .78); padding: 16px; animation: entra .15s ease-out; }
+  #carta-zoom .zoom { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+  #carta-zoom img, #carta-zoom .carta-texto { width: min(340px, 82vw); border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, .7); animation: vira .35s ease-out; }
+  @keyframes vira { from { transform: perspective(900px) rotateY(80deg); } to { transform: none; } }
+  #carta-zoom .acoes-z { display: flex; flex-direction: column; gap: 8px; min-width: 210px; }
+  #carta-zoom .acoes-z h3 { margin: 0; font-family: var(--fonte-titulo); color: var(--ouro); font-size: 19px; text-shadow: 0 2px 0 #000; }
+  #carta-zoom .acoes-z small { color: #e3cfa6; }
+  #carta-zoom label.escondida { color: #f3e6c8; }
+  /* Catálogo para escolher */
+  .catalogo-filtros { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .catalogo-filtros .filtros { margin: 0; }
+  .catalogo-filtros input[type=text] { width: 200px; flex: 1 1 160px; }
+  .catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; max-height: 58vh; overflow-y: auto; padding: 4px 4px 10px; }
+  .cat-carta { position: relative; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 9px; transition: transform .15s; }
+  .cat-carta:hover:not(.bloq) { transform: translateY(-4px) scale(1.02); }
+  .cat-carta img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 9px; display: block; box-shadow: 0 4px 10px rgba(60, 35, 10, .35); }
+  .cat-carta.bloq img, .cat-carta.bloq .carta-texto { filter: grayscale(1) brightness(.75); }
+  .cat-carta.bloq { cursor: help; }
+  .cat-carta .motivo { position: absolute; left: 6px; right: 6px; bottom: 6px; background: rgba(30, 15, 5, .85); color: #f3e6c8; font-size: 11px; line-height: 1.25; padding: 4px 6px; border-radius: 6px; }
+  .cat-carta .tem { position: absolute; top: 6px; left: 6px; background: #3f7d2c; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -453,7 +572,7 @@
     <div class="tracos" id="tracos"></div>
     <div class="rotulo-sec">Ficha</div>
     <dl id="ficha"></dl>
-    <div class="linha"><button id="editar-ficha" class="btn" hidden>✏️ Editar meu personagem</button></div>
+    <div class="linha"><button id="editar-ficha" class="btn" hidden>✏️ Editar meu personagem</button><button id="ver-cartas" class="btn sec" hidden>🃏 Cartas</button></div>
     <div id="gestao" hidden>
       <div class="rotulo-sec">Mestre</div>
       <div class="linha pv-edit" id="linha-ini" hidden><span class="mudo" style="flex:1">Iniciativa</span><input id="ini-valor" type="number" min="-20" max="99" title="Enter para gravar; vazio tira da ordem"></div>
@@ -563,7 +682,7 @@
     <section id="painel-meu" hidden>
       <h2>Meu personagem</h2>
       <div class="item" id="meu-resumo"><div class="avatar" id="meu-avatar"></div><div><div class="nome" id="meu-nome"></div><small id="meu-sub"></small></div></div>
-      <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button></div>
+      <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button><button id="minhas-cartas" class="btn sec" hidden>🃏 Minhas cartas</button></div>
     </section>
     <section>
       <h2>Personagens</h2>
@@ -577,6 +696,8 @@
     <button class="fechar" data-fecha="modal-ficha" title="Fechar (Esc)">✕</button>
     <h2 id="mf-titulo">Seu personagem</h2>
     <small id="mf-sub"></small>
+    <div id="mf-guia" hidden></div>
+    <div id="mf-livre">
     <div class="foto-edit">
       <div class="avatar" id="mf-avatar"></div>
       <div>
@@ -587,6 +708,16 @@
     </div>
     <form id="mf-form" autocomplete="off"></form>
     <div class="acoes"><button class="btn sec" data-fecha="modal-ficha">Depois</button><button class="btn" id="mf-salvar">💾 Salvar personagem</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-cartas" hidden>
+  <div class="caixa prancheta">
+    <button class="fechar" data-fecha="modal-cartas" title="Fechar (Esc)">✕</button>
+    <h2 id="pr-titulo">🃏 Cartas</h2>
+    <small>Arraste entre o Carregamento e o Cofre · clique numa carta para usar, guardar ou ver grande</small>
+    <div id="pr-corpo"></div>
   </div>
 </div>
 
@@ -823,6 +954,7 @@ function painel() {
   painelImersao();
   painelEntreSessoes();
   painelLivro();
+  if (!$('modal-cartas').hidden) { opcoesCartas = null; desenharPrancheta().catch(() => {}); }
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
@@ -889,12 +1021,13 @@ function fichaCard() {
     for (const [k, v] of linhas) if (v !== null && v !== undefined && v !== '') dl.append(el('dt', '', k), el('dd', '', String(v)));
   } else {
     for (const [k, v] of Object.entries(f)) {
-      if (v === null || v === '' || k === 'nome' || k === 'classe' || k === 'nivel' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
+      if (v === null || v === '' || k === 'guia' || k === 'nome' || k === 'classe' || k === 'nivel' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
       dl.append(el('dt', '', NOMES[k] || k.replaceAll('_', ' ')), el('dd', '', k === 'experiencias' ? experienciasEmTexto(v) : String(v)));
     }
   }
   if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? (p.tipo === 'inimigo' ? 'Inimigo do mestre.' : 'NPC do mestre.') : p.meu ? 'Você ainda não criou o seu personagem.' : 'Ainda sem ficha.'));
   $('editar-ficha').hidden = !p.meu;
+  $('ver-cartas').hidden = !(estado.campanha.sistema === 'dh' && p.userId && p.ficha && p.prancheta);
   $('editar-ficha').textContent = p.ficha ? '✏️ Editar meu personagem' : '✨ Criar meu personagem';
   $('editar-criatura').hidden = !(daBiblioteca && estado.voce.mestre);
   const comPV = daBiblioteca && estado.voce.mestre && typeof f.pv_max === 'number';
@@ -1221,6 +1354,7 @@ addEventListener('keydown', (e) => {
   else if (k === 'r') $('f-regua').onclick();
   else if (k === 'p') $('f-painel').onclick();
   else if (k === 'l' && estado && estado.livro) abrirLivro();
+  else if (k === 'c' && estado && estado.campanha.sistema === 'dh' && minhaPeca() && minhaPeca().ficha) abrirPrancheta(estado.voce.id);
 });
 
 // ---------- Importar mapa ----------
@@ -1661,8 +1795,14 @@ const CAMPOS_FICHA = {
 };
 const minhaPeca = () => estado && estado.pecas.find((p) => p.id === estado.voce.pecaId);
 
+/** Daggerheart abre a ficha guiada; D&D, o formulário. */
 function abrirFicha() {
+  if (estado && estado.campanha.sistema === 'dh') return abrirFichaGuiada();
+  abrirFichaLivre();
+}
+function abrirFichaLivre() {
   const p = minhaPeca(); if (!p) return;
+  $('mf-guia').hidden = true; $('mf-livre').hidden = false;
   const f = p.ficha ? { ...p.ficha } : null;
   if (f && f.experiencias !== undefined) f.experiencias = experienciasEmTexto(f.experiencias);
   $('mf-titulo').textContent = f ? '✏️ ' + p.nome : '✨ Crie o seu personagem';
@@ -1689,12 +1829,548 @@ $('mf-arquivo').onchange = async (e) => {
     const blob = await reduzirImagem(f, 512);
     await post('ficha/foto', undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
     aviso('Foto do personagem atualizada.', 'ok');
-    setTimeout(fotoNaFicha, 400);
+    setTimeout(() => { fotoNaFicha(); if (!$('mf-guia').hidden) desenharGuia(); }, 600);
   } catch (err) { if (err && err.message && !/^(Não deu|Só |Use uma|Imagem)/.test(err.message)) mostrarErro(err.message); }
 };
 $('mf-tirar').onclick = () => post('ficha/foto/remover', {}).then(() => setTimeout(fotoNaFicha, 400)).catch(() => {});
 $('editar-ficha').onclick = abrirFicha;
 $('abrir-ficha').onclick = abrirFicha;
+
+// ---------- Ficha guiada do Daggerheart ----------
+// Os números vêm do livro básico (PT-BR): classes nas páginas 29 a 51, criação nas 18 a 21, armaduras na 127,
+// limiares na 115 (soma o nível; sem armadura, Maior = nível e Grave = dobro) e avanços na 24
+// (Proficiência e uma Experiência a mais nos níveis 2, 5 e 8).
+const CLASSES_DH = {
+  bardo: { nome: 'Bardo', ev: 10, pv: 5, pagina: 29, desc: 'Inspira os aliados com palavras e música.' },
+  druida: { nome: 'Druida', ev: 10, pv: 6, pagina: 31, desc: 'Guardião da natureza que vira fera.' },
+  guardiao: { nome: 'Guardião', ev: 9, pv: 7, pagina: 37, desc: 'Muralha da linha de frente que protege o grupo.' },
+  ranger: { nome: 'Ranger', ev: 12, pv: 6, pagina: 39, desc: 'Caçador e rastreador à distância.' },
+  ladino: { nome: 'Ladino', ev: 12, pv: 6, pagina: 43, desc: 'Furtivo, esperto e cheio de truques.' },
+  seraph: { nome: 'Serafim', ev: 9, pv: 7, pagina: 45, desc: 'Guerreiro sagrado com poder divino.' },
+  feiticeiro: { nome: 'Feiticeiro', ev: 10, pv: 6, pagina: 47, desc: 'Magia que nasce de dentro, crua e poderosa.' },
+  guerreiro: { nome: 'Guerreiro', ev: 11, pv: 6, pagina: 49, desc: 'Mestre das armas e do combate.' },
+  mago: { nome: 'Mago', ev: 11, pv: 5, pagina: 51, desc: 'Estudioso das artes arcanas.' },
+};
+// Traço de conjuração de cada subclasse (lido nas cartas de subclasse). Guardião e Guerreiro não conjuram.
+const CONJURACAO = { bardo: 'presenca', druida: 'instinto', feiticeiro: 'instinto', ladino: 'acuidade', mago: 'conhecimento', ranger: 'agilidade', seraph: 'forca' };
+const DESCRICAO_TRACO = { agilidade: 'correr, pular, esquivar', forca: 'erguer, empurrar, agarrar', acuidade: 'controle, precisão, furtividade', instinto: 'perceber, sentir, rastrear', presenca: 'encantar, convencer, intimidar', conhecimento: 'lembrar, analisar, entender' };
+const ARMADURAS_T1 = {
+  nenhuma: { nome: 'Sem armadura', maior: null, grave: null, pontos: 0, ev: 0, ag: 0, efeito: 'Maior = nível, Grave = dobro do nível' },
+  gambeson: { nome: 'Gambeson', maior: 5, grave: 11, pontos: 3, ev: 1, ag: 0, efeito: 'Flexível: +1 de Evasão' },
+  couro: { nome: 'Couro', maior: 6, grave: 13, pontos: 3, ev: 0, ag: 0, efeito: '—' },
+  malha: { nome: 'Cota de Malha', maior: 7, grave: 15, pontos: 4, ev: -1, ag: 0, efeito: 'Pesada: −1 de Evasão' },
+  placa: { nome: 'Placa Completa', maior: 8, grave: 17, pontos: 4, ev: -2, ag: -1, efeito: 'Muito pesada: −2 de Evasão e −1 de Agilidade' },
+};
+const VALORES_TRACOS = [2, 1, 1, 0, 0, -1];
+const EXEMPLOS_EXP = ['Ladrão de Cofres', 'Criado nas Ruas', 'Erudito de Bibliotecas', 'Caçador da Floresta', 'Veterano de Guerra', 'Navegador', 'Mentiroso Nato', 'Curandeiro de Aldeia', 'Ferreiro', 'Diplomata da Corte'];
+const PASSOS_GUIA = [
+  { k: 'classe', nome: 'Classe' }, { k: 'subclasse', nome: 'Subclasse' }, { k: 'heranca', nome: 'Herança' }, { k: 'tracos', nome: 'Traços' },
+  { k: 'armadura', nome: 'Armadura' }, { k: 'experiencias', nome: 'Experiências' }, { k: 'nome', nome: 'Nome e nível' },
+];
+const tiers = (n) => (n >= 2) + (n >= 5) + (n >= 8);
+let catalogoCartas = null;
+async function carregarCatalogo() {
+  if (!catalogoCartas) { catalogoCartas = await pegar('cartas/catalogo'); catalogoCartas.mapa = new Map(catalogoCartas.cartas.map((c) => [c.id, c])); }
+  return catalogoCartas;
+}
+const urlCarta = (id, grande) => api('carta/' + (grande ? 'g' : 'p') + '/' + id);
+/** Uma carta desenhada: a imagem (se o servidor tiver) ou um cartão com o nome, nas cores do domínio. */
+function desenhoCarta(c, grande) {
+  if (catalogoCartas && catalogoCartas.imagens) { const i = el('img'); i.src = urlCarta(c.id, grande); i.alt = c.nome; i.loading = 'lazy'; return i; }
+  const cor = c.tipo === 'dominio' ? catalogoCartas.dominios[c.dominio].cor : c.tipo === 'subclasse' ? '#6b4a2c' : c.tipo === 'ancestralidade' ? '#3a6b7a' : '#7a5a2a';
+  const d = el('div', 'carta-texto'); d.style.background = `linear-gradient(160deg, ${cor}, #1a0f08)`;
+  const sub = c.tipo === 'dominio' ? `${catalogoCartas.dominios[c.dominio].nome} · nível ${c.nivel} · custo ${c.custo}` : c.tipo === 'subclasse' ? catalogoCartas.estagios[c.estagio].nome : c.tipo === 'ancestralidade' ? 'Ancestralidade' : 'Comunidade';
+  d.append(el('b', '', c.nome), el('small', '', sub));
+  return d;
+}
+
+let guia = null, passoGuia = 0;
+function novoGuia(p) {
+  const f = p && p.ficha;
+  let salvo = {};
+  try { salvo = f && f.guia ? JSON.parse(f.guia) : {}; } catch {}
+  const pr = (p && p.prancheta && p.prancheta.minhas) || [];
+  const tem = (tipo) => pr.filter((m) => catalogoCartas.mapa.get(m.carta) && catalogoCartas.mapa.get(m.carta).tipo === tipo).map((m) => m.carta);
+  const sub = tem('subclasse').map((id) => catalogoCartas.mapa.get(id)).find((c) => c.estagio === 'fundacao');
+  return {
+    classe: salvo.classe || null,
+    subclasse: salvo.subclasse || (sub && sub.id) || null,
+    ancestralidades: salvo.ancestralidades || tem('ancestralidade'),
+    comunidade: salvo.comunidade || tem('comunidade')[0] || null,
+    mista: !!salvo.mista || tem('ancestralidade').length > 1,
+    tracos: salvo.tracos || {},
+    avancoTracos: salvo.avancoTracos || {},
+    armadura: salvo.armadura || null,
+    extras: Object.assign({ pv: 0, estresse: 0, evasao: 0 }, salvo.extras || {}),
+    experiencias: salvo.experiencias || (f && f.experiencias ? String(f.experiencias).split(',').filter(Boolean).map((i) => { const [nome, b] = i.split('|'); return { nome, bonus: Number(b) || 2 }; }) : []),
+    nome: (f && f.nome) || '',
+    nivel: (f && f.nivel) || 1,
+  };
+}
+/** Tudo o que a ficha calcula sozinha a partir das escolhas. */
+function calcularGuia(g) {
+  const cl = g.classe && CLASSES_DH[g.classe], arm = ARMADURAS_T1[g.armadura || 'nenhuma'], n = Math.max(1, Math.min(10, Number(g.nivel) || 1));
+  const tracos = {};
+  for (const t of TRACOS_DH) tracos[t] = (Number(g.tracos[t]) || 0) + (Number(g.avancoTracos[t]) || 0) + (t === 'agilidade' ? arm.ag : 0);
+  return {
+    nivel: n, tracos,
+    evasao: cl ? cl.ev + arm.ev + (Number(g.extras.evasao) || 0) : null,
+    pv_max: cl ? cl.pv + (Number(g.extras.pv) || 0) : null,
+    estresse_max: 6 + (Number(g.extras.estresse) || 0),
+    armadura_max: arm.pontos,
+    limiar_maior: arm.maior === null ? n : arm.maior + n,
+    limiar_grave: arm.grave === null ? 2 * n : arm.grave + n,
+    proficiencia: 1 + tiers(n),
+    experiencias: 2 + tiers(n),
+    esperanca: 2,
+  };
+}
+function pendenciasGuia(g) {
+  const usados = TRACOS_DH.map((t) => g.tracos[t]).filter((v) => v !== undefined && v !== '' && v !== null);
+  const restantes = [...VALORES_TRACOS]; let tracosOk = usados.length === 6;
+  for (const v of usados) { const i = restantes.indexOf(Number(v)); if (i < 0) tracosOk = false; else restantes.splice(i, 1); }
+  const calc = calcularGuia(g);
+  return [
+    ['Classe', !!g.classe], ['Subclasse', !!g.subclasse], ['Ancestralidade', g.ancestralidades.length >= (g.mista ? 2 : 1)], ['Comunidade', !!g.comunidade],
+    ['Traços (+2, +1, +1, 0, 0, −1)', tracosOk], ['Armadura', !!g.armadura],
+    [`${calc.experiencias} Experiências`, g.experiencias.filter((e) => e && String(e.nome || '').trim()).length >= calc.experiencias], ['Nome', !!String(g.nome).trim()],
+  ];
+}
+
+async function abrirFichaGuiada() {
+  const p = minhaPeca(); if (!p) return;
+  try { await carregarCatalogo(); } catch { return; }
+  guia = novoGuia(p);
+  passoGuia = 0;
+  const pend = pendenciasGuia(guia); const primeiro = pend.findIndex(([, ok]) => !ok);
+  passoGuia = p.ficha ? 0 : Math.max(0, Math.min(PASSOS_GUIA.length - 1, primeiro < 0 ? 0 : [0, 1, 2, 2, 3, 4, 5, 6][primeiro]));
+  $('mf-titulo').textContent = p.ficha ? '✏️ ' + p.nome : '✨ Crie o seu personagem';
+  $('mf-sub').textContent = 'Daggerheart · ' + estado.campanha.nome + ' · a ficha se preenche sozinha conforme você escolhe';
+  $('modal-ficha').querySelector('.caixa').classList.add('guia');
+  $('mf-livre').hidden = true; $('mf-guia').hidden = false;
+  desenharGuia();
+  $('modal-ficha').hidden = false;
+}
+function usarFormularioLivre() {
+  $('modal-ficha').querySelector('.caixa').classList.remove('guia');
+  $('mf-guia').hidden = true; $('mf-livre').hidden = false;
+  abrirFichaLivre();
+}
+
+let resumoAnterior = {};
+function desenharGuia() {
+  const g = guia, calc = calcularGuia(g), pend = pendenciasGuia(g), caixa = $('mf-guia');
+  caixa.textContent = '';
+  const topo = el('div', 'guia-topo');
+  const livre = el('button', 'trocar', '✍️ Prefiro preencher tudo à mão'); livre.type = 'button'; livre.onclick = usarFormularioLivre;
+  topo.append(livre); caixa.append(topo);
+  // Trilha de passos
+  const passos = el('div', 'passos');
+  const feitoPasso = { classe: pend[0][1], subclasse: pend[1][1], heranca: pend[2][1] && pend[3][1], tracos: pend[4][1], armadura: pend[5][1], experiencias: pend[6][1], nome: pend[7][1] };
+  PASSOS_GUIA.forEach((ps, i) => {
+    const b = el('button', (i === passoGuia ? 'atual ' : '') + (feitoPasso[ps.k] ? 'feito' : '')); b.type = 'button';
+    const nn = el('span', 'n'); nn.append(el('span', '', String(i + 1)));
+    b.append(nn, document.createTextNode(ps.nome)); b.onclick = () => { passoGuia = i; desenharGuia(); };
+    passos.append(b);
+  });
+  caixa.append(passos);
+  const corpo = el('div', 'guia-corpo'), passo = el('div', 'guia-passo');
+  corpo.append(passo, resumoGuia(calc, pend)); caixa.append(corpo);
+  [passoClasse, passoSubclasse, passoHeranca, passoTracos, passoArmadura, passoExperiencias, passoNome][passoGuia](passo, calc);
+  // Navegação
+  const nav = el('div', 'guia-nav');
+  if (passoGuia > 0) { const v = el('button', 'btn sec', '◀ Voltar'); v.type = 'button'; v.onclick = () => { passoGuia--; desenharGuia(); }; nav.append(v); }
+  nav.append(el('span', 'esp'));
+  if (passoGuia < PASSOS_GUIA.length - 1) { const a = el('button', 'btn sec', 'Próximo ▶'); a.type = 'button'; a.onclick = () => { passoGuia++; desenharGuia(); }; nav.append(a); }
+  const salvar = el('button', 'btn', '💾 Salvar personagem'); salvar.type = 'button'; salvar.onclick = () => salvarFichaGuiada().catch(() => {});
+  nav.append(salvar);
+  passo.append(nav);
+}
+function resumoGuia(calc, pend) {
+  const r = el('div', 'resumo'), g = guia;
+  r.append(el('h4', '', g.nome || 'Seu personagem'));
+  const cl = g.classe ? CLASSES_DH[g.classe].nome : '—', sub = g.subclasse && catalogoCartas.mapa.get(g.subclasse);
+  const anc = g.ancestralidades.map((id) => catalogoCartas.mapa.get(id)?.nome).filter(Boolean).join(' / ') || '—';
+  const com = g.comunidade ? catalogoCartas.mapa.get(g.comunidade)?.nome : '—';
+  r.append(el('div', 'quem', `${cl}${sub ? ' (' + sub.nome + ')' : ''} · ${anc} · ${com} · nível ${calc.nivel}`));
+  const grade = el('div', 'grade-r');
+  const caixas = [['Evasão', calc.evasao ?? '—'], ['PV', calc.pv_max ?? '—'], ['Estresse', calc.estresse_max], ['Esperança', calc.esperanca], ['Armadura', calc.armadura_max], ['Proficiência', calc.proficiencia],
+    ['Limiar Maior', calc.limiar_maior], ['Limiar Grave', calc.limiar_grave], ['Experiências', calc.experiencias]];
+  for (const [k, v] of caixas) { const c = el('div', 'cx' + (resumoAnterior[k] !== undefined && resumoAnterior[k] !== v ? ' muda' : '')); c.append(el('b', '', String(v)), el('small', '', k)); grade.append(c); resumoAnterior[k] = v; }
+  r.append(grade);
+  const tr = el('div', 'grade-r'); tr.style.marginTop = '6px';
+  for (const t of TRACOS_DH) { const c = el('div', 'cx'); c.append(el('b', '', g.tracos[t] === undefined || g.tracos[t] === '' ? '—' : sinal(calc.tracos[t])), el('small', '', NOMES[t])); tr.append(c); }
+  r.append(tr);
+  const falta = el('ul', 'falta');
+  for (const [n, ok] of pend) falta.append(el('li', ok ? 'ok' : 'nao', n));
+  r.append(falta);
+  return r;
+}
+const tituloPasso = (p, t, ajuda) => { p.append(el('h3', '', t)); if (ajuda) p.append(el('p', 'ajuda', ajuda)); };
+
+function passoClasse(p) {
+  tituloPasso(p, 'Escolha a sua classe', 'A classe define seus dois domínios de cartas, sua Evasão e seus Pontos de Vida iniciais.');
+  const op = el('div', 'opcoes');
+  for (const [k, c] of Object.entries(CLASSES_DH)) {
+    const b = el('button', 'opcao' + (guia.classe === k ? ' sel' : '')); b.type = 'button';
+    b.append(el('b', '', c.nome), el('small', '', c.desc));
+    const st = el('div'); st.style.marginTop = '6px';
+    for (const [n, v] of [['Evasão', c.ev], ['PV', c.pv]]) { const s = el('span', 'stat'); s.append(document.createTextNode(n + ' '), el('b', '', String(v))); st.append(s); }
+    const chips = el('div', 'chips');
+    for (const d of catalogoCartas.classes[k].dominios) { const ch = el('span', 'chip-dom', catalogoCartas.dominios[d].nome); ch.style.background = catalogoCartas.dominios[d].cor; chips.append(ch); }
+    b.append(st, chips);
+    if (estado.livro) { const lv = el('small', '', '📖 livro p. ' + c.pagina); lv.style.cursor = 'pointer'; lv.style.textDecoration = 'underline'; lv.onclick = (e) => { e.stopPropagation(); abrirLivro(c.pagina); }; b.append(lv); }
+    b.onclick = () => {
+      if (guia.classe !== k) { guia.classe = k; guia.subclasse = null; }
+      passoGuia = 1; desenharGuia();
+    };
+    op.append(b);
+  }
+  p.append(op);
+}
+function passoSubclasse(p) {
+  if (!guia.classe) { tituloPasso(p, 'Subclasse', 'Escolha a classe primeiro.'); return; }
+  const cl = CLASSES_DH[guia.classe];
+  tituloPasso(p, 'Escolha a subclasse de ' + cl.nome, 'A carta de Fundação entra agora; a Especialização libera no nível 5 e a Maestria no 8.' + (CONJURACAO[guia.classe] ? ' Seu traço de conjuração é ' + NOMES[CONJURACAO[guia.classe]] + '.' : ''));
+  const op = el('div', 'opcoes'); op.style.gridTemplateColumns = 'repeat(auto-fill, minmax(320px, 1fr))';
+  for (const c of catalogoCartas.cartas.filter((x) => x.tipo === 'subclasse' && x.classe === guia.classe && x.estagio === 'fundacao')) {
+    const b = el('button', 'opcao' + (guia.subclasse === c.id ? ' sel' : '')); b.type = 'button';
+    const linha = el('div', 'sub-op'), img = desenhoCarta(c, true);
+    const txt = el('div'); txt.append(el('b', '', c.nome), el('small', '', 'Fundação · toque na carta para ler'));
+    linha.append(img, txt); b.append(linha);
+    img.onclick = (e) => { e.stopPropagation(); zoomCarta(c, null); };
+    b.onclick = () => { guia.subclasse = c.id; passoGuia = 2; desenharGuia(); };
+    op.append(b);
+  }
+  p.append(op);
+}
+function passoHeranca(p) {
+  tituloPasso(p, 'Ancestralidade e comunidade', 'De onde o seu personagem vem. Toque e segure (ou clique com o botão direito) para ver a carta grande.');
+  const mista = el('label', 'escondida'); mista.style.color = 'var(--tinta)';
+  const cx = el('input'); cx.type = 'checkbox'; cx.checked = guia.mista;
+  cx.onchange = () => { guia.mista = cx.checked; if (!guia.mista) guia.ancestralidades = guia.ancestralidades.slice(0, 1); desenharGuia(); };
+  mista.append(cx, document.createTextNode(' Herança mista (duas ancestralidades)'));
+  p.append(el('div', 'rotulo-sec', 'Ancestralidade' + (guia.mista ? ' (escolha duas)' : '')), mista);
+  const grade = (tipo, sel, aoEscolher) => {
+    const op = el('div', 'opcoes cartas');
+    for (const c of catalogoCartas.cartas.filter((x) => x.tipo === tipo)) {
+      const b = el('button', 'opcao carta-op' + (sel(c.id) ? ' sel' : '')); b.type = 'button';
+      b.append(desenhoCarta(c), el('span', '', c.nome));
+      b.onclick = () => { aoEscolher(c.id); desenharGuia(); };
+      b.oncontextmenu = (e) => { e.preventDefault(); zoomCarta(c, null); };
+      op.append(b);
+    }
+    return op;
+  };
+  p.append(grade('ancestralidade', (id) => guia.ancestralidades.includes(id), (id) => {
+    if (guia.ancestralidades.includes(id)) guia.ancestralidades = guia.ancestralidades.filter((x) => x !== id);
+    else guia.ancestralidades = guia.mista ? [...guia.ancestralidades, id].slice(-2) : [id];
+  }));
+  p.append(el('div', 'rotulo-sec', 'Comunidade'));
+  p.append(grade('comunidade', (id) => guia.comunidade === id, (id) => { guia.comunidade = id; }));
+}
+function passoTracos(p, calc) {
+  tituloPasso(p, 'Distribua os traços', 'Dê +2, +1, +1, 0, 0 e −1 aos seis traços, um valor para cada. O +2 vai no que o seu personagem faz de melhor.');
+  const usados = TRACOS_DH.map((t) => guia.tracos[t]).filter((v) => v !== undefined && v !== '');
+  const bolsa = el('div', 'bolsa'); bolsa.append(el('small', '', 'Valores:'));
+  const resta = [...VALORES_TRACOS];
+  for (const v of usados) { const i = resta.indexOf(Number(v)); if (i >= 0) resta.splice(i, 1); }
+  const marcados = [...VALORES_TRACOS]; const sobra = [...resta];
+  for (const v of marcados) { const i = sobra.indexOf(v); const s = el('span', 'v' + (i < 0 ? ' usado' : ''), sinal(v)); if (i >= 0) sobra.splice(i, 1); bolsa.append(s); }
+  const sug = el('button', 'btn sec', '✨ Sugestão rápida'); sug.type = 'button';
+  sug.title = 'Põe +2 no traço de conjuração da classe (ou Força, para quem não conjura) e distribui o resto';
+  sug.onclick = () => {
+    const principal = CONJURACAO[guia.classe] || 'forca';
+    const ordem = [principal, ...['agilidade', 'instinto', 'acuidade', 'presenca', 'conhecimento', 'forca'].filter((t) => t !== principal)];
+    guia.tracos = {}; ordem.forEach((t, i) => { guia.tracos[t] = VALORES_TRACOS[i]; }); desenharGuia();
+  };
+  const limpar = el('button', 'btn sec', 'Limpar'); limpar.type = 'button'; limpar.onclick = () => { guia.tracos = {}; desenharGuia(); };
+  bolsa.append(el('span', 'esp'), sug, limpar); bolsa.querySelector('.esp').style.flex = '1';
+  p.append(bolsa);
+  const grade = el('div', 'tracos-guia');
+  for (const t of TRACOS_DH) {
+    const c = el('div', 'traco-g'), atual = guia.tracos[t];
+    const topo = el('div', 'nome'); topo.append(el('span', '', NOMES[t] + (CONJURACAO[guia.classe] === t ? ' ✨' : '')), el('span', 'final', atual === undefined || atual === '' ? '—' : sinal(calc.tracos[t])));
+    c.append(topo, el('small', '', DESCRICAO_TRACO[t]));
+    const s = el('select'); s.append(new Option('escolher…', ''));
+    const disponiveis = [...resta]; if (atual !== undefined && atual !== '') disponiveis.push(Number(atual));
+    for (const v of [...new Set(disponiveis)].sort((a, b) => b - a)) s.append(new Option(sinal(v), String(v)));
+    s.value = atual === undefined ? '' : String(atual);
+    s.onchange = () => { if (s.value === '') delete guia.tracos[t]; else guia.tracos[t] = Number(s.value); desenharGuia(); };
+    c.append(s);
+    if (calc.nivel > 1) {
+      const av = el('div', 'avanco'), n = Number(guia.avancoTracos[t]) || 0;
+      const menos = el('button', '', '−'), mais = el('button', '', '+'); menos.type = mais.type = 'button';
+      menos.onclick = () => { guia.avancoTracos[t] = Math.max(0, n - 1); desenharGuia(); };
+      mais.onclick = () => { guia.avancoTracos[t] = Math.min(4, n + 1); desenharGuia(); };
+      av.append(document.createTextNode('Avanços'), menos, el('b', '', '+' + n), mais); c.append(av);
+    }
+    if (t === 'agilidade' && guia.armadura === 'placa') c.append(el('small', '', '−1 da Placa Completa'));
+    grade.append(c);
+  }
+  p.append(grade);
+}
+function passoArmadura(p, calc) {
+  tituloPasso(p, 'Escolha a armadura', 'Os limiares de dano já somam o seu nível (' + calc.nivel + '). Pontos de armadura são os espaços que você marca para reduzir o dano.');
+  const op = el('div', 'opcoes');
+  for (const [k, a] of Object.entries(ARMADURAS_T1)) {
+    const b = el('button', 'opcao' + (guia.armadura === k ? ' sel' : '')); b.type = 'button';
+    const maior = a.maior === null ? calc.nivel : a.maior + calc.nivel, grave = a.grave === null ? 2 * calc.nivel : a.grave + calc.nivel;
+    b.append(el('b', '', a.nome));
+    const st = el('div'); st.style.marginTop = '6px';
+    for (const [n, v] of [['Limiares', maior + '/' + grave], ['Pontos', a.pontos]]) { const s = el('span', 'stat'); s.append(document.createTextNode(n + ' '), el('b', '', String(v))); st.append(s); }
+    b.append(st, el('small', '', a.efeito));
+    b.onclick = () => { guia.armadura = k; passoGuia = 5; desenharGuia(); };
+    op.append(b);
+  }
+  p.append(op);
+  if (estado.livro) { const lv = el('button', 'btn sec', '📖 Tabela de armaduras (p. 127)'); lv.type = 'button'; lv.style.marginTop = '10px'; lv.onclick = () => abrirLivro(127); p.append(lv); }
+}
+function passoExperiencias(p, calc) {
+  tituloPasso(p, 'Experiências', `O que o seu personagem viveu e sabe fazer. No nível ${calc.nivel} são ${calc.experiencias}, cada uma com +2 (avanços podem subir para +3).`);
+  while (guia.experiencias.length < calc.experiencias) guia.experiencias.push({ nome: '', bonus: 2 });
+  const lista = el('div', 'exps');
+  guia.experiencias.forEach((e, i) => {
+    const l = el('div', 'exp-linha'), nome = el('input'), bonus = el('input');
+    nome.type = 'text'; nome.maxLength = 40; nome.placeholder = 'Experiência ' + (i + 1); nome.value = e.nome || '';
+    bonus.type = 'number'; bonus.min = 1; bonus.max = 9; bonus.value = String(e.bonus || 2);
+    nome.oninput = () => { e.nome = nome.value; };
+    nome.onchange = () => desenharGuia();
+    bonus.onchange = () => { e.bonus = Number(bonus.value) || 2; desenharGuia(); };
+    l.append(nome, bonus); lista.append(l);
+  });
+  if (guia.experiencias.length > calc.experiencias) {
+    const tirar = el('button', 'btn sec', 'Tirar a última'); tirar.type = 'button'; tirar.onclick = () => { guia.experiencias.pop(); desenharGuia(); }; lista.append(tirar);
+  }
+  p.append(lista, el('div', 'rotulo-sec', 'Ideias (clique para usar)'));
+  const ex = el('div', 'exemplos');
+  for (const nome of EXEMPLOS_EXP) {
+    const b = el('button', '', nome); b.type = 'button';
+    b.onclick = () => { const vaga = guia.experiencias.find((e) => !String(e.nome || '').trim()); if (vaga) vaga.nome = nome; else guia.experiencias.push({ nome, bonus: 2 }); desenharGuia(); };
+    ex.append(b);
+  }
+  p.append(ex);
+}
+function passoNome(p, calc) {
+  tituloPasso(p, 'Nome, nível e retrato', 'Ao salvar, as cartas de subclasse, ancestralidade e comunidade entram na sua prancheta. Depois é só escolher as cartas de domínio.');
+  const linha = el('div', 'form-grade');
+  const cn = el('label', 'campo largo'); cn.append(document.createTextNode('Nome do personagem *'));
+  const nome = el('input'); nome.type = 'text'; nome.maxLength = 60; nome.value = guia.nome; nome.placeholder = 'Lyra Brasa'; nome.oninput = () => { guia.nome = nome.value; }; nome.onchange = () => desenharGuia();
+  cn.append(nome);
+  const cv = el('label', 'campo'); cv.append(document.createTextNode('Nível'));
+  const nv = el('input'); nv.type = 'number'; nv.min = 1; nv.max = 10; nv.value = String(guia.nivel); nv.onchange = () => { guia.nivel = Math.max(1, Math.min(10, Number(nv.value) || 1)); desenharGuia(); };
+  cv.append(nv); linha.append(cn, cv); p.append(linha);
+  if (calc.nivel > 1) {
+    p.append(el('div', 'rotulo-sec', 'Avanços escolhidos ao subir de nível'));
+    const av = el('div', 'avancos');
+    for (const [k, r] of [['pv', '+1 espaço de PV'], ['estresse', '+1 espaço de Estresse'], ['evasao', '+1 de Evasão']]) {
+      const c = el('div', 'contador'), n = Number(guia.extras[k]) || 0, m = el('button', '', '−'), s = el('button', '', '+'); m.type = s.type = 'button';
+      m.onclick = () => { guia.extras[k] = Math.max(0, n - 1); desenharGuia(); }; s.onclick = () => { guia.extras[k] = Math.min(6, n + 1); desenharGuia(); };
+      c.append(el('span', '', r), el('span'), m, el('b', '', String(n)), s); av.append(c);
+    }
+    p.append(av, el('p', 'ajuda', 'Os +1 nos traços ficam no passo Traços. Cartas de domínio extras (avanço) o mestre libera na sua prancheta.'));
+    if (estado.livro) { const lv = el('button', 'btn sec', '📖 Avanços por nível (p. 24)'); lv.type = 'button'; lv.onclick = () => abrirLivro(24); p.append(lv); }
+  }
+  const foto = el('div', 'foto-edit'), av = el('div', 'avatar'), mp = minhaPeca();
+  pintarAvatar(av, guia.nome || 'Personagem', mp && mp.avatar, mp && corDe(mp));
+  const botoes = el('div'); const lb = el('label', 'btn sec', '🖼️ Escolher retrato'); lb.htmlFor = 'mf-arquivo';
+  botoes.append(lb, el('div', 'mudo', 'Aparece na sua peça, no chat e no Discord.'));
+  foto.append(av, botoes); p.append(foto);
+}
+
+async function salvarFichaGuiada() {
+  const g = guia, calc = calcularGuia(g), pend = pendenciasGuia(g), faltando = pend.filter(([, ok]) => !ok).map(([n]) => n);
+  if (!g.classe || !String(g.nome).trim()) { aviso('Falta ' + (!g.classe ? 'escolher a classe' : 'o nome do personagem') + '.', 'erro'); passoGuia = !g.classe ? 0 : 6; return desenharGuia(); }
+  const nomeDe = (id) => (catalogoCartas.mapa.get(id) || {}).nome || '';
+  const sub = g.subclasse ? catalogoCartas.mapa.get(g.subclasse) : null;
+  const dados = {
+    nome: g.nome.trim(), classe: CLASSES_DH[g.classe].nome + (sub ? ' (' + sub.nome + ')' : ''),
+    ancestralidade: g.ancestralidades.map(nomeDe).join(' / ').slice(0, 40), comunidade: nomeDe(g.comunidade).slice(0, 40), nivel: calc.nivel,
+    ...calc.tracos,
+    evasao: calc.evasao, proficiencia: calc.proficiencia, pv_max: calc.pv_max, estresse_max: calc.estresse_max, armadura_max: calc.armadura_max,
+    limiar_maior: calc.limiar_maior, limiar_grave: calc.limiar_grave,
+    experiencias: g.experiencias.filter((e) => String(e.nome || '').trim()).map((e) => `${e.nome.trim().replace(/[,|+]/g, ' ')} +${e.bonus || 2}`).join(', '),
+    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, extras: g.extras, experiencias: g.experiencias }),
+  };
+  await post('ficha', dados);
+  // Cartas de base na prancheta: tira as que mudaram e põe as escolhidas.
+  try {
+    const p = minhaPeca(), atuais = ((p && p.prancheta && p.prancheta.minhas) || []).map((m) => m.carta);
+    const querBase = new Set([...g.ancestralidades, g.comunidade].filter(Boolean));
+    for (const id of atuais) {
+      const c = catalogoCartas.mapa.get(id); if (!c) continue;
+      const fora = (c.tipo === 'ancestralidade' || c.tipo === 'comunidade') ? !querBase.has(id) : c.tipo === 'subclasse' ? !sub || c.subclasse !== sub.subclasse : false;
+      if (fora) await post('cartas/tirar', { carta: id });
+    }
+    for (const id of [g.subclasse, ...querBase]) if (id && !atuais.includes(id)) await post('cartas/escolher', { carta: id }).catch(() => {});
+  } catch {}
+  $('modal-ficha').hidden = true;
+  aviso(faltando.length ? '💾 Salvo! Ainda falta: ' + faltando.join(', ') + '.' : '💾 Personagem pronto! Agora escolha as suas cartas de domínio.', faltando.length ? '' : 'ok', 6000);
+  if (!faltando.length) setTimeout(() => abrirPrancheta(estado.voce.id, true), 500);
+}
+
+// ---------- Prancheta de cartas ----------
+let pranchetaDe = null, catalogoAberto = false, filtroCatalogo = { tipo: 'dominio', so: true, busca: '' }, opcoesCartas = null;
+const pecaDoJogador = (u) => estado && estado.pecas.find((p) => p.userId === u);
+async function abrirPrancheta(userId, catalogo) {
+  try { await carregarCatalogo(); } catch { return; }
+  pranchetaDe = userId || estado.voce.id; catalogoAberto = !!catalogo; opcoesCartas = null;
+  $('modal-cartas').hidden = false;
+  await desenharPrancheta();
+}
+async function desenharPrancheta() {
+  if ($('modal-cartas').hidden) return;
+  const p = pecaDoJogador(pranchetaDe), pr = p && p.prancheta, corpo = $('pr-corpo');
+  $('pr-titulo').textContent = '🃏 Cartas de ' + (p ? p.nome : '…');
+  corpo.textContent = '';
+  if (!p || !pr) { corpo.append(el('p', 'mudo', 'Este personagem ainda não tem ficha.')); return; }
+  const l = pr.limites, souDono = pranchetaDe === estado.voce.id;
+  const topo = el('div', 'pr-topo');
+  const med = (txt, cheio) => el('span', 'medidor' + (cheio ? ' cheio' : ''), txt);
+  topo.append(med(`Domínio ${l.dominio.tem}/${l.dominio.max}`, l.dominio.tem >= l.dominio.max), med(`Carregamento ${l.carregamento.tem}/${l.carregamento.max}`, l.carregamento.tem >= l.carregamento.max));
+  for (const d of l.dominios) { const ch = el('span', 'chip-dom', catalogoCartas.dominios[d].nome); ch.style.background = catalogoCartas.dominios[d].cor; topo.append(ch); }
+  for (const d of pr.tocados) topo.append(el('span', 'tocado', '✨ Tocado: ' + catalogoCartas.dominios[d].nome));
+  topo.append(el('span', 'esp'));
+  if (estado.voce.mestre) {
+    const ex = el('span', 'contador'), m = el('button', '', '−'), s = el('button', '', '+'); m.type = s.type = 'button';
+    m.onclick = () => post('cartas/extras', { user: pranchetaDe, delta: -1 }).then(desenharPrancheta).catch(() => {});
+    s.onclick = () => post('cartas/extras', { user: pranchetaDe, delta: 1 }).then(desenharPrancheta).catch(() => {});
+    ex.append(document.createTextNode('Cartas extras'), m, el('b', '', String(pr.extras)), s); topo.append(ex);
+  }
+  const desc = el('button', 'btn sec', '🏕️ Descanso'); desc.type = 'button'; desc.title = 'Volta as cartas usadas';
+  desc.onclick = () => post('cartas/descanso', { user: pranchetaDe }).then(() => aviso('🏕️ Cartas prontas de novo.', 'ok', 2500)).catch(() => {});
+  const cat = el('button', 'btn', catalogoAberto ? '🃏 Ver a prancheta' : '＋ Escolher cartas'); cat.type = 'button';
+  cat.onclick = () => { catalogoAberto = !catalogoAberto; opcoesCartas = null; desenharPrancheta(); };
+  topo.append(desc, cat);
+  corpo.append(topo);
+  if (!l.classe) corpo.append(el('p', 'ajuda', '⚠️ A classe da ficha não é uma das classes do livro, então as cartas de domínio não aparecem. Abra a ficha e escolha a classe.'));
+  if (catalogoAberto) return desenharCatalogo(corpo, pr);
+
+  const daBase = (tipo) => pr.minhas.filter((m) => (catalogoCartas.mapa.get(m.carta) || {}).tipo === tipo);
+  // Origem e subclasse
+  const sec1 = el('div', 'pr-secao'); sec1.append(el('div', 'titulo', 'Origem e subclasse'));
+  const linha1 = el('div', 'pr-linha');
+  const grupo = (rotulo, cartas, vagas, dica) => {
+    const g = el('div', 'pr-grupo'); g.append(el('small', '', rotulo));
+    const fila = el('div', 'pr-linha');
+    for (const m of cartas) fila.append(cartaNaPrancheta(m));
+    const nomesSub = ['Fundação', 'Especialização (nível 5)', 'Maestria (nível 8)'];
+    for (let i = cartas.length; i < vagas; i++) { const v = vagaVazia(dica); if (dica === null) v.textContent = nomesSub[i]; fila.append(v); }
+    g.append(fila); return g;
+  };
+  linha1.append(grupo('Ancestralidade', daBase('ancestralidade'), 1, 'Ancestralidade'), grupo('Comunidade', daBase('comunidade'), 1, 'Comunidade'));
+  const subs = daBase('subclasse').sort((a, b) => ['fundacao', 'especializacao', 'maestria'].indexOf(catalogoCartas.mapa.get(a.carta).estagio) - ['fundacao', 'especializacao', 'maestria'].indexOf(catalogoCartas.mapa.get(b.carta).estagio));
+  linha1.append(grupo('Subclasse', subs, 3, null));
+  sec1.append(linha1); corpo.append(sec1);
+  // Carregamento
+  const sec2 = el('div', 'pr-secao'); sec2.append(el('div', 'titulo', `Carregamento (${l.carregamento.tem}/5)`));
+  const car = el('div', 'pr-linha'); car.dataset.zona = 'carregamento';
+  const naMao = pr.minhas.filter((m) => m.lugar === 'carregamento');
+  for (const m of naMao) car.append(cartaNaPrancheta(m));
+  for (let i = naMao.length; i < 5; i++) car.append(vagaVazia('Carta de domínio'));
+  zonaDeSoltar(car, 'carregamento'); sec2.append(car); corpo.append(sec2);
+  // Cofre
+  const sec3 = el('div', 'pr-secao'); sec3.append(el('div', 'titulo', 'Cofre'));
+  const cofre = el('div', 'cofre');
+  const guardadas = pr.minhas.filter((m) => m.lugar === 'cofre');
+  for (const m of guardadas) cofre.append(cartaNaPrancheta(m));
+  if (!guardadas.length) { const v = el('div', 'mudo', 'Arraste cartas para cá para guardar. Trazer de volta custa Estresse (no descanso, de graça).'); v.style.gridColumn = '1 / -1'; cofre.append(v); }
+  zonaDeSoltar(cofre, 'cofre'); sec3.append(cofre); corpo.append(sec3);
+  if (souDono && l.dominio.tem < l.dominio.max && l.classe) corpo.append(el('p', 'ajuda', `✨ Você ainda pode escolher ${l.dominio.max - l.dominio.tem} carta(s) de domínio. Clique em "＋ Escolher cartas".`));
+}
+function vagaVazia(dica) {
+  const v = el('div', 'vaga', dica || '');
+  if (dica === 'Carta de domínio' || dica === 'Ancestralidade' || dica === 'Comunidade' || dica === null) {
+    v.style.cursor = 'pointer'; v.title = 'Escolher';
+    v.onclick = () => { catalogoAberto = true; filtroCatalogo.tipo = dica === 'Ancestralidade' ? 'ancestralidade' : dica === 'Comunidade' ? 'comunidade' : dica === null ? 'subclasse' : 'dominio'; desenharPrancheta(); };
+  }
+  return v;
+}
+function cartaNaPrancheta(m) {
+  const c = catalogoCartas.mapa.get(m.carta), d = el('div', 'carta-pr' + (m.usada ? ' usada' : ''));
+  d.append(desenhoCarta(c));
+  if (c.tipo === 'dominio' && m.lugar === 'cofre' && c.custo) d.append(el('span', 'custo', c.custo + '⚡'));
+  d.title = c.nome;
+  d.onclick = () => zoomCarta(c, m);
+  if (c.tipo === 'dominio') {
+    d.draggable = true;
+    d.ondragstart = (e) => { e.dataTransfer.setData('text/carta', c.id); d.classList.add('arrastando'); };
+    d.ondragend = () => d.classList.remove('arrastando');
+  }
+  return d;
+}
+function zonaDeSoltar(zona, lugar) {
+  zona.ondragover = (e) => { if ([...e.dataTransfer.types].includes('text/carta')) { e.preventDefault(); zona.classList.add('alvo'); } };
+  zona.ondragleave = () => zona.classList.remove('alvo');
+  zona.ondrop = (e) => { e.preventDefault(); zona.classList.remove('alvo'); const id = e.dataTransfer.getData('text/carta'); if (id) moverCartaPara(id, lugar, false); };
+}
+function moverCartaPara(id, lugar, descanso) {
+  return post('cartas/mover', { user: pranchetaDe, carta: id, para: lugar, descanso }).then((r) => { if (r.estresse) aviso(`⚡ Marcou ${r.estresse} de Estresse para trazer a carta.`, '', 3000); }).catch(() => {});
+}
+/** A carta em destaque, com o que dá para fazer com ela. */
+function zoomCarta(c, m) {
+  const velho = $('carta-zoom'); if (velho) velho.remove();
+  const z = el('div'); z.id = 'carta-zoom';
+  const box = el('div', 'zoom'); box.append(desenhoCarta(c, true));
+  const ac = el('div', 'acoes-z'); ac.append(el('h3', '', c.nome));
+  const info = c.tipo === 'dominio' ? `${catalogoCartas.dominios[c.dominio].nome} · nível ${c.nivel} · ${c.natureza} · recuperar custa ${c.custo} de Estresse` : c.tipo === 'subclasse' ? catalogoCartas.estagios[c.estagio].nome : c.tipo === 'ancestralidade' ? 'Ancestralidade' : 'Comunidade';
+  ac.append(el('small', '', info));
+  const pode = m && pranchetaDe && (pranchetaDe === estado.voce.id || estado.voce.mestre);
+  const botao = (txt, cls, fn) => { const b = el('button', 'btn ' + cls, txt); b.type = 'button'; b.onclick = () => { fn(); z.remove(); }; ac.append(b); };
+  if (pode) {
+    if (m.lugar !== 'cofre') botao(m.usada ? '🃏 Usar de novo' : '🃏 Usar (mostra à mesa)', '', () => post('cartas/usar', { user: pranchetaDe, carta: c.id }).catch(() => {}));
+    if (m.usada) botao('↺ Marcar como pronta', 'sec', () => post('cartas/recarregar', { user: pranchetaDe, carta: c.id }).catch(() => {}));
+    if (c.tipo === 'dominio' && m.lugar === 'carregamento') botao('📦 Guardar no Cofre', 'sec', () => moverCartaPara(c.id, 'cofre', false));
+    if (c.tipo === 'dominio' && m.lugar === 'cofre') {
+      const desc = el('label', 'escondida'); const cx = el('input'); cx.type = 'checkbox'; desc.append(cx, document.createTextNode(' Estou descansando (de graça)'));
+      botao(`⬆️ Trazer para o Carregamento (${c.custo}⚡)`, '', () => moverCartaPara(c.id, 'carregamento', cx.checked));
+      ac.append(desc);
+    }
+    botao('🗑️ Tirar da prancheta', 'perigo', () => post('cartas/tirar', { user: pranchetaDe, carta: c.id }).catch(() => {}));
+  }
+  const fechar = el('button', 'btn sec', 'Fechar'); fechar.type = 'button'; fechar.onclick = () => z.remove(); ac.append(fechar);
+  box.append(ac); z.append(box);
+  z.addEventListener('pointerdown', (e) => { if (e.target === z) z.remove(); });
+  document.body.append(z);
+}
+async function desenharCatalogo(corpo, pr) {
+  if (!opcoesCartas) { try { opcoesCartas = await pegar('cartas/opcoes/' + pranchetaDe); } catch { return; } }
+  const filtros = el('div', 'catalogo-filtros'), abas = el('div', 'filtros');
+  for (const [k, n] of [['dominio', 'Domínio'], ['subclasse', 'Subclasse'], ['ancestralidade', 'Ancestralidade'], ['comunidade', 'Comunidade']]) {
+    const b = el('button', filtroCatalogo.tipo === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { filtroCatalogo.tipo = k; desenharPrancheta(); }; abas.append(b);
+  }
+  const so = el('label', 'escondida'); so.style.color = 'var(--tinta)'; const cx = el('input'); cx.type = 'checkbox'; cx.checked = filtroCatalogo.so;
+  cx.onchange = () => { filtroCatalogo.so = cx.checked; desenharPrancheta(); }; so.append(cx, document.createTextNode(' Só o que posso pegar'));
+  const busca = el('input'); busca.type = 'text'; busca.placeholder = '🔎 Nome da carta'; busca.value = filtroCatalogo.busca;
+  busca.oninput = () => { filtroCatalogo.busca = busca.value; clearTimeout(busca._t); busca._t = setTimeout(() => { desenharPrancheta().then(() => { const b = document.querySelector('.catalogo-filtros input[type=text]'); if (b) { b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }); }, 250); };
+  filtros.append(abas, so, busca); corpo.append(filtros);
+  const tem = new Set(pr.minhas.map((m) => m.carta)), q = semAcento(filtroCatalogo.busca.trim());
+  const lista = catalogoCartas.cartas.filter((c) => c.tipo === filtroCatalogo.tipo)
+    .filter((c) => !q || semAcento(c.nome).includes(q))
+    .filter((c) => !filtroCatalogo.so || !opcoesCartas.motivos[c.id] || tem.has(c.id))
+    .sort((a, b) => (a.nivel || 0) - (b.nivel || 0) || a.nome.localeCompare(b.nome));
+  const grade = el('div', 'catalogo');
+  for (const c of lista) {
+    const motivo = opcoesCartas.motivos[c.id], minha = tem.has(c.id);
+    const b = el('button', 'cat-carta' + (motivo && !minha ? ' bloq' : '')); b.type = 'button'; b.title = motivo || c.nome;
+    b.append(desenhoCarta(c));
+    if (minha) b.append(el('span', 'tem', '✓ na prancheta'));
+    else if (motivo) b.append(el('span', 'motivo', motivo));
+    b.onclick = () => {
+      if (minha || motivo) return zoomCarta(c, minha ? pr.minhas.find((m) => m.carta === c.id) : null);
+      post('cartas/escolher', { user: pranchetaDe, carta: c.id }).then((r) => { opcoesCartas = null; aviso(`🃏 ${c.nome} foi para ${r.lugar === 'carregamento' ? 'o Carregamento' : r.lugar === 'cofre' ? 'o Cofre' : 'a prancheta'}.`, 'ok', 2500); }).catch(() => {});
+    };
+    b.oncontextmenu = (e) => { e.preventDefault(); zoomCarta(c, null); };
+    grade.append(b);
+  }
+  if (!lista.length) grade.append(el('p', 'mudo', filtroCatalogo.so ? 'Nenhuma carta disponível agora. Desmarque "Só o que posso pegar" para ver todas e o porquê.' : 'Nada encontrado.'));
+  corpo.append(grade);
+}
+
+$('ver-cartas').onclick = () => { const p = estado.pecas.find((q) => q.id === selecionada); if (p && p.userId) abrirPrancheta(p.userId); };
+$('minhas-cartas').onclick = () => abrirPrancheta(estado.voce.id);
+// Esc fecha a carta em destaque antes das janelas.
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('carta-zoom')) { e.preventDefault(); e.stopImmediatePropagation(); $('carta-zoom').remove(); } }, true);
 
 function painelMeu() {
   const p = minhaPeca();
@@ -1702,6 +2378,7 @@ function painelMeu() {
   if (!p) return;
   pintarAvatar($('meu-avatar'), p.nome, p.avatar, corDe(p));
   $('meu-nome').textContent = p.ficha ? p.nome : 'Personagem ainda não criado';
+  $('minhas-cartas').hidden = !(estado.campanha.sistema === 'dh' && p.ficha);
   $('meu-sub').textContent = p.ficha ? [p.ficha.classe, p.ficha.nivel ? 'nível ' + p.ficha.nivel : ''].filter(Boolean).join(' · ') : 'Crie a ficha e escolha a foto';
   $('abrir-ficha').textContent = p.ficha ? '✏️ Ficha e foto' : '✨ Criar meu personagem';
   $('meu-resumo').onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
@@ -2287,6 +2964,10 @@ function desenharChat() {
     c.append(topo);
     if (m.tipo === 'msg') {
       c.append(el('div', 'corpo', m.texto));
+      if (m.resultado && m.resultado.tipo === 'carta') {
+        if (!catalogoCartas) carregarCatalogo().then(() => desenharChat()).catch(() => {});
+        else { const ct = catalogoCartas.mapa.get(m.resultado.id); if (ct) { const mini = el('div', 'carta-pr carta-chat'); mini.append(desenhoCarta(ct)); mini.onclick = () => zoomCarta(ct, null); c.append(mini); } }
+      }
       const pg = /📖 Livro p\. (\d+)/.exec(m.texto);
       if (pg && estado && estado.livro) { const b = el('button', 'btn sec link-livro', '📖 Abrir na página ' + pg[1]); b.onclick = () => abrirLivro(Number(pg[1])); c.append(b); }
     }

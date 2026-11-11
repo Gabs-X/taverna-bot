@@ -597,6 +597,32 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE campanhas ADD COLUMN ouro INTEGER NOT NULL DEFAULT 0;
     `);
   },
+  // 24: cartas do Daggerheart de cada personagem (por servidor e jogador, como a ficha): onde está cada uma
+  // (base = ancestralidade, comunidade e subclasse; Carregamento; Cofre), se já foi usada até o descanso,
+  // e as cartas de domínio extras que o mestre libera (avanços, multiclasse).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS personagem_cartas (
+        guild_id  TEXT NOT NULL,
+        user_id   TEXT NOT NULL,
+        carta     TEXT NOT NULL,
+        lugar     TEXT NOT NULL,
+        usada     INTEGER NOT NULL DEFAULT 0,
+        criada_em INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, user_id, carta)
+      );
+      CREATE TABLE IF NOT EXISTS personagem_cartas_extras (
+        guild_id TEXT NOT NULL,
+        user_id  TEXT NOT NULL,
+        extras   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id)
+      );
+    `);
+  },
+  // 25: escolhas da criação guiada da ficha do Daggerheart (classe, subclasse, traços sem bônus, armadura...), para reabrir a guia.
+  () => {
+    db.exec("ALTER TABLE fichas_dh ADD COLUMN guia TEXT NOT NULL DEFAULT ''");
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

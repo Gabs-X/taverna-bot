@@ -9,6 +9,7 @@ import { rolar } from '../lib/dados.ts';
 import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
 import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa } from '../lib/nevoa.ts';
+import { CARTA, CARTAS, CLASSES, DOMINIOS, ESTAGIOS, dominiosTocados, limites, lugarAoEscolher, motivoParaNaoEscolher, moverCarta, type CartaDoPersonagem } from '../lib/cartasDH.ts';
 import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
@@ -29,6 +30,7 @@ import {
   tipoImagem,
   type LinhaChat,
   type ResultadoChat,
+  type ResultadoLinha,
 } from '../lib/mapa.ts';
 
 // Mapa da campanha, estilo Roll20: um site embutido no bot. O /campanha mapa entrega a cada um um link pessoal
@@ -243,6 +245,37 @@ function gravarCorpo(req: IncomingMessage, destino: string, limite: number) {
   });
 }
 
+// ---------- Cartas do Daggerheart (imagens em dados/cartas/dh, fora do repositório) ----------
+
+const PASTA_CARTAS = 'dados/cartas/dh';
+const temImagensDeCartas = () => existsSync(`${PASTA_CARTAS}/p`);
+const cartasDe = (c: { guild_id: string }, u: string) =>
+  (db.prepare('SELECT carta, lugar, usada FROM personagem_cartas WHERE guild_id = ? AND user_id = ? ORDER BY criada_em').all(c.guild_id, u) as { carta: string; lugar: CartaDoPersonagem['lugar']; usada: number }[])
+    .filter((m) => CARTA.has(m.carta))
+    .map((m) => ({ carta: m.carta, lugar: m.lugar, usada: !!m.usada }));
+const extrasDe = (c: { guild_id: string }, u: string) =>
+  (db.prepare('SELECT extras FROM personagem_cartas_extras WHERE guild_id = ? AND user_id = ?').get(c.guild_id, u) as { extras: number } | undefined)?.extras ?? 0;
+const assinarCarta = (id: string) => assinarArquivo(`carta:${id}`);
+/** Endereço aberto (assinado) da imagem da carta, para o Discord mostrar no webhook. */
+const cartaPublica = (id: string) => (SEGURO && temImagensDeCartas() ? `${ENDERECO}/carta/${id}.jpg?k=${assinarCarta(id)}` : null);
+
+function servirCarta(res: ServerResponse, tamanho: string, id: string) {
+  if (!CARTA.has(id) || !/^[pg]$/.test(tamanho)) return json(res, 404, { erro: 'Carta não encontrada.' });
+  try {
+    const dados = readFileSync(`${PASTA_CARTAS}/${tamanho}/${id}.jpg`);
+    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
+    return void res.end(dados);
+  } catch {
+    return json(res, 404, { erro: 'A imagem desta carta não está no servidor.' });
+  }
+}
+
+/** Cartas do personagem e o que a ficha permite (para a prancheta). */
+function pranchetaDe(c: Campanha, u: string) {
+  const minhas = cartasDe(c, u), extras = extrasDe(c, u), ficha = fichaDe(c, u);
+  return { minhas, extras, limites: limites({ classe: ficha?.classe as string, nivel: ficha?.nivel as number }, minhas, extras), tocados: dominiosTocados(minhas) };
+}
+
 // ---------- Tempo real (SSE): quem está com a página aberta recebe o aviso quando alguém mexe ----------
 
 type Ouvinte = { res: ServerResponse; userId: string };
@@ -436,10 +469,12 @@ async function montarEstado(c: Campanha, userId: string) {
       // A ficha completa só aparece para o dono da peça e para o mestre; os outros veem nome, classe e nível.
       const ficha = p.user_id ? fichaDe(c, p.user_id) : undefined;
       let dadosFicha: Record<string, unknown> | null = null;
+      let prancheta: ReturnType<typeof pranchetaDe> | null = null;
       if (ficha) {
         const { guild_id: _g, user_id: _u, ...resto } = ficha;
         // O grupo vê a vida dos companheiros; o resto da ficha fica com o dono e o mestre.
         dadosFicha = meu || souMestre ? resto : { nome: resto.nome, classe: resto.classe, nivel: resto.nivel, pv: resto.pv, pv_atual: resto.pv_atual, pv_max: resto.pv_max };
+        if ((meu || souMestre) && c.sistema === 'dh' && p.user_id) prancheta = pranchetaDe(c, p.user_id);
       } else if (cr && souMestre) dadosFicha = fichaDaCriatura(cr, p);
       const foto = p.user_id ? fotoDe(c, p.user_id) : undefined;
       let avatar: string | null;
@@ -467,6 +502,7 @@ async function montarEstado(c: Campanha, userId: string) {
         iniciativa: p.iniciativa,
         agiu: !!p.agiu,
         escondida: !!p.escondida,
+        prancheta,
       };
     }),
     combate: {
@@ -529,7 +565,7 @@ async function personaDe(c: Campanha, userId: string, pecaId: number | null | un
   return { nome: String(ficha?.nome ?? eu.nome), avatar: imagemPublica(fotoDe(c, userId)?.imagem) ?? eu.avatar };
 }
 
-type Fala = { userId: string; pecaId: number | null | undefined; autor: string; tipo: LinhaChat['tipo']; texto: string; resultado: ResultadoChat | null };
+type Fala = { userId: string; pecaId: number | null | undefined; autor: string; tipo: LinhaChat['tipo']; texto: string; resultado: ResultadoLinha | null };
 
 /** Manda ao canal do Discord ligado à campanha (se houver) o que foi dito no chat do mapa. */
 async function espelharNoDiscord(c: Campanha, f: Fala, revelada = false) {
@@ -537,13 +573,16 @@ async function espelharNoDiscord(c: Campanha, f: Fala, revelada = false) {
   const canal = await discord?.channels.fetch(c.canal_id).catch(() => null);
   if (!canal?.isTextBased() || !('send' in canal)) return;
   const olho = revelada ? '👁️ ' : '';
+  // Carta usada: vai com a imagem dela (endereço assinado; só com o mapa em https).
+  const imagemCarta = f.resultado?.tipo === 'carta' ? cartaPublica(f.resultado.id) : null;
+  const embeds = imagemCarta && f.resultado?.tipo === 'carta' ? [{ title: f.resultado.nome, image: { url: imagemCarta }, color: 0xd9a441 }] : [];
   if (canal.type === ChannelType.GuildText) {
     try {
       const p = await personaDe(c, f.userId, f.pecaId);
       const nome = nomeDeWebhook(p.nome);
       if (nome) {
         const w = await webhookDe(canal);
-        await w.send({ content: (olho + textoDoPersonagem(f.tipo, f.texto, f.resultado)).slice(0, 1900), username: nome, avatarURL: p.avatar ?? undefined, allowedMentions: { parse: [] } });
+        await w.send({ content: (olho + textoDoPersonagem(f.tipo, f.texto, f.resultado)).slice(0, 1900), username: nome, avatarURL: p.avatar ?? undefined, embeds, allowedMentions: { parse: [] } });
         return;
       }
     } catch (e) {
@@ -554,11 +593,11 @@ async function espelharNoDiscord(c: Campanha, f: Fala, revelada = false) {
   }
   let conteudo = textoParaDiscord(f.autor, f.tipo, f.texto, f.resultado);
   if (revelada) conteudo = conteudo.replace(/^(\S+)/, '$1 👁️');
-  await canal.send({ content: conteudo.slice(0, 1900), allowedMentions: { parse: [] } }).catch((e: Error) => console.error('[mapa] não consegui escrever no canal do Discord:', e.message));
+  await canal.send({ content: conteudo.slice(0, 1900), embeds, allowedMentions: { parse: [] } }).catch((e: Error) => console.error('[mapa] não consegui escrever no canal do Discord:', e.message));
 }
 
 /** Grava uma linha no chat da mesa, avisa as telas abertas e (se não for escondida) repete no canal do Discord. */
-function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat['tipo'], texto: string, resultado: ResultadoChat | null, secreta: boolean, paraDiscord = true, pecaId: number | null = null) {
+function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat['tipo'], texto: string, resultado: ResultadoLinha | null, secreta: boolean, paraDiscord = true, pecaId: number | null = null) {
   db.prepare('INSERT INTO mapa_chat (campanha_id, user_id, autor, tipo, texto, resultado, secreta, criada_em, peca_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
     c.id,
     userId,
@@ -629,8 +668,8 @@ function salvarFichaDH(c: Campanha, u: string, f: FichaDH) {
   db.prepare(
     `INSERT INTO fichas_dh
       (guild_id, user_id, nome, classe, ancestralidade, comunidade, nivel, agilidade, forca, acuidade, instinto, presenca, conhecimento,
-       evasao, proficiencia, pv_max, pv, estresse_max, estresse, esperanca, armadura_max, armadura, limiar_maior, limiar_grave, experiencias)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 2, ?, 0, ?, ?, ?)
+       evasao, proficiencia, pv_max, pv, estresse_max, estresse, esperanca, armadura_max, armadura, limiar_maior, limiar_grave, experiencias, guia)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 2, ?, 0, ?, ?, ?, ?)
      ON CONFLICT (guild_id, user_id) DO UPDATE SET
        nome = excluded.nome, classe = excluded.classe, ancestralidade = excluded.ancestralidade, comunidade = excluded.comunidade,
        nivel = excluded.nivel, agilidade = excluded.agilidade, forca = excluded.forca, acuidade = excluded.acuidade, instinto = excluded.instinto,
@@ -638,10 +677,10 @@ function salvarFichaDH(c: Campanha, u: string, f: FichaDH) {
        pv_max = excluded.pv_max, pv = MIN(fichas_dh.pv, excluded.pv_max), estresse_max = excluded.estresse_max,
        estresse = MIN(fichas_dh.estresse, excluded.estresse_max), armadura_max = excluded.armadura_max,
        armadura = MIN(fichas_dh.armadura, excluded.armadura_max), limiar_maior = excluded.limiar_maior, limiar_grave = excluded.limiar_grave,
-       experiencias = excluded.experiencias`,
+       experiencias = excluded.experiencias, guia = excluded.guia`,
   ).run(
     c.guild_id, u, f.nome, f.classe, f.ancestralidade, f.comunidade, f.nivel, f.agilidade, f.forca, f.acuidade, f.instinto, f.presenca, f.conhecimento,
-    f.evasao, f.proficiencia, f.pv_max, f.estresse_max, f.armadura_max, f.limiar_maior, f.limiar_grave, f.experiencias,
+    f.evasao, f.proficiencia, f.pv_max, f.estresse_max, f.armadura_max, f.limiar_maior, f.limiar_grave, f.experiencias, f.guia,
   );
 }
 
@@ -780,6 +819,14 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return servirImagem(res, arquivo);
   }
 
+  const cartaAberta = rota.match(/^\/carta\/([a-z0-9-]+)\.jpg$/);
+  if (cartaAberta) {
+    const certa = Buffer.from(assinarCarta(cartaAberta[1]));
+    const veio = Buffer.from(url.searchParams.get('k') ?? '');
+    if (veio.length !== certa.length || !timingSafeEqual(veio, certa)) return json(res, 404, { erro: 'Sem imagem.' });
+    return servirCarta(res, 'g', cartaAberta[1]);
+  }
+
   const pagina = rota.match(/^\/m\/(\d+)$/);
   const api = rota.match(/^\/api\/m\/(\d+)\/([a-z0-9/-]+)$/);
   if (!pagina && !api) return texto(res, 404, 'Não achei', 'Esse endereço não existe.');
@@ -839,6 +886,20 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
 
     if (acao === 'imagem') return servirImagem(res, mapaDe(c.id).imagem);
+    if (acao === 'cartas/catalogo') {
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      return json(res, 200, { cartas: CARTAS, dominios: DOMINIOS, classes: CLASSES, estagios: ESTAGIOS, imagens: temImagensDeCartas() });
+    }
+    const imgCarta = acao.match(/^carta\/([pg])\/([a-z0-9-]+)$/);
+    if (imgCarta) return servirCarta(res, imgCarta[1], imgCarta[2]);
+    const opcoes = acao.match(/^cartas\/opcoes\/(\d+)$/);
+    if (opcoes) {
+      const alvo = opcoes[1];
+      if (alvo !== userId && !souMestre) return json(res, 403, { erro: 'Você só vê as suas opções.' });
+      const p = pranchetaDe(c, alvo), ficha = fichaDe(c, alvo);
+      const f = { classe: ficha?.classe as string, nivel: ficha?.nivel as number };
+      return json(res, 200, { ...p, motivos: Object.fromEntries(CARTAS.map((k) => [k.id, motivoParaNaoEscolher(k.id, f, p.minhas, p.extras)])) });
+    }
     const pecaImg = acao.match(/^peca-imagem\/(\d+)$/);
     if (pecaImg) {
       const p = db.prepare('SELECT imagem FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(pecaImg[1]), c.id) as { imagem: string | null } | undefined;
@@ -1103,6 +1164,78 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  if (acao.startsWith('cartas/')) {
+    if (c.sistema !== 'dh') return json(res, 400, { erro: 'Cartas são do Daggerheart.' });
+    const b = await lerJson<{ carta: string; user: string; para: string; descanso: boolean; delta: number }>(req);
+    const alvo = String(b.user ?? userId);
+    if (alvo !== userId && !souMestre) return json(res, 403, { erro: 'Você só mexe nas suas cartas.' });
+    if (!idsJogadores(c.id).includes(alvo)) return json(res, 404, { erro: 'Esse jogador não está na mesa.' });
+    const ficha = fichaDe(c, alvo);
+    if (!ficha) return json(res, 400, { erro: 'Crie a ficha do personagem antes de escolher as cartas.' });
+    const minhas = cartasDe(c, alvo), carta = CARTA.get(String(b.carta ?? ''));
+    const personagem = String(ficha.nome ?? 'O personagem');
+    const jogador = (await quem(c.guild_id, alvo)).nome;
+    const fala = (texto: string, resultado: ResultadoLinha | null = null, discord = false) =>
+      gravarChat(c, alvo, `${personagem} (${jogador})`, 'msg', texto, resultado, false, discord);
+
+    if (acao === 'cartas/escolher') {
+      const motivo = motivoParaNaoEscolher(String(b.carta), { classe: ficha.classe as string, nivel: ficha.nivel as number }, minhas, extrasDe(c, alvo));
+      if (motivo) return json(res, 400, { erro: motivo });
+      const lugar = lugarAoEscolher(carta!.id, minhas);
+      db.prepare('INSERT INTO personagem_cartas (guild_id, user_id, carta, lugar, criada_em) VALUES (?, ?, ?, ?, ?)').run(c.guild_id, alvo, carta!.id, lugar, Date.now());
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true, lugar });
+    }
+    if (acao === 'cartas/tirar') {
+      if (!carta || !minhas.some((m) => m.carta === carta.id)) return json(res, 404, { erro: 'O personagem não tem esta carta.' });
+      db.prepare('DELETE FROM personagem_cartas WHERE guild_id = ? AND user_id = ? AND carta = ?').run(c.guild_id, alvo, carta.id);
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true });
+    }
+    if (acao === 'cartas/mover') {
+      const para = b.para === 'cofre' ? 'cofre' : 'carregamento';
+      const r = moverCarta(String(b.carta), para, minhas, !!b.descanso);
+      if (r.erro) return json(res, 400, { erro: r.erro });
+      if (r.estresse) {
+        const atual = Number(ficha.estresse ?? 0), max = Number(ficha.estresse_max ?? 6);
+        if (atual + r.estresse > max) return json(res, 400, { erro: `Trazer ${carta!.nome} custa ${r.estresse} de Estresse e só cabem ${max - atual}. No descanso a troca é de graça.` });
+        db.prepare('UPDATE fichas_dh SET estresse = estresse + ? WHERE guild_id = ? AND user_id = ?').run(r.estresse, c.guild_id, alvo);
+        fala(`🃏 trouxe ${carta!.nome} do Cofre e marcou ${r.estresse} de Estresse.`);
+      }
+      db.prepare('UPDATE personagem_cartas SET lugar = ? WHERE guild_id = ? AND user_id = ? AND carta = ?').run(para, c.guild_id, alvo, carta!.id);
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true, estresse: r.estresse });
+    }
+    if (acao === 'cartas/usar') {
+      const minha = carta && minhas.find((m) => m.carta === carta.id);
+      if (!minha) return json(res, 404, { erro: 'O personagem não tem esta carta.' });
+      if (minha.lugar === 'cofre') return json(res, 400, { erro: 'Esta carta está no Cofre. Traga para o Carregamento antes de usar.' });
+      db.prepare('UPDATE personagem_cartas SET usada = 1 WHERE guild_id = ? AND user_id = ? AND carta = ?').run(c.guild_id, alvo, carta!.id);
+      fala(`🃏 usou a carta ${carta!.nome}`, { tipo: 'carta', id: carta!.id, nome: carta!.nome }, true);
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true });
+    }
+    if (acao === 'cartas/recarregar') {
+      db.prepare('UPDATE personagem_cartas SET usada = 0 WHERE guild_id = ? AND user_id = ? AND carta = ?').run(c.guild_id, alvo, String(b.carta));
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true });
+    }
+    if (acao === 'cartas/descanso') {
+      db.prepare('UPDATE personagem_cartas SET usada = 0 WHERE guild_id = ? AND user_id = ?').run(c.guild_id, alvo);
+      fala('🏕️ descansou: as cartas usadas voltaram a ficar prontas.');
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true });
+    }
+    if (acao === 'cartas/extras') {
+      if (!souMestre) return json(res, 403, { erro: 'Só o mestre libera cartas extras.' });
+      const novo = Math.max(0, Math.min(20, extrasDe(c, alvo) + Math.round(Number(b.delta) || 0)));
+      db.prepare('INSERT INTO personagem_cartas_extras (guild_id, user_id, extras) VALUES (?, ?, ?) ON CONFLICT (guild_id, user_id) DO UPDATE SET extras = excluded.extras').run(c.guild_id, alvo, novo);
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true, extras: novo });
+    }
+    return json(res, 404, { erro: 'Ação desconhecida.' });
+  }
+
   // Daqui para baixo, só o mestre da campanha.
   if (!souMestre) return json(res, 403, { erro: 'Só o mestre faz isso.' });
 
@@ -1228,7 +1361,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     avisar(c.id, 'chat');
     const l = db.prepare('SELECT * FROM mapa_chat WHERE id = ?').get(Number(b.id)) as LinhaChat | undefined;
     if (l) {
-      const resultado = l.resultado ? (JSON.parse(l.resultado) as ResultadoChat) : null;
+      const resultado = l.resultado ? (JSON.parse(l.resultado) as ResultadoLinha) : null;
       void espelharNoDiscord(c, { userId: l.user_id, pecaId: l.peca_id, autor: l.autor, tipo: l.tipo, texto: l.texto, resultado }, true);
     }
     return json(res, 200, { ok: true });

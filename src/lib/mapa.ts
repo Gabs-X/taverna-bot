@@ -142,6 +142,10 @@ export function pedacos(r: Resultado): Pedaco[] {
 export type ResultadoChat =
   | { tipo: 'dados'; expressao: string; total: number; pedacos: Pedaco[] }
   | ({ tipo: 'dualidade'; vantagem: -1 | 0 | 1 } & Dualidade);
+/** Carta do Daggerheart usada no chat (aparece com a imagem dela). */
+export type ResultadoCarta = { tipo: 'carta'; id: string; nome: string };
+/** O que uma linha do chat pode carregar: uma rolagem ou uma carta. */
+export type ResultadoLinha = ResultadoChat | ResultadoCarta;
 
 /** Rola o que a entrada pede (o servidor rola; a página só mostra). */
 export function rolarEntrada(e: Exclude<Entrada, { tipo: 'msg' }>, rng?: Aleatorio): ResultadoChat {
@@ -153,20 +157,22 @@ export function rolarEntrada(e: Exclude<Entrada, { tipo: 'msg' }>, rng?: Aleator
 }
 
 /** Texto que vai para o canal do Discord quando algo é dito no chat do mapa (rolagem escondida nunca chega aqui). */
-export function textoParaDiscord(autor: string, tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoChat | null) {
+export function textoParaDiscord(autor: string, tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoLinha | null) {
   const nome = autor.replace(/[*_~`|\\>]/g, '');
   if (tipo === 'msg' || !resultado) return `🗺️ **${nome}:** ${texto}`;
   const motivo = texto ? ` · ${texto}` : '';
   if (resultado.tipo === 'dados') return `🎲 **${nome}** rolou \`${resultado.expressao}\`${motivo}: **${resultado.total}**`;
+  if (resultado.tipo === 'carta') return `🃏 **${nome}** usou a carta **${resultado.nome}**`;
   const sorte = { critico: '✨ sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[resultado.resultado];
   const vantagem = resultado.vantagem === 1 ? ' (vantagem)' : resultado.vantagem === -1 ? ' (desvantagem)' : '';
   return `🌗 **${nome}** rolou dualidade${vantagem}${motivo}: Esperança [${resultado.esperanca}] · Medo [${resultado.medo}] = **${resultado.total}** ${sorte}`;
 }
 
 /** Mesmo texto, mas para sair pelo webhook com o nome e a foto do personagem (o nome já aparece em cima). */
-export function textoDoPersonagem(tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoChat | null) {
+export function textoDoPersonagem(tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoLinha | null) {
   if (tipo === 'msg' || !resultado) return texto;
   const motivo = texto ? ` · ${texto}` : '';
+  if (resultado.tipo === 'carta') return `🃏 usou a carta **${resultado.nome}**`;
   if (resultado.tipo === 'dados') return `🎲 rolou \`${resultado.expressao}\`${motivo}: **${resultado.total}**`;
   const sorte = { critico: '✨ sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[resultado.resultado];
   const vantagem = resultado.vantagem === 1 ? ' (vantagem)' : resultado.vantagem === -1 ? ' (desvantagem)' : '';
@@ -185,7 +191,7 @@ export function chatVisivel(linhas: LinhaChat[], souMestre: boolean) {
       userId: l.user_id,
       tipo: l.tipo,
       texto: l.texto,
-      resultado: l.resultado ? (JSON.parse(l.resultado) as ResultadoChat) : null,
+      resultado: l.resultado ? (JSON.parse(l.resultado) as ResultadoLinha) : null,
       secreta: !!l.secreta,
       revelada: !!l.revelada,
       em: l.criada_em,
@@ -202,7 +208,8 @@ export function linhaDeRegistro(l: LinhaChat) {
   if (l.secreta) return undefined;
   const hora = horaBR(l.criada_em);
   if (l.tipo === 'msg' || !l.resultado) return `[${hora}] ${l.autor}: ${l.texto}`;
-  const r = JSON.parse(l.resultado) as ResultadoChat;
+  const r = JSON.parse(l.resultado) as ResultadoLinha;
+  if (r.tipo === 'carta') return `[${hora}] ${l.autor} usou a carta ${r.nome}`;
   const motivo = l.texto ? ` (${l.texto})` : '';
   const revelada = l.revelada ? ' [revelada pelo mestre]' : '';
   if (r.tipo === 'dados') return `[${hora}] ${l.autor} rolou ${r.expressao}${motivo}: ${r.total}${revelada}`;

@@ -407,3 +407,48 @@ test('livro de regras: só o mestre envia, a mesa lê em pedaços (Range) e o me
   assert.equal((await chamar(M, 'livro/remover', {})).status, 200);
   assert.equal((await ler(J)).status, 404);
 });
+
+test('cartas do Daggerheart: escolher pelo filtro da ficha, Carregamento e Cofre com Estresse, usar e descansar', async () => {
+  const J = '200000000000000002', M = '100000000000000001';
+  // Lyra (da ficha lá de cima) é Feiticeira de nível 1: Arcana e Meia-Noite, até 2 cartas de domínio.
+  assert.equal((await chamar(J, 'ficha', { ...FICHA, nivel: 1 })).status, 200);
+  const cat = (await chamar(J, 'cartas/catalogo')).corpo;
+  assert.equal(cat.cartas.length, 270);
+  const op = (await chamar(J, `cartas/opcoes/${J}`)).corpo;
+  assert.equal(op.limites.classe, 'feiticeiro');
+  assert.equal(op.motivos['dominio-arcana-talisma-runico'], null);
+  assert.match(op.motivos['dominio-valor-pele-dura'], /não é um domínio/);
+  assert.equal((await chamar(J, `cartas/opcoes/${M}`)).status, 403);
+
+  assert.equal((await chamar(J, 'cartas/escolher', { carta: 'dominio-valor-pele-dura' })).status, 400);
+  assert.equal((await chamar(J, 'cartas/escolher', { carta: 'dominio-arcana-talisma-runico' })).corpo.lugar, 'carregamento');
+  assert.equal((await chamar(J, 'cartas/escolher', { carta: 'dominio-midnight-chuva-de-laminas' })).status, 200);
+  assert.match((await chamar(J, 'cartas/escolher', { carta: 'dominio-arcana-liberar-o-caos' })).corpo.erro, /2 cartas de domínio/);
+  // O mestre libera uma extra; o jogador não pode.
+  assert.equal((await chamar(J, 'cartas/extras', { user: J, delta: 1 })).status, 403);
+  assert.equal((await chamar(M, 'cartas/extras', { user: J, delta: 1 })).corpo.extras, 1);
+  assert.equal((await chamar(J, 'cartas/escolher', { carta: 'dominio-arcana-liberar-o-caos' })).status, 200);
+
+  // Cofre e volta: custa o Estresse da carta (Chuva de Lâminas: 1); no descanso, de graça.
+  db.prepare("UPDATE fichas_dh SET estresse = 0 WHERE user_id = ?").run(J);
+  assert.equal((await chamar(J, 'cartas/mover', { carta: 'dominio-midnight-chuva-de-laminas', para: 'cofre' })).status, 200);
+  assert.equal((await chamar(J, 'cartas/mover', { carta: 'dominio-midnight-chuva-de-laminas', para: 'carregamento' })).corpo.estresse, 1);
+  assert.equal((db.prepare('SELECT estresse FROM fichas_dh WHERE user_id = ?').get(J) as { estresse: number }).estresse, 1);
+  await chamar(J, 'cartas/mover', { carta: 'dominio-midnight-chuva-de-laminas', para: 'cofre' });
+  assert.equal((await chamar(J, 'cartas/mover', { carta: 'dominio-midnight-chuva-de-laminas', para: 'carregamento', descanso: true })).corpo.estresse, 0);
+
+  // Usar marca a carta e aparece no chat com a carta; o descanso desmarca.
+  assert.equal((await chamar(J, 'cartas/usar', { carta: 'dominio-arcana-talisma-runico' })).status, 200);
+  const linha = (await chamar(J, 'chat')).corpo.at(-1);
+  assert.deepEqual(linha.resultado, { tipo: 'carta', id: 'dominio-arcana-talisma-runico', nome: 'Talismã Rúnico' });
+  let minhas = (await estado(J)).pecas.find((p: any) => p.meu).prancheta.minhas;
+  assert.equal(minhas.find((m: any) => m.carta === 'dominio-arcana-talisma-runico').usada, true);
+  await chamar(J, 'cartas/descanso', {});
+  minhas = (await estado(J)).pecas.find((p: any) => p.meu).prancheta.minhas;
+  assert.ok(minhas.every((m: any) => !m.usada));
+
+  // Imagem da carta: sem as imagens no servidor, avisa; o mestre vê a prancheta, mas não mexe em quem não está na mesa.
+  assert.equal((await chamar(J, 'carta/p/dominio-arcana-talisma-runico')).status, 404);
+  assert.equal((await chamar(M, 'cartas/usar', { user: '999', carta: 'dominio-arcana-talisma-runico' })).status, 404);
+  assert.ok((await estado(M)).pecas.find((p: any) => p.userId === J).prancheta);
+});

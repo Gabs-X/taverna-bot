@@ -46,12 +46,25 @@ export type FichaDH = {
   agilidade: number; forca: number; acuidade: number; instinto: number; presenca: number; conhecimento: number;
   evasao: number; proficiencia: number; pv_max: number; estresse_max: number; armadura_max: number;
   limiar_maior: number; limiar_grave: number; experiencias: string;
+  /** Escolhas da criação guiada (classe, subclasse, traços sem bônus, armadura...), em JSON, para reabrir a guia. */
+  guia: string;
 };
 export type FichaDnd = {
   nome: string; classe: string; raca: string; nivel: number;
   forca: number; destreza: number; constituicao: number; inteligencia: number; sabedoria: number; carisma: number;
   pv_max: number; ca: number; bba: number; fort: number; ref: number; von: number; ini_extra: number;
 };
+
+/** As escolhas da criação guiada: só um objeto JSON pequeno (o resto é ignorado). */
+export function guiaDaFicha(v: unknown) {
+  if (typeof v !== 'string' || !v || v.length > 3000) return '';
+  try {
+    const o = JSON.parse(v);
+    return o && typeof o === 'object' && !Array.isArray(o) ? JSON.stringify(o) : '';
+  } catch {
+    return '';
+  }
+}
 
 /** Confere a ficha mandada pelo formulário do mapa e devolve os valores prontos para o banco. */
 export function validarFicha(sistema: 'dh', corpo: Record<string, unknown>): Resultado<FichaDH>;
@@ -83,6 +96,7 @@ export function validarFicha(sistema: Sistema, corpo: Record<string, unknown>) {
         limiar_maior,
         limiar_grave,
         experiencias: serializarExperiencias(lista),
+        guia: guiaDaFicha(corpo.guia),
       } as FichaDH;
     }
     const atributos = Object.fromEntries(ATRIBUTOS_DND.map((a) => [a, inteiro(corpo, a, NOMES[a], 1, 50)]));
