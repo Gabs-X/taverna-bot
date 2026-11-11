@@ -291,32 +291,94 @@
   #ouro { color: var(--ouro); font-size: 18px; text-shadow: 0 0 10px rgba(240, 195, 90, .35); }
   #ataque .linha > * { min-width: 0; }
 
-  /* ---------- Livro de regras (leitor próprio com PDF.js) ---------- */
-  .modal > .caixa.livro { width: min(1240px, 100%); height: calc(100vh - 32px); display: flex; flex-direction: column; padding: 18px 18px 14px; }
-  .livro-barra { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
-  .livro-barra .grupo { display: flex; gap: 4px; align-items: center; }
-  .livro-barra input[type=number] { width: 70px; text-align: center; }
-  .livro-barra select { width: auto; max-width: 230px; }
-  .livro-barra .btn { padding: 7px 11px; }
-  #ml-total { font-family: var(--fonte-titulo); font-weight: 700; color: var(--mudo); white-space: nowrap; }
-  #ml-busca { width: 220px; flex: 1 1 160px; }
-  .livro-corpo { flex: 1; min-height: 0; display: flex; gap: 10px; margin-top: 10px; }
-  #ml-folha { flex: 1; min-width: 0; overflow: auto; border: 1px solid #a07a44; border-radius: 4px; background: radial-gradient(ellipse at center, #5a3d22, #2b1b10); box-shadow: inset 0 0 30px rgba(0, 0, 0, .6); padding: 14px; text-align: center; position: relative; }
-  #ml-canvas { display: inline-block; box-shadow: 0 8px 28px rgba(0, 0, 0, .6); background: #fff; max-width: none; }
-  #ml-carregando { position: absolute; inset: 0; display: grid; place-items: center; color: #f3e6c8; font-family: var(--fonte-titulo); font-size: 15px; text-shadow: 0 2px 4px #000; pointer-events: none; }
-  #ml-carregando span { display: block; font-size: 40px; animation: flutua 2s ease-in-out infinite; }
-  #ml-resultados { width: 290px; flex: none; overflow-y: auto; border: 1px solid var(--borda); border-radius: 4px; background: rgba(255, 250, 235, .55); padding: 8px; }
-  #ml-resultados .titulo { font-family: var(--fonte-titulo); font-weight: 700; font-size: 13px; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
-  #ml-resultados .titulo button { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 14px; color: var(--mudo); }
+  /* ---------- Livro de regras: um tomo encadernado em couro ---------- */
+  .modal > .caixa.livro {
+    --texto: #f3e6c8; --mudo: #d2b48a; --bg: #24130a; --painel2: rgba(255, 220, 160, .06); --painel3: rgba(255, 220, 160, .12); --borda: #8a6233; --acento: #e0b04a; --ouro: #f0c35a;
+    color: var(--texto); width: min(1320px, 100%); height: calc(100vh - 24px); max-height: none; display: flex; flex-direction: column; padding: 16px 20px 14px; border-radius: 14px 18px 18px 14px; border: 2px solid #140803;
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(255, 190, 120, .16), transparent 55%),
+      repeating-radial-gradient(circle at 30% 40%, rgba(0, 0, 0, .05) 0 2px, transparent 2px 5px),
+      linear-gradient(160deg, #6e3b1d, #4a2412 45%, #2f160a);
+    box-shadow: inset 0 0 0 7px rgba(0, 0, 0, .18), inset 0 0 0 8px #c9963f, inset 0 0 0 11px rgba(0, 0, 0, .25), inset 0 0 0 12px rgba(201, 150, 63, .55), inset 0 0 60px rgba(0, 0, 0, .55), 0 30px 90px rgba(0, 0, 0, .8);
+    animation: abreLivro .35s cubic-bezier(.2, .8, .3, 1);
+  }
+  @keyframes abreLivro { from { opacity: 0; transform: perspective(1400px) rotateY(-14deg) scale(.94); } to { opacity: 1; transform: none; } }
+  /* cantoneiras de latão */
+  .caixa.livro::before, .caixa.livro::after { content: ''; position: absolute; width: 34px; height: 34px; pointer-events: none; background: radial-gradient(circle at 30% 30%, #fbe39a, #c7913a 55%, #7a4f17); clip-path: polygon(0 0, 100% 0, 0 100%); opacity: .9; }
+  .caixa.livro::before { left: 3px; top: 3px; border-top-left-radius: 12px; }
+  .caixa.livro::after { right: 3px; bottom: 3px; transform: rotate(180deg); border-top-left-radius: 14px; }
+  .caixa.livro .fechar { right: 18px; top: 16px; z-index: 2; }
+  .livro-topo { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 2px 44px 10px 6px; border-bottom: 1px solid rgba(201, 150, 63, .45); box-shadow: 0 1px rgba(0, 0, 0, .35); }
+  .livro-titulo { display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .livro-titulo .selo-livro { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; flex: none; background: radial-gradient(circle at 35% 30%, #fbe39a, #c7913a 55%, #7a4f17); box-shadow: 0 2px 6px rgba(0, 0, 0, .5), inset 0 -2px 3px rgba(0, 0, 0, .3); }
+  .modal .livro-titulo h2 { margin: 0; padding: 0; font-family: var(--fonte-titulo); font-size: 21px; font-weight: 900; color: #f0c35a; text-shadow: 0 1px 0 #000, 0 -1px 0 rgba(255, 230, 170, .25), 0 0 14px rgba(240, 195, 90, .25); letter-spacing: .04em; }
+  .livro-titulo small { color: var(--mudo); font-style: italic; }
+  .livro-barra { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; flex: 1 1 600px; min-width: 0; }
+  .livro-barra .grupo { display: flex; gap: 3px; align-items: center; padding: 3px; border-radius: 10px; background: rgba(0, 0, 0, .28); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), 0 1px rgba(255, 220, 160, .08); }
+  .caixa.livro button.btn.sec { background: linear-gradient(180deg, #5a3a22, #3f2716); color: var(--texto); border-color: #7a5532; text-shadow: 0 1px #000; box-shadow: inset 0 1px rgba(255, 220, 160, .12), 0 2px 0 #1a0d05; }
+  .caixa.livro button.btn.sec.on { background: var(--latao); color: #2b1a08; text-shadow: none; }
+  .livro-barra .btn { padding: 6px 10px; min-width: 34px; justify-content: center; }
+  .livro-barra input[type=number] { width: 62px; text-align: center; font-family: var(--fonte-titulo); font-weight: 700; padding: 6px; }
+  .livro-barra select { width: auto; max-width: 165px; padding: 6px 8px; }
+  #ml-total { font-family: var(--fonte-titulo); font-weight: 700; color: var(--mudo); white-space: nowrap; padding: 0 4px; }
+  .busca-livro { position: relative; flex: 0 1 230px; min-width: 150px; }
+  .busca-livro input { padding-left: 30px !important; border-radius: 99px !important; }
+  .busca-livro::before { content: '🔎'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; pointer-events: none; }
+
+  .livro-corpo { flex: 1; min-height: 0; display: flex; gap: 12px; margin-top: 12px; }
+  #ml-folha { flex: 1; min-width: 0; overflow: auto; position: relative; border-radius: 8px; padding: 18px 26px 30px; display: flex;
+    background: radial-gradient(ellipse at 50% 40%, #3a1e0e, #1c0d05 75%); box-shadow: inset 0 0 0 1px rgba(201, 150, 63, .35), inset 0 0 40px rgba(0, 0, 0, .8); }
+  #ml-livro { margin: auto; display: flex; align-items: flex-start; position: relative; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .6)); transform-origin: center; }
+  #ml-livro.vira-prox { animation: viraProx .38s ease-out; } #ml-livro.vira-ant { animation: viraAnt .38s ease-out; }
+  @keyframes viraProx { from { opacity: .25; transform: perspective(1800px) rotateY(-9deg) translateX(18px); } to { opacity: 1; transform: none; } }
+  @keyframes viraAnt { from { opacity: .25; transform: perspective(1800px) rotateY(9deg) translateX(-18px); } to { opacity: 1; transform: none; } }
+  .pagina-livro { position: relative; background: #fffdf6; line-height: 0; cursor: pointer; }
+  .pagina-livro canvas { display: block; }
+  .pagina-livro.esq { border-radius: 5px 1px 1px 5px; box-shadow: -1px 1px 0 #efe6d2, -3px 2px 0 #ddd0b2, -5px 3px 0 #cbbb98, -7px 4px 0 #b8a67e; cursor: w-resize; }
+  .pagina-livro.dir { border-radius: 1px 5px 5px 1px; box-shadow: 1px 1px 0 #efe6d2, 3px 2px 0 #ddd0b2, 5px 3px 0 #cbbb98, 7px 4px 0 #b8a67e; cursor: e-resize; }
+  .pagina-livro.so { border-radius: 4px; box-shadow: 2px 2px 0 #ddd0b2, 4px 4px 0 #b8a67e; cursor: default; }
+  /* sombra da lombada, por cima da página */
+  .pagina-livro::after { content: ''; position: absolute; top: 0; bottom: 0; width: 9%; pointer-events: none; }
+  .pagina-livro.esq::after { right: 0; background: linear-gradient(90deg, transparent, rgba(60, 35, 10, .12) 55%, rgba(30, 15, 5, .38)); }
+  .pagina-livro.dir::after { left: 0; background: linear-gradient(270deg, transparent, rgba(60, 35, 10, .12) 55%, rgba(30, 15, 5, .38)); }
+  .pagina-livro.so::after { display: none; }
+  .pagina-livro .num { position: absolute; bottom: -24px; left: 0; right: 0; text-align: center; font-family: var(--fonte-titulo); font-size: 12.5px; font-weight: 700; color: #d2b48a; line-height: 1; letter-spacing: .1em; }
+  .pagina-livro .num::before, .pagina-livro .num::after { content: ' ❦ '; color: #8a6233; }
+  .pagina-livro.vazia { background: transparent; box-shadow: none; cursor: default; }
+  .pagina-livro.vazia::after { display: none; }
+  /* fita de seda vermelha nas páginas marcadas */
+  .fita { position: absolute; top: -6px; right: 22px; width: 18px; height: 72px; background: linear-gradient(90deg, #7a1410, #c0392b 45%, #8e1a14); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); box-shadow: 0 2px 4px rgba(0, 0, 0, .4); pointer-events: none; animation: fita .35s ease-out; }
+  .pagina-livro.esq .fita { right: auto; left: 22px; }
+  @keyframes fita { from { height: 0; } }
+  .virar { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 38px; height: 70px; border: 1px solid #7a5532; border-radius: 10px; cursor: pointer; font-size: 26px; color: #f0c35a; background: rgba(30, 15, 6, .7); box-shadow: 0 4px 12px rgba(0, 0, 0, .5); transition: background .15s, transform .15s; }
+  .virar:hover { background: rgba(80, 45, 18, .85); transform: translateY(-50%) scale(1.06); }
+  .virar.ant { left: 8px; } .virar.prox { right: 8px; }
+  #ml-carregando { position: absolute; inset: 0; display: grid; place-items: center; color: #f3e6c8; font-family: var(--fonte-titulo); font-size: 15px; text-shadow: 0 2px 4px #000; pointer-events: none; z-index: 3; background: radial-gradient(ellipse at center, rgba(20, 10, 4, .35), transparent 70%); }
+  #ml-carregando span { display: block; font-size: 42px; text-align: center; animation: chama 1.2s ease-in-out infinite alternate; }
+  @keyframes chama { from { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 6px rgba(255, 170, 60, .6)); } to { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 16px rgba(255, 170, 60, .9)); } }
+
+  /* painel lateral: sumário e busca, em pergaminho */
+  #ml-lateral { width: 300px; flex: none; display: flex; flex-direction: column; min-height: 0; border-radius: 6px; overflow: hidden; color: var(--tinta);
+    background: var(--papel); border: 1px solid #a07a44; box-shadow: inset 0 0 0 3px rgba(251, 241, 216, .6), inset 0 0 0 4px #c4a46f, inset 0 0 30px rgba(140, 90, 30, .2); animation: entra .2s ease-out; }
+  #ml-lateral .titulo { font-family: var(--fonte-titulo); font-weight: 700; font-size: 13px; padding: 10px 12px 8px; display: flex; gap: 6px; align-items: center; border-bottom: 1px solid #c4a46f; color: #4a2a0c; }
+  #ml-lateral .titulo button { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 14px; color: #7b6040; }
+  #ml-resultados { flex: 1; overflow-y: auto; padding: 6px 8px 10px; }
   .achado { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 6px 7px; cursor: pointer; font-family: var(--fonte-texto); font-size: 13.5px; line-height: 1.35; color: var(--tinta); }
   .achado:hover, .achado.atual { background: #fff8e6; border-color: #c4a46f; }
   .achado b { font-family: var(--fonte-titulo); color: #8e5a1c; margin-right: 4px; }
   .achado mark { background: #f6d77e; color: inherit; border-radius: 2px; padding: 0 1px; }
+  .achado.cap { font-family: var(--fonte-titulo); font-size: 13px; font-weight: 700; }
+  .achado.sub { padding-left: 20px; font-size: 13px; }
+  .lateral-vazio { padding: 12px; color: #7b6040; font-style: italic; font-family: var(--fonte-texto); }
   .link-livro { margin-top: 6px; }
   @media (max-width: 820px) {
+    .modal > .caixa.livro { padding: 12px 10px 10px; height: calc(100vh - 16px); }
+    .livro-topo { padding-right: 40px; }
+    .livro-barra { margin-left: 0; }
     .livro-corpo { flex-direction: column; }
-    #ml-resultados { width: auto; max-height: 34%; order: -1; }
-    #ml-busca { width: 100%; }
+    #ml-lateral { width: auto; max-height: 36%; order: -1; }
+    #ml-folha { padding: 10px 10px 30px; }
+    .virar { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -539,29 +601,41 @@
 <div class="modal" id="modal-livro" hidden>
   <div class="caixa livro">
     <button class="fechar" data-fecha="modal-livro" title="Fechar (Esc)">✕</button>
-    <h2>📖 Livro de regras</h2>
-    <small id="ml-sub">← → trocam de página · procure qualquer palavra na caixa de busca</small>
-    <div class="livro-barra">
-      <div class="grupo">
-        <button class="btn sec" id="ml-ant" title="Página anterior (←)">◀</button>
-        <input id="ml-pagina" type="number" min="1" max="9999" title="Página (Enter para ir)">
-        <span id="ml-total">/ …</span>
-        <button class="btn sec" id="ml-prox" title="Próxima página (→)">▶</button>
+    <div class="livro-topo">
+      <div class="livro-titulo"><span class="selo-livro">📖</span><div><h2 id="ml-titulo">Livro de regras</h2><small id="ml-sub">← → viram a página</small></div></div>
+      <div class="livro-barra">
+        <div class="grupo">
+          <button class="btn sec" id="ml-ant" title="Voltar (←)">◀</button>
+          <input id="ml-pagina" type="number" min="1" max="9999" title="Página (Enter para ir)">
+          <span id="ml-total">/ …</span>
+          <button class="btn sec" id="ml-prox" title="Avançar (→)">▶</button>
+        </div>
+        <div class="grupo">
+          <button class="btn sec" id="ml-menos" title="Diminuir">－</button>
+          <button class="btn sec" id="ml-mais" title="Aumentar">＋</button>
+          <button class="btn sec" id="ml-modo" title="Uma página ou o livro aberto">📖</button>
+        </div>
+        <div class="busca-livro"><input id="ml-busca" type="text" maxlength="60" placeholder="Procurar no livro (ex.: Medo)…" autocomplete="off"></div>
+        <div class="grupo"><button class="btn sec" id="ml-sumario" title="Sumário">📜</button><button class="btn sec" id="ml-aba" title="Baixar ou abrir o PDF fora do mapa">⬇</button></div>
+        <div class="grupo">
+          <select id="ml-marcadores" title="Seus marcadores (ficam neste navegador)"><option value="">🔖 Marcadores…</option></select>
+          <button class="btn sec" id="ml-marcar" title="Marcar esta página">＋🔖</button>
+          <button class="btn sec" id="ml-desmarcar" title="Tirar o marcador escolhido" hidden>🗑️</button>
+        </div>
+        <button class="btn" id="ml-mesa" title="Manda no chat um atalho para esta página, para todos abrirem">📣 À mesa</button>
       </div>
-      <div class="grupo">
-        <button class="btn sec" id="ml-menos" title="Diminuir">－</button>
-        <button class="btn sec" id="ml-mais" title="Aumentar">＋</button>
-      </div>
-      <input id="ml-busca" type="text" maxlength="60" placeholder="🔎 Procurar no livro (ex.: Medo, armadura)…" autocomplete="off">
-      <select id="ml-marcadores" title="Seus marcadores (ficam neste navegador)"><option value="">🔖 Marcadores…</option></select>
-      <button class="btn sec" id="ml-marcar" title="Marcar esta página">＋ 🔖</button>
-      <button class="btn sec" id="ml-desmarcar" title="Tirar o marcador escolhido" hidden>🗑️</button>
-      <button class="btn" id="ml-mesa" title="Manda no chat um atalho para esta página">📣 Mostrar à mesa</button>
-      <button class="btn sec" id="ml-aba" title="Baixar ou abrir o PDF fora do mapa">⬇</button>
     </div>
     <div class="livro-corpo">
-      <div id="ml-resultados" hidden></div>
-      <div id="ml-folha"><canvas id="ml-canvas"></canvas><div id="ml-carregando"><div><span>📖</span>Abrindo o livro…</div></div></div>
+      <div id="ml-lateral" hidden><div class="titulo"><span id="ml-lateral-titulo"></span><button id="ml-lateral-fechar" title="Fechar">✕</button></div><div id="ml-resultados"></div></div>
+      <div id="ml-folha">
+        <button class="virar ant" id="ml-virar-ant" title="Voltar">‹</button>
+        <div id="ml-livro">
+          <div class="pagina-livro esq" id="ml-pag-e"><canvas></canvas><span class="num"></span></div>
+          <div class="pagina-livro dir" id="ml-pag-d"><canvas></canvas><span class="num"></span></div>
+        </div>
+        <button class="virar prox" id="ml-virar-prox" title="Avançar">›</button>
+        <div id="ml-carregando"><div><span>🕯️</span>Abrindo o livro…</div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1254,13 +1328,15 @@ function confirmarLimpeza() {
 }
 
 // ---------- Livro de regras ----------
-// Leitor próprio com PDF.js: busca só os pedaços de cada página (Range), troca de página na hora e funciona no celular.
+// Leitor próprio com PDF.js: busca só os pedaços de cada página (Range), vira a página na hora e funciona no celular.
+// Em tela larga, o livro fica aberto (duas páginas, como impresso: a 1 sozinha à direita, depois 2-3, 4-5...).
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/';
 const chaveMarcadores = 'mapa_livro_' + ID;
 const lerMarcadores = () => { try { return JSON.parse(localStorage.getItem(chaveMarcadores) || '[]').filter((m) => m && m.p > 0); } catch { return []; } };
 const gravarMarcadores = (l) => { try { localStorage.setItem(chaveMarcadores, JSON.stringify(l.slice(0, 60))); } catch {} };
 const mb = (n) => (n / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' MB';
-const livro = { url: '', doc: null, abrindo: null, pagina: 1, zoom: 1, tarefa: null, textos: [], busca: 0 };
+const livro = { url: '', doc: null, abrindo: null, pagina: 1, zoom: 1, tarefas: [], textos: [], busca: 0, umaPagina: false, sumario: undefined, vez: 0 };
+try { livro.umaPagina = localStorage.getItem('mapa_livro_modo') === 'uma'; } catch {}
 
 function painelLivro() {
   const l = estado.livro;
@@ -1274,52 +1350,86 @@ function painelLivro() {
 function desenharMarcadores() {
   const sel = $('ml-marcadores'), atual = sel.value; sel.textContent = '';
   const lista = lerMarcadores();
-  sel.append(new Option(lista.length ? '🔖 Marcadores (' + lista.length + ')' : '🔖 Sem marcadores ainda', ''));
+  sel.append(new Option(lista.length ? '🔖 Marcadores (' + lista.length + ')' : '🔖 Sem marcadores', ''));
   for (const m of lista) sel.append(new Option('p. ' + m.p + ' · ' + m.nome, String(m.p)));
   sel.value = [...sel.options].some((o) => o.value === atual) ? atual : '';
   $('ml-desmarcar').hidden = !sel.value;
 }
+const carregandoLivro = (txt) => { $('ml-carregando').hidden = !txt; if (txt) $('ml-carregando').firstChild.lastChild.textContent = txt; };
 
 /** Carrega o PDF.js e abre o documento (uma vez por versão do livro). */
 async function documentoDoLivro() {
   const l = estado.livro;
   if (livro.doc && livro.url === l.url) return livro.doc;
   if (livro.abrindo && livro.url === l.url) return livro.abrindo;
-  livro.url = l.url; livro.doc = null; livro.textos = [];
+  livro.url = l.url; livro.doc = null; livro.textos = []; livro.sumario = undefined;
   livro.abrindo = (async () => {
     const pdfjs = await import(PDFJS + 'pdf.min.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
     const tarefa = pdfjs.getDocument({ url: l.url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 262144, withCredentials: true });
-    tarefa.onProgress = ({ loaded }) => { if (!livro.doc) $('ml-carregando').lastChild.lastChild.textContent = 'Abrindo o livro… ' + mb(loaded); };
+    tarefa.onProgress = ({ loaded }) => { if (!livro.doc) carregandoLivro('Abrindo o livro… ' + mb(loaded)); };
     const doc = await tarefa.promise;
     livro.doc = doc;
     $('ml-total').textContent = '/ ' + doc.numPages;
     $('ml-pagina').max = String(doc.numPages);
+    $('ml-sub').textContent = (estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D') + ' · ' + doc.numPages + ' páginas · ← → viram a página';
     return doc;
   })();
   try { return await livro.abrindo; } catch (e) { livro.url = ''; throw e; } finally { livro.abrindo = null; }
 }
 
-async function mostrarPagina() {
-  const doc = livro.doc; if (!doc) return;
-  livro.pagina = Math.min(doc.numPages, Math.max(1, livro.pagina));
-  if (document.activeElement !== $('ml-pagina')) $('ml-pagina').value = String(livro.pagina);
-  const pagina = await doc.getPage(livro.pagina);
-  const folha = $('ml-folha'), cv = $('ml-canvas'), dpr = devicePixelRatio || 1;
-  const base = pagina.getViewport({ scale: 1 });
-  const escala = Math.max(0.2, ((folha.clientWidth - 30) / base.width) * livro.zoom);
+const livroAberto = () => !livro.umaPagina && $('ml-folha').clientWidth >= 900;
+/** Páginas à vista: [esquerda, direita] no livro aberto, ou [null, p] com uma página só. */
+function paginasAVista(p, n) {
+  if (!livroAberto()) return [null, p];
+  if (p <= 1) return [null, 1];
+  const esq = p % 2 === 0 ? p : p - 1;
+  return [esq, esq + 1 <= n ? esq + 1 : null];
+}
+
+/** Desenha uma página do PDF num canvas, fora da tela primeiro (a troca não pisca). */
+async function desenharPaginaLivro(caixa, numero, larguraMax, alturaMax) {
+  const cv = caixa.querySelector('canvas');
+  caixa.classList.toggle('vazia', !numero);
+  caixa.querySelector('.num').textContent = numero ? String(numero) : '';
+  const fitaVelha = caixa.querySelector('.fita'); if (fitaVelha) fitaVelha.remove();
+  if (!numero) { cv.width = 0; cv.height = 0; cv.style.width = '0px'; cv.style.height = '0px'; return; }
+  const pagina = await livro.doc.getPage(numero), dpr = devicePixelRatio || 1, base = pagina.getViewport({ scale: 1 });
+  const escala = Math.max(0.15, Math.min(larguraMax / base.width, alturaMax / base.height) * livro.zoom);
   const vp = pagina.getViewport({ scale: escala * dpr });
-  if (livro.tarefa) livro.tarefa.cancel();
   const temp = document.createElement('canvas'); temp.width = Math.floor(vp.width); temp.height = Math.floor(vp.height);
-  livro.tarefa = pagina.render({ canvasContext: temp.getContext('2d'), viewport: vp });
-  $('ml-carregando').hidden = false; $('ml-carregando').lastChild.lastChild.textContent = 'Virando a página…';
-  try { await livro.tarefa.promise; } catch { return; } // outra página foi pedida no meio
-  livro.tarefa = null;
-  // Troca de uma vez (sem piscar): desenha fora da tela e copia.
+  const tarefa = pagina.render({ canvasContext: temp.getContext('2d'), viewport: vp });
+  livro.tarefas.push(tarefa);
+  await tarefa.promise;
   cv.width = temp.width; cv.height = temp.height; cv.style.width = Math.floor(vp.width / dpr) + 'px'; cv.style.height = Math.floor(vp.height / dpr) + 'px';
   cv.getContext('2d').drawImage(temp, 0, 0);
-  $('ml-carregando').hidden = true;
-  for (const a of document.querySelectorAll('.achado')) a.classList.toggle('atual', Number(a.dataset.p) === livro.pagina);
+  if (lerMarcadores().some((m) => m.p === numero)) caixa.append(el('div', 'fita'));
+}
+
+async function mostrarPagina(sentido) {
+  const doc = livro.doc; if (!doc) return;
+  const vez = ++livro.vez;
+  livro.pagina = Math.min(doc.numPages, Math.max(1, livro.pagina));
+  if (document.activeElement !== $('ml-pagina')) $('ml-pagina').value = String(livro.pagina);
+  for (const t of livro.tarefas.splice(0)) t.cancel();
+  const [esq, dir] = paginasAVista(livro.pagina, doc.numPages), folha = $('ml-folha');
+  const dois = livroAberto(), larg = (folha.clientWidth - 52 - (dois ? 14 : 0)) / (dois ? 2 : 1), alt = folha.clientHeight - 56;
+  $('ml-pag-e').hidden = !dois;
+  $('ml-pag-d').classList.toggle('so', !dois);
+  $('ml-modo').textContent = dois ? '📖' : '📄';
+  $('ml-modo').classList.toggle('on', !livro.umaPagina);
+  const demora = setTimeout(() => { if (vez === livro.vez) carregandoLivro('Virando a página…'); }, 180);
+  try {
+    await Promise.all([dois ? desenharPaginaLivro($('ml-pag-e'), esq, larg, alt) : null, desenharPaginaLivro($('ml-pag-d'), dir, dois ? larg : Math.max(larg, 200), dois ? alt : Math.max(alt, larg * 1.3))]);
+  } catch { return; } // outra página foi pedida no meio
+  finally { clearTimeout(demora); }
+  if (vez !== livro.vez) return;
+  carregandoLivro('');
+  const lv = $('ml-livro'); lv.classList.remove('vira-prox', 'vira-ant');
+  if (sentido) { void lv.offsetWidth; lv.classList.add(sentido > 0 ? 'vira-prox' : 'vira-ant'); }
+  $('ml-virar-ant').hidden = livro.pagina <= 1;
+  $('ml-virar-prox').hidden = (dir || esq || livro.pagina) >= doc.numPages;
+  for (const a of document.querySelectorAll('.achado')) a.classList.toggle('atual', Number(a.dataset.p) === esq || Number(a.dataset.p) === dir);
 }
 
 /** Abre a janela do livro (na página pedida, se houver). */
@@ -1328,75 +1438,149 @@ async function abrirLivro(pagina) {
   $('modal-livro').hidden = false;
   desenharMarcadores();
   if (pagina) livro.pagina = Math.max(1, Math.floor(Number(pagina)));
-  if (!livro.doc || livro.url !== estado.livro.url) { $('ml-carregando').hidden = false; $('ml-carregando').lastChild.lastChild.textContent = 'Abrindo o livro…'; }
-  try { await documentoDoLivro(); } catch (e) { $('ml-carregando').lastChild.lastChild.textContent = 'Não consegui abrir o livro. Tente de novo.'; console.error(e); return; }
+  if (!livro.doc || livro.url !== estado.livro.url) carregandoLivro('Abrindo o livro…');
+  try { await documentoDoLivro(); } catch (e) { carregandoLivro('Não consegui abrir o livro. Feche e tente de novo.'); console.error(e); return; }
   await mostrarPagina();
   $('ml-folha').scrollTop = 0;
 }
-const irPara = (p) => { livro.pagina = p; mostrarPagina().catch(() => {}); $('ml-folha').scrollTop = 0; };
+/** Vai para a página p (com a animação no sentido certo). */
+function irPara(p) {
+  const antes = livro.pagina; livro.pagina = p;
+  mostrarPagina(Math.sign(p - antes)).catch(() => {}); $('ml-folha').scrollTop = 0;
+}
+// No livro aberto, vira de duas em duas.
+const virar = (d) => {
+  const [esq, dir] = paginasAVista(livro.pagina, livro.doc ? livro.doc.numPages : 1);
+  if (!livroAberto()) return irPara(livro.pagina + d);
+  irPara(d > 0 ? (dir || esq || livro.pagina) + 1 : Math.max(1, (esq || dir || livro.pagina) - 1));
+};
+
+// ----- Painel lateral: sumário e busca -----
+function abrirLateral(titulo) {
+  $('ml-lateral').hidden = false; $('ml-lateral-titulo').textContent = titulo; $('ml-resultados').textContent = '';
+  setTimeout(() => mostrarPagina().catch(() => {}), 220); // o espaço do livro mudou
+}
+$('ml-lateral-fechar').onclick = () => { livro.busca++; $('ml-lateral').hidden = true; $('ml-busca').value = ''; setTimeout(() => mostrarPagina().catch(() => {}), 50); };
+
+/** Sumário: o do PDF, se tiver; senão, a página do sumário impresso (a que tem mais linhas pontilhadas no começo do livro). */
+async function sumarioDoLivro() {
+  if (livro.sumario !== undefined) return livro.sumario;
+  const doc = await documentoDoLivro(), itens = [];
+  const contorno = await doc.getOutline().catch(() => null);
+  const paginaDe = async (dest) => {
+    try { const d = typeof dest === 'string' ? await doc.getDestination(dest) : dest; return d ? (await doc.getPageIndex(d[0])) + 1 : null; } catch { return null; }
+  };
+  if (contorno && contorno.length) {
+    for (const i of contorno) {
+      itens.push({ t: i.title, p: await paginaDe(i.dest), nivel: 0 });
+      for (const j of i.items || []) itens.push({ t: j.title, p: await paginaDe(j.dest), nivel: 1 });
+    }
+    return (livro.sumario = { itens });
+  }
+  let melhor = null, pontos = 4;
+  for (let p = 1; p <= Math.min(12, doc.numPages); p++) {
+    const t = await textoDaPagina(p), n = (t.match(/\.{6,}/g) || []).length;
+    if (n > pontos) { pontos = n; melhor = p; }
+  }
+  return (livro.sumario = { impresso: melhor });
+}
+async function textoDaPagina(p) {
+  if (livro.textos[p] === undefined) {
+    try { livro.textos[p] = (await (await livro.doc.getPage(p)).getTextContent()).items.map((i) => i.str).join(' ').replace(/\s+/g, ' '); } catch { livro.textos[p] = ''; }
+  }
+  return livro.textos[p];
+}
+$('ml-sumario').onclick = async () => {
+  const sum = await sumarioDoLivro().catch(() => null);
+  if (sum && sum.impresso) { irPara(sum.impresso); return aviso('📜 Sumário do livro na página ' + sum.impresso + '.', 'ok', 2500); }
+  abrirLateral('📜 Sumário');
+  const caixa = $('ml-resultados');
+  if (!sum || !sum.itens || !sum.itens.length) return caixa.append(el('div', 'lateral-vazio', 'Este PDF não tem sumário. Use a busca ou os marcadores.'));
+  for (const i of sum.itens) {
+    const b = el('button', 'achado ' + (i.nivel ? 'sub' : 'cap')); b.dataset.p = String(i.p || '');
+    b.append(el('b', '', i.p ? 'p. ' + i.p : '—'), document.createTextNode(i.t));
+    if (i.p) b.onclick = () => irPara(i.p);
+    caixa.append(b);
+  }
+};
 
 // Busca: lê o texto página por página (só o texto, sem baixar as imagens) e mostra os trechos.
 const semAcento = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 async function procurarNoLivro(termo) {
-  const caixa = $('ml-resultados'), minha = ++livro.busca, q = semAcento(termo.trim());
-  if (q.length < 2) { caixa.hidden = true; return; }
+  const minha = ++livro.busca, q = semAcento(termo.trim());
+  if (q.length < 2) return;
   const doc = await documentoDoLivro();
-  caixa.hidden = false; caixa.textContent = '';
-  const titulo = el('div', 'titulo'); const rot = el('span', '', '🔎 Procurando…'); const fechar = el('button', '', '✕'); fechar.title = 'Fechar a busca';
-  fechar.onclick = () => { livro.busca++; caixa.hidden = true; $('ml-busca').value = ''; };
-  titulo.append(rot, fechar); caixa.append(titulo);
+  abrirLateral('🔎 Procurando…');
+  const caixa = $('ml-resultados'), rot = $('ml-lateral-titulo');
   let achados = 0;
   for (let p = 1; p <= doc.numPages; p++) {
     if (minha !== livro.busca) return; // outra busca começou
-    if (livro.textos[p] === undefined) {
-      try { livro.textos[p] = (await (await doc.getPage(p)).getTextContent()).items.map((i) => i.str).join(' ').replace(/\s+/g, ' '); } catch { livro.textos[p] = ''; }
-    }
-    const texto = livro.textos[p], plano = semAcento(texto);
-    let i = plano.indexOf(q);
+    const texto = await textoDaPagina(p), i = semAcento(texto).indexOf(q);
     if (i >= 0) {
       achados++;
       const ini = Math.max(0, i - 50), fim = Math.min(texto.length, i + q.length + 70);
-      const b = el('button', 'achado' + (p === livro.pagina ? ' atual' : '')); b.dataset.p = String(p);
+      const b = el('button', 'achado'); b.dataset.p = String(p);
       b.append(el('b', '', 'p. ' + p), document.createTextNode((ini > 0 ? '…' : '') + texto.slice(ini, i)), el('mark', '', texto.slice(i, i + q.length)), document.createTextNode(texto.slice(i + q.length, fim) + (fim < texto.length ? '…' : '')));
       b.onclick = () => irPara(p);
       caixa.append(b);
     }
     if (p % 10 === 0 || p === doc.numPages) rot.textContent = p === doc.numPages ? '🔎 ' + achados + (achados === 1 ? ' página' : ' páginas') + ' com "' + termo.trim() + '"' : '🔎 Procurando… ' + p + '/' + doc.numPages + ' (' + achados + ')';
   }
-  if (!achados) caixa.append(el('div', 'mudo', 'Nada encontrado. Tente outra palavra.'));
+  if (!achados) caixa.append(el('div', 'lateral-vazio', 'Nada encontrado. Tente outra palavra.'));
 }
 
+// ----- Controles -----
 $('f-livro').onclick = () => abrirLivro();
 $('livro-abrir').onclick = () => abrirLivro();
-$('ml-ant').onclick = () => irPara(livro.pagina - 1);
-$('ml-prox').onclick = () => irPara(livro.pagina + 1);
+$('ml-ant').onclick = () => virar(-1);
+$('ml-prox').onclick = () => virar(1);
+$('ml-virar-ant').onclick = () => virar(-1);
+$('ml-virar-prox').onclick = () => virar(1);
+$('ml-pag-e').onclick = () => { if (livroAberto()) virar(-1); };
+$('ml-pag-d').onclick = () => { if (livroAberto()) virar(1); };
 $('ml-mais').onclick = () => { livro.zoom = Math.min(3, livro.zoom * 1.2); mostrarPagina().catch(() => {}); };
-$('ml-menos').onclick = () => { livro.zoom = Math.max(0.4, livro.zoom / 1.2); mostrarPagina().catch(() => {}); };
+$('ml-menos').onclick = () => { livro.zoom = Math.max(0.5, livro.zoom / 1.2); mostrarPagina().catch(() => {}); };
+$('ml-modo').onclick = () => {
+  livro.umaPagina = !livro.umaPagina; livro.zoom = 1;
+  try { localStorage.setItem('mapa_livro_modo', livro.umaPagina ? 'uma' : 'duas'); } catch {}
+  mostrarPagina().catch(() => {});
+};
 $('ml-pagina').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const p = Number($('ml-pagina').value); if (p) irPara(p); $('ml-pagina').blur(); } });
 let esperaBusca = 0;
 $('ml-busca').addEventListener('input', () => { clearTimeout(esperaBusca); esperaBusca = setTimeout(() => procurarNoLivro($('ml-busca').value).catch(() => {}), 450); });
 $('ml-busca').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(esperaBusca); procurarNoLivro($('ml-busca').value).catch(() => {}); } });
 $('ml-marcadores').onchange = () => { const p = Number($('ml-marcadores').value); $('ml-desmarcar').hidden = !p; if (p) irPara(p); };
 $('ml-marcar').onclick = () => {
-  const p = livro.pagina, ja = lerMarcadores().find((m) => m.p === p);
-  const nome = ($('ml-busca').value.trim() && !$('ml-resultados').hidden ? $('ml-busca').value.trim() : '') || (ja ? ja.nome : 'Página ' + p);
-  gravarMarcadores([...lerMarcadores().filter((m) => m.p !== p), { p, nome: nome.slice(0, 40) }].sort((a, b) => a.p - b.p));
+  const [esq, dir] = paginasAVista(livro.pagina, livro.doc ? livro.doc.numPages : 1), p = livroAberto() ? (livro.pagina === esq ? esq : dir || esq) : livro.pagina;
+  const ja = lerMarcadores().find((m) => m.p === p), termo = !$('ml-lateral').hidden && $('ml-busca').value.trim();
+  const nome = (termo || (ja ? ja.nome : 'Página ' + p)).slice(0, 40);
+  gravarMarcadores([...lerMarcadores().filter((m) => m.p !== p), { p, nome }].sort((a, b) => a.p - b.p));
   desenharMarcadores(); $('ml-marcadores').value = String(p); $('ml-desmarcar').hidden = false;
-  aviso('🔖 Página ' + p + ' marcada como "' + nome.slice(0, 40) + '".', 'ok', 2500);
+  mostrarPagina().catch(() => {});
+  aviso('🔖 Página ' + p + ' marcada como "' + nome + '".', 'ok', 2500);
 };
-$('ml-desmarcar').onclick = () => { const p = Number($('ml-marcadores').value); gravarMarcadores(lerMarcadores().filter((m) => m.p !== p)); desenharMarcadores(); };
+$('ml-desmarcar').onclick = () => { const p = Number($('ml-marcadores').value); gravarMarcadores(lerMarcadores().filter((m) => m.p !== p)); desenharMarcadores(); mostrarPagina().catch(() => {}); };
 $('ml-mesa').onclick = () => {
   const p = livro.pagina, marcador = lerMarcadores().find((m) => m.p === p);
   enviar('📖 Livro p. ' + p + (marcador ? ' · ' + marcador.nome : '')).then(() => aviso('📣 Página ' + p + ' enviada para a mesa.', 'ok', 2500)).catch(() => {});
 };
 $('ml-aba').onclick = () => { if (estado && estado.livro) window.open(estado.livro.url + '#page=' + livro.pagina, '_blank', 'noopener'); };
-// Setas trocam de página com o livro aberto (fora das caixas de texto).
+// Setas viram a página com o livro aberto (fora das caixas de texto).
 addEventListener('keydown', (e) => {
   if ($('modal-livro').hidden || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); e.stopImmediatePropagation(); irPara(livro.pagina + 1); }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); e.stopImmediatePropagation(); irPara(livro.pagina - 1); }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); e.stopImmediatePropagation(); virar(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); e.stopImmediatePropagation(); virar(-1); }
 }, true);
-addEventListener('resize', () => { if (!$('modal-livro').hidden) mostrarPagina().catch(() => {}); });
+// No celular: arrastar o dedo para o lado vira a página.
+let toqueLivro = null;
+$('ml-folha').addEventListener('touchstart', (e) => { if (e.touches.length === 1) toqueLivro = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+$('ml-folha').addEventListener('touchend', (e) => {
+  if (!toqueLivro || livro.zoom > 1.01) return (toqueLivro = null);
+  const dx = e.changedTouches[0].clientX - toqueLivro.x, dy = e.changedTouches[0].clientY - toqueLivro.y; toqueLivro = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) virar(dx < 0 ? 1 : -1);
+});
+let esperaTamanho = 0;
+addEventListener('resize', () => { if ($('modal-livro').hidden) return; clearTimeout(esperaTamanho); esperaTamanho = setTimeout(() => mostrarPagina().catch(() => {}), 150); });
 
 $('livro-arquivo').onchange = async (e) => {
   const arq = e.target.files[0]; e.target.value = '';
