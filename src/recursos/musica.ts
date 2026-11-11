@@ -17,6 +17,7 @@ import {
   type GuildMember,
   type SendableChannels,
 } from 'discord.js';
+import { AMBIENTES, type Ambiente, type FilaTocando, type PedidoMusica } from '../lib/ambientes.ts';
 import { FALAS_DRG } from '../lib/drg.ts';
 import { chaveMusica, escolherProxima, lembrar } from '../lib/radio.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
@@ -506,17 +507,8 @@ export const botaoRadio: HandlerBotao = {
 
 // ---------- Trilha sonora da mesa de RPG ----------
 
-export const AMBIENTES = {
-  taverna: { nome: '🍺 Taverna', busca: 'medieval tavern ambience music 1 hour' },
-  combate: { nome: '⚔️ Combate', busca: 'epic battle music dnd combat 1 hour' },
-  floresta: { nome: '🌲 Floresta', busca: 'fantasy forest ambience music 1 hour' },
-  masmorra: { nome: '🕯️ Masmorra', busca: 'dungeon ambience dark music dnd 1 hour' },
-  cidade: { nome: '🏰 Cidade', busca: 'medieval city market ambience 1 hour' },
-  chuva: { nome: '🌧️ Chuva e trovões', busca: 'rain thunder fantasy ambience 1 hour' },
-  misterio: { nome: '👁️ Mistério', busca: 'dark mystery horror rpg ambience music 1 hour' },
-  viagem: { nome: '🗺️ Viagem', busca: 'fantasy exploration travel music rpg 1 hour' },
-} as const;
-export type Ambiente = keyof typeof AMBIENTES;
+export { AMBIENTES, type Ambiente } from '../lib/ambientes.ts';
+
 
 /** Toca a trilha na call de quem pediu (substitui a música que estiver tocando nela). 'parar' desliga. */
 export async function executarAmbiente(i: ChatInputCommandInteraction, tipo: Ambiente | 'parar') {
@@ -650,3 +642,78 @@ export const rockandstone: Comando = {
     return i.editReply(`⛏️ ${i.user} grita: **${grito}**\n🪨 O **${t.nome}** desceu na call para gritar junto (e sobe de volta quando terminar).`);
   },
 };
+
+// ---------- Comandos vindos do mapa da campanha (pela ponte com o Taverneiro na nuvem) ----------
+
+// A música pedida pelo mapa não tem um canal de onde veio o comando: avisa no canal da campanha, ou fica quieta.
+const semCanal = { send: async () => undefined } as unknown as SendableChannels;
+
+/** Executa o que o mestre pediu no mapa, na call da mesa. Devolve o texto para o aviso na página; erro sai como exceção. */
+export async function executarDoMapa(p: PedidoMusica): Promise<string> {
+  const filaDaCall = filasDo(p.guildId).find((f) => f.channel?.id === p.canalVozId);
+  if (p.acao !== 'ambiente' && p.acao !== 'tocar') {
+    if (!filaDaCall) throw new Error('Não tem nada tocando na call da mesa.');
+    if (p.acao === 'pausar') filaDaCall.node.setPaused(true);
+    if (p.acao === 'continuar') filaDaCall.node.setPaused(false);
+    if (p.acao === 'pular') filaDaCall.node.skip();
+    if (p.acao === 'parar') filaDaCall.delete();
+    if (p.acao === 'volume') filaDaCall.node.setVolume(p.volume);
+    return { pausar: '⏸️ Música pausada.', continuar: '▶️ Música de volta.', pular: '⏭️ Pulei.', parar: '⏹️ Música desligada.', volume: `🔊 Volume ${p.acao === 'volume' ? p.volume : ''}.` }[p.acao];
+  }
+  const t = tocadorPara(p.guildId, p.canalVozId);
+  if (typeof t === 'string') throw new Error('Todos os bardos estão ocupados em outras calls.');
+  const canalVoz = t.client.channels.cache.get(p.canalVozId) ?? (await t.client.channels.fetch(p.canalVozId).catch(() => null));
+  if (!canalVoz) throw new Error(`O ${t.nome} não consegue ver a call da mesa (permissões).`);
+  const texto = p.canalTextoId ? await t.client.channels.fetch(p.canalTextoId).catch(() => null) : null;
+  const canal = texto?.isTextBased() && 'send' in texto ? (texto as SendableChannels) : semCanal;
+
+  if (p.acao === 'ambiente') {
+    const ambiente = AMBIENTES[p.tipo];
+    const busca = await t.player.search(ambiente.busca).catch(() => null);
+    const faixa = busca?.tracks.find((x) => x.durationMS >= 20 * 60_000) ?? busca?.tracks[0];
+    if (!faixa) throw new Error('Não achei uma trilha agora. Tente de novo daqui a pouco.');
+    t.player.nodes.get(p.guildId)?.delete();
+    const { queue } = await t.player.play(canalVoz as unknown as CanalDoPlayer, faixa, {
+      nodeOptions: { ...SEM_EFEITOS, metadata: { canal, ambiente: p.tipo } satisfies Metadados, volume: 35, leaveOnEmpty: true, leaveOnEmptyCooldown: 60_000, leaveOnEnd: false },
+    });
+    queue.setRepeatMode(QueueRepeatMode.TRACK);
+    console.log(`[mapa] trilha ${p.tipo} pelo ${t.nome}`);
+    return `${ambiente.nome}: trilha tocando em loop pelo ${t.nome}.`;
+  }
+
+  if (p.acao !== 'tocar') throw new Error('Comando desconhecido.');
+  // Tocar: com trilha de ambiente na call, a música substitui a trilha; senão entra na fila.
+  const busca = await t.player.search(p.busca).catch(() => null);
+  const faixa = busca?.tracks[0];
+  if (!faixa) throw new Error('Não achei essa música.');
+  if (filaDaCall && !filaDaCall.metadata.ambiente) {
+    filaDaCall.addTrack(faixa);
+    if (!filaDaCall.isPlaying()) await filaDaCall.node.play();
+    return `🎵 ${faixa.title} entrou na fila.`;
+  }
+  filaDaCall?.delete();
+  await t.player.play(canalVoz as unknown as CanalDoPlayer, faixa, {
+    nodeOptions: { ...SEM_EFEITOS, metadata: { canal } satisfies Metadados, volume: 70, leaveOnEmpty: true, leaveOnEmptyCooldown: 60_000, leaveOnEnd: true, leaveOnEndCooldown: 120_000 },
+  });
+  return `🎵 Tocando ${faixa.title} pelo ${t.nome}.`;
+}
+
+/** O que está tocando em cada call (para o mapa mostrar ao mestre). */
+export function filasTocando(): FilaTocando[] {
+  return tocadores.flatMap((t) =>
+    [...t.player.nodes.cache.values()]
+      .filter((f) => f.channel)
+      .map((f) => {
+        const fila = f as GuildQueue<Metadados>;
+        return {
+          guildId: fila.guild.id,
+          canalId: fila.channel!.id,
+          bardo: t.nome,
+          titulo: fila.currentTrack?.title ?? null,
+          pausado: fila.node.isPaused(),
+          volume: fila.node.volume,
+          ambiente: fila.metadata.ambiente ?? null,
+        };
+      }),
+  );
+}

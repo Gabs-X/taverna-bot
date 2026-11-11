@@ -4,6 +4,7 @@ import { canaisDoComando } from './canaisDosComandos.ts';
 import { CARGOS } from './config.ts';
 import { avisoCanalErrado, ehMestre, ehStaff, registrarCliente, temCargo } from './lib/servidor.ts';
 import { ambiente, botaoRadio, iniciarMusica, musica, musicasTocando, radio, rockandstone, tocar } from './recursos/musica.ts';
+import { iniciarPonteNuvem } from './recursos/ponteNuvem.ts';
 import { iniciarVigiaNuvem } from './recursos/vigiaNuvem.ts';
 import type { Comando, HandlerBotao } from './tipos.ts';
 
@@ -53,6 +54,7 @@ const principal = bardos[0];
 registrarCliente(principal);
 await iniciarMusica(bardos);
 iniciarVigiaNuvem(principal);
+iniciarPonteNuvem();
 
 // Comandos de música ficam no app do primeiro bardo (registrados por servidor: aparecem na hora).
 const corpo = COMANDOS.map((c) => c.data.toJSON());

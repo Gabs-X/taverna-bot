@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { ChannelType, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
+import { AMBIENTES, ehAmbiente, lerComandoMusica, type FilaTocando, type PedidoMusica } from '../lib/ambientes.ts';
 import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeVida, proximoTurno, resolverAtaque } from '../lib/combate.ts';
 import { rolar } from '../lib/dados.ts';
 import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
@@ -44,11 +45,11 @@ const LIMITE_IMAGEM_PECA = 3 * 1024 * 1024;
 const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
-type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null };
+type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null; canal_voz_id: string | null };
 type Mapa = {
   campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number;
   combate: number; rodada: number; vez: number | null; vida_inimigos: 'escondida' | 'estado' | 'exata';
-  nevoa_ligada: number; nevoa: string | null; cena_id: number | null;
+  nevoa_ligada: number; nevoa: string | null; cena_id: number | null; handout_id: number | null;
 };
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
@@ -177,6 +178,91 @@ function avisar(campanhaId: number, oQue: 'estado' | 'chat', soMestre = false) {
 /** Para o bot avisar as telas abertas quando a campanha muda pelo Discord (jogador entrou/saiu, mestre trocou). */
 export const avisarMapa = (campanhaId: number) => avisar(campanhaId, 'estado');
 
+// ---------- Ponte com os bardos (música da mesa) ----------
+// Os bardos rodam no PC de casa e entram por um túnel SSH (ponteNuvem.ts): só aceitamos conexão local, sem cabeçalho
+// da Cloudflare (quem vem da internet passa por ela) e com a chave de dados/bardos.chave.
+
+const ARQUIVO_CHAVE = 'dados/bardos.chave';
+let chaveBardos = '';
+const pontes = new Set<ServerResponse>();
+const pendentes = new Map<string, (r: { ok: boolean; msg: string }) => void>();
+let filasBardos: FilaTocando[] = [];
+
+function prepararChaveBardos() {
+  try {
+    chaveBardos = readFileSync(ARQUIVO_CHAVE, 'utf8').trim();
+  } catch {
+    // primeira vez
+  }
+  if (chaveBardos.length < 32) {
+    chaveBardos = randomBytes(32).toString('hex');
+    mkdirSync('dados', { recursive: true });
+    writeFileSync(ARQUIVO_CHAVE, chaveBardos, { mode: 0o600 });
+  }
+}
+
+function ehBardo(req: IncomingMessage) {
+  const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
+  const deFora = !!(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.headers['cf-ray']);
+  const veio = Buffer.from(String(req.headers['x-bardos'] ?? ''));
+  const certa = Buffer.from(chaveBardos);
+  return local && !deFora && !!chaveBardos && veio.length === certa.length && timingSafeEqual(veio, certa);
+}
+
+/** Manda um pedido de música aos bardos e espera a resposta (ou desiste em 25 s). */
+function pedirAosBardos(pedido: PedidoMusica): Promise<{ ok: boolean; msg: string }> {
+  const ponte = [...pontes][0];
+  if (!ponte) return Promise.resolve({ ok: false, msg: 'Os bardos estão sem ligação com o mapa (o PC da música está desligado?).' });
+  const id = randomBytes(6).toString('hex');
+  ponte.write(`data: ${JSON.stringify({ id, ...pedido })}\n\n`);
+  return new Promise((ok) => {
+    pendentes.set(id, ok);
+    setTimeout(() => {
+      if (pendentes.delete(id)) ok({ ok: false, msg: 'Os bardos não responderam a tempo.' });
+    }, 25_000);
+  });
+}
+
+/** O que está tocando na call da mesa (para o painel do mestre). */
+function musicaDaMesa(c: Campanha) {
+  return {
+    ponte: pontes.size > 0,
+    fila: c.canal_voz_id ? (filasBardos.find((f) => f.guildId === c.guild_id && f.canalId === c.canal_voz_id) ?? null) : null,
+    temCall: !!c.canal_voz_id,
+    ambientes: Object.entries(AMBIENTES).map(([id, a]) => ({ id, nome: a.nome })),
+  };
+}
+
+async function tratarBardos(req: IncomingMessage, res: ServerResponse, rota: string) {
+  if (!ehBardo(req)) return json(res, 401, { erro: 'Não autorizado.' });
+  if (rota === '/bardos/eventos' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+    res.write(': ponte\n\n');
+    pontes.add(res);
+    const bate = setInterval(() => res.write(': ok\n\n'), 20_000);
+    req.on('close', () => {
+      clearInterval(bate);
+      pontes.delete(res);
+    });
+    return;
+  }
+  if (rota === '/bardos/resposta' && req.method === 'POST') {
+    const b = await lerJson<{ id: string; ok: boolean; msg: string; estado: FilaTocando[] }>(req, 64_000);
+    if (Array.isArray(b.estado)) {
+      const antes = JSON.stringify(filasBardos);
+      filasBardos = b.estado;
+      // Mudou o que toca: as telas dos mestres atualizam o painel de música.
+      if (JSON.stringify(filasBardos) !== antes) for (const id of ouvintes.keys()) avisar(id, 'estado', true);
+    }
+    if (b.id) pendentes.get(b.id)?.({ ok: !!b.ok, msg: String(b.msg ?? '') });
+    if (b.id) pendentes.delete(b.id);
+    return json(res, 200, { ok: true });
+  }
+  return json(res, 404, { erro: 'Não achei.' });
+}
+
+const ultimoPing = new Map<string, number>();
+
 // ---------- Estado enviado à página ----------
 
 let discord: Client | undefined;
@@ -220,6 +306,11 @@ function vidaParaJogadores(m: Mapa, cr: CriaturaSalva | undefined, p: Peca) {
 }
 const lerMedo = (g: string) => (db.prepare('SELECT medo FROM dh_medo WHERE guild_id = ?').get(g) as { medo: number } | undefined)?.medo ?? 0;
 
+function handoutDe(c: Campanha, id: number | null) {
+  const h = id ? (db.prepare('SELECT id, titulo FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(id, c.id) as { id: number; titulo: string } | undefined) : undefined;
+  return h ? { id: h.id, titulo: h.titulo, url: `/api/m/${c.id}/handout-imagem/${h.id}` } : null;
+}
+
 async function montarEstado(c: Campanha, userId: string) {
   const m = mapaDe(c.id);
   sincronizarPecas(c, m);
@@ -245,6 +336,9 @@ async function montarEstado(c: Campanha, userId: string) {
       nevoa: nevoa ? { cols: nevoa.cols, rows: nevoa.rows, bits: gravarNevoa(nevoa.bits) } : null,
       cena: cenaAtiva?.nome ?? null,
     },
+    handout: handoutDe(c, m.handout_id),
+    handouts: (db.prepare('SELECT id FROM mapa_handouts WHERE campanha_id = ? ORDER BY id DESC').all(c.id) as { id: number }[]).map((h) => handoutDe(c, h.id)),
+    musica: souMestre ? musicaDaMesa(c) : null,
     cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente })) : [],
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
@@ -546,6 +640,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
   if (rota === '/') return texto(res, 200, '🗺️ Mapas da Taverna', ABRA_DE_NOVO);
 
+  if (rota.startsWith('/bardos/')) return tratarBardos(req, res, rota);
+
   // Imagem aberta para o Discord (foto do personagem e do NPC no webhook): só com a assinatura certa.
   const publica = rota.match(/^\/img\/([A-Za-z0-9._-]+)$/);
   if (publica) {
@@ -620,6 +716,11 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const foto = acao.match(/^foto\/(\d+)$/);
     if (foto) return servirImagem(res, idsJogadores(c.id).includes(foto[1]) ? fotoDe(c, foto[1])?.imagem : null);
+    const imgHandout = acao.match(/^handout-imagem\/(\d+)$/);
+    if (imgHandout) {
+      const h = db.prepare('SELECT imagem FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(Number(imgHandout[1]), c.id) as { imagem: string } | undefined;
+      return servirImagem(res, h?.imagem);
+    }
     const imgCriatura = acao.match(/^criatura-imagem\/(\d+)$/);
     if (imgCriatura) return servirImagem(res, criaturaPorId(c, imgCriatura[1])?.imagem);
     return json(res, 404, { erro: 'Não achei.' });
@@ -810,6 +911,18 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // Ping: um "olha aqui" no mapa que aparece na tela de todos por um instante (não fica guardado).
+  if (acao === 'ping') {
+    const b = await lerJson<{ x: number; y: number }>(req);
+    const agora = Date.now();
+    if (agora - (ultimoPing.get(userId) ?? 0) < 600) return json(res, 200, { ok: false });
+    ultimoPing.set(userId, agora);
+    const m = mapaDe(c.id);
+    const dados = JSON.stringify({ x: limitar(b.x, 0, m.largura, 0), y: limitar(b.y, 0, m.altura, 0), quem: userId });
+    for (const o of ouvintes.get(c.id) ?? []) o.res.write(`data: ping:${dados}\n\n`);
+    return json(res, 200, { ok: true });
+  }
+
   // Daqui para baixo, só o mestre da campanha.
   if (!souMestre) return json(res, 403, { erro: 'Só o mestre faz isso.' });
 
@@ -948,6 +1061,27 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     db.prepare('UPDATE mapa_pecas SET imagem = ?, versao_img = versao_img + 1 WHERE id = ?').run(arquivo, p.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
+  }
+
+  // Handout: imagem que aparece na tela de todos (o mestre envia e ela já abre para a mesa).
+  if (acao === 'handout') {
+    const titulo = String(url.searchParams.get('titulo') ?? '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Handout';
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM mapa_handouts WHERE campanha_id = ?').get(c.id) as { n: number }).n;
+    if (total >= 100) return json(res, 400, { erro: 'A campanha chegou a 100 handouts. Apague alguns antes.' });
+    let dados: Buffer;
+    try {
+      dados = await lerCorpo(req, LIMITE_IMAGEM);
+    } catch {
+      return json(res, 413, { erro: `Imagem grande demais (máximo ${LIMITE_IMAGEM / 1024 / 1024} MB).` });
+    }
+    const arquivo = salvarImagem(dados, `ho-${c.id}`);
+    if (!arquivo) return json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
+    const id = Number(db.prepare('INSERT INTO mapa_handouts (campanha_id, titulo, imagem, criada_em) VALUES (?, ?, ?, ?)').run(c.id, titulo, arquivo, Date.now()).lastInsertRowid);
+    mapaDe(c.id);
+    db.prepare('UPDATE mapas SET handout_id = ? WHERE campanha_id = ?').run(id, c.id);
+    gravarChat(c, userId, await autorDe(c, userId), 'msg', `📜 Mostrou à mesa: ${titulo}`, null, false);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id });
   }
 
   if (acao === 'criatura/imagem') {
@@ -1126,6 +1260,46 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
+  // ---------- Música da mesa (pelos bardos) ----------
+  if (acao === 'musica') {
+    const comando = lerComandoMusica(b);
+    if (typeof comando === 'string') return json(res, 400, { erro: comando });
+    if (!c.canal_voz_id) return json(res, 400, { erro: 'A mesa ainda não tem call: abra a sessão com /campanha iniciar.' });
+    const r = await pedirAosBardos({ ...comando, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
+    avisar(c.id, 'estado', true);
+    return json(res, r.ok ? 200 : 502, r.ok ? { ok: true, msg: r.msg } : { erro: r.msg });
+  }
+
+  // Trilha da cena: toca sozinha quando o mestre abre a cena.
+  if (acao === 'cena/ambiente') {
+    const ambiente = b.ambiente ? String(b.ambiente) : null;
+    if (ambiente && !ehAmbiente(ambiente)) return json(res, 400, { erro: 'Trilha desconhecida.' });
+    const r = db.prepare('UPDATE mapa_cenas SET ambiente = ? WHERE id = ? AND campanha_id = ?').run(ambiente, Number(b.id), c.id);
+    if (!r.changes) return json(res, 404, { erro: 'Cena não encontrada.' });
+    avisar(c.id, 'estado', true);
+    return json(res, 200, { ok: true });
+  }
+
+  // ---------- Handouts ----------
+  if (acao === 'handout/mostrar') {
+    const id = b.id ? Number(b.id) : null;
+    if (id && !db.prepare('SELECT 1 FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(id, c.id)) return json(res, 404, { erro: 'Handout não encontrado.' });
+    mapaDe(c.id);
+    db.prepare('UPDATE mapas SET handout_id = ? WHERE campanha_id = ?').run(id, c.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'handout/apagar') {
+    const h = db.prepare('SELECT * FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(Number(b.id), c.id) as { id: number; imagem: string } | undefined;
+    if (!h) return json(res, 404, { erro: 'Handout não encontrado.' });
+    apagarImagem(h.imagem);
+    db.prepare('DELETE FROM mapa_handouts WHERE id = ?').run(h.id);
+    db.prepare('UPDATE mapas SET handout_id = NULL WHERE campanha_id = ? AND handout_id = ?').run(c.id, h.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
   if (acao === 'cena/renomear') {
     const nome = String(b.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
     if (!nome) return json(res, 400, { erro: 'Dê um nome para a cena.' });
@@ -1167,6 +1341,8 @@ export function apagarMapa(campanhaId: number) {
   db.prepare('DELETE FROM mapa_pecas WHERE campanha_id = ?').run(campanhaId);
   for (const cn of cenasDe(campanhaId)) if (cn.imagem && cn.imagem !== m?.imagem) apagarImagem(cn.imagem);
   db.prepare('DELETE FROM mapa_cenas WHERE campanha_id = ?').run(campanhaId);
+  for (const h of db.prepare('SELECT imagem FROM mapa_handouts WHERE campanha_id = ?').all(campanhaId) as { imagem: string }[]) apagarImagem(h.imagem);
+  db.prepare('DELETE FROM mapa_handouts WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM campanha_criaturas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);
@@ -1176,6 +1352,13 @@ export function apagarMapa(campanhaId: number) {
 
 export function iniciarMapa(client: Client) {
   discord = client;
+  prepararChaveBardos();
+  // Cena com trilha: ao abrir, os bardos tocam a trilha dela na call da mesa.
+  aoTrocarCena = (c, cena) => {
+    if (cena.ambiente && ehAmbiente(cena.ambiente) && c.canal_voz_id) {
+      void pedirAosBardos({ acao: 'ambiente', tipo: cena.ambiente, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
+    }
+  };
   const servidor = createServer((req, res) => {
     tratar(req, res).catch((e) => {
       console.error('[mapa]', e);

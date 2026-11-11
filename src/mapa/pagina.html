@@ -297,7 +297,7 @@
   </div>
 
   <div id="bandeja" class="vidro" hidden></div>
-  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas</div>
+  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas · botão do meio (ou Alt + clique) marca um ponto para todos</div>
   <div id="solte">🖼️ Solte a imagem aqui para usar como mapa</div>
   <div id="toasts"></div>
 </div>
@@ -346,6 +346,18 @@
         <option value="estado">Só o estado (Ferido…)</option><option value="exata">O número de PV</option><option value="escondida">Escondida</option>
       </select></div>
     </section>
+    <section id="painel-musica" hidden>
+      <h2>Música da mesa</h2>
+      <div class="mudo" id="musica-status"></div>
+      <div class="conds" id="musica-trilhas" style="margin-top:8px"></div>
+      <div class="linha"><input id="musica-busca" type="text" maxlength="200" placeholder="Música ou link (YouTube, Spotify…)"><button id="musica-tocar" class="btn sec" title="Tocar na call da mesa">▶️</button></div>
+      <div class="linha"><button class="btn sec" data-musica="pausar" title="Pausar">⏸️</button><button class="btn sec" data-musica="continuar" title="Continuar">▶️</button><button class="btn sec" data-musica="pular" title="Pular">⏭️</button><button class="btn sec" data-musica="parar" title="Parar">⏹️</button><input id="musica-volume" type="range" min="0" max="100" title="Volume" style="flex:1;min-width:0"></div>
+    </section>
+    <section id="painel-handouts" hidden>
+      <h2>Handouts</h2>
+      <div id="handouts"></div>
+      <div class="linha" id="linha-novo-handout"><input id="handout-titulo" type="text" maxlength="60" placeholder="Título (ex.: Carta do vilão)"><label class="btn sec" for="handout-arquivo">📜 Mostrar</label><input id="handout-arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
+    </section>
     <section id="painel-cenas" hidden>
       <h2>Cenas e névoa</h2>
       <div id="cenas"></div>
@@ -387,6 +399,14 @@
     </div>
     <form id="mf-form" autocomplete="off"></form>
     <div class="acoes"><button class="btn sec" data-fecha="modal-ficha">Depois</button><button class="btn" id="mf-salvar">💾 Salvar personagem</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-handout" hidden>
+  <div class="caixa" style="width:min(900px,100%)">
+    <button class="fechar" data-fecha="modal-handout" title="Fechar (Esc)">✕</button>
+    <h2 id="mh-titulo"></h2>
+    <img id="mh-img" alt="" style="width:100%;border-radius:12px;margin-top:10px;display:block">
   </div>
 </div>
 
@@ -555,6 +575,7 @@ function painel() {
   painelMeu();
   painelCombate();
   painelCenas();
+  painelImersao();
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
@@ -743,6 +764,18 @@ function pintar() {
     ctx.globalAlpha = 1;
   }
 
+  // Pings: dois anéis que crescem e somem.
+  const agoraPing = performance.now();
+  for (const pg of pings) {
+    const t = Math.min(1, (agoraPing - pg.ini) / 1800), cor = pg.quem === estado.voce.id ? '245,196,81' : '166,108,255';
+    for (const atraso of [0, 0.25]) {
+      const tt = Math.max(0, t - atraso); if (tt <= 0) continue;
+      ctx.beginPath(); ctx.arc(pg.x, pg.y, grade * (0.3 + 2.2 * tt), 0, Math.PI * 2);
+      ctx.lineWidth = 4 * px; ctx.strokeStyle = `rgba(${cor},${1 - tt})`; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(pg.x, pg.y, 6 * px, 0, Math.PI * 2); ctx.fillStyle = `rgba(${cor},${1 - t})`; ctx.fill();
+  }
+
   // Área da névoa sendo pintada pelo mestre.
   if (arrasto && arrasto.nevoa && arrasto.b) {
     const { a, b } = arrasto, x0 = Math.floor(Math.min(a.x, b.x) / grade) * grade, y0 = Math.floor(Math.min(a.y, b.y) / grade) * grade;
@@ -784,7 +817,9 @@ function enviarMover(p, forcar) {
 }
 
 cv.addEventListener('pointerdown', (e) => {
-  if (!estado) return; cv.setPointerCapture(e.pointerId);
+  if (!estado) return;
+  if (e.button === 1 || (e.altKey && e.button === 0)) { e.preventDefault(); pingar(mundo(e)); return; }
+  cv.setPointerCapture(e.pointerId);
   const pt = mundo(e);
   if (usandoRegua) { regua = { a: pt, b: pt }; arrasto = { regua: true }; desenhar(); return; }
   if (pincel) { arrasto = { nevoa: true, revelar: pincel === 'revelar', a: pt, b: pt }; desenhar(); return; }
@@ -1377,6 +1412,16 @@ function painelCenas() {
     const info = el('div', 'info'); info.style.flex = '1';
     info.append(el('div', 'nome', (c.ativa ? '🎬 ' : '') + c.nome), el('small', '', c.ativa ? 'aberta agora' : 'clique para abrir'));
     d.append(info);
+    // Trilha da cena: os bardos tocam sozinhos quando ela abre.
+    if (estado.musica) {
+      const tr = el('select'); tr.title = 'Trilha que toca ao abrir esta cena'; tr.style.width = '118px'; tr.style.flex = 'none';
+      tr.append(new Option('Sem trilha', ''));
+      for (const a of estado.musica.ambientes) tr.append(new Option(a.nome, a.id));
+      tr.value = c.ambiente || '';
+      tr.onclick = (e) => e.stopPropagation();
+      tr.onchange = () => post('cena/ambiente', { id: c.id, ambiente: tr.value }).catch(() => {});
+      d.append(tr);
+    }
     if (!c.ativa) d.onclick = () => post('cena/abrir', { id: c.id }).then(() => { selecionada = null; ajustou = false; }).catch(() => {});
     const ren = el('button', 'mini', '✏️'); ren.className = 'btn-redondo'; ren.title = 'Renomear (usa o nome escrito abaixo)';
     ren.onclick = (e) => { e.stopPropagation(); const nome = $('cena-nome').value.trim(); if (!nome) return mostrarErro('Escreva o novo nome no campo abaixo e clique em ✏️.'); post('cena/renomear', { id: c.id, nome }).then(() => ($('cena-nome').value = '')).catch(() => {}); };
@@ -1398,6 +1443,90 @@ $('nova-cena').onclick = () => {
   if (!nome) return mostrarErro('Dê um nome para a cena.');
   post('cena/nova', { nome }).then(() => { $('cena-nome').value = ''; selecionada = null; ajustou = false; aviso(`Cena "${nome}" aberta. Importe o mapa dela.`, 'ok'); }).catch(() => {});
 };
+
+// ---------- Imersão: música, handouts e ping ----------
+let handoutVisto = null;
+const pings = [];
+function abrirHandout(h) {
+  $('mh-titulo').textContent = '📜 ' + h.titulo;
+  $('mh-img').src = h.url;
+  $('modal-handout').hidden = false;
+}
+function painelImersao() {
+  const mestre = estado.voce.mestre;
+  // O handout que o mestre mostra abre sozinho na tela de todos (uma vez; dá para reabrir pela lista).
+  const h = estado.handout;
+  if (h && h.id !== handoutVisto) { handoutVisto = h.id; if (!mestre) abrirHandout(h); }
+  if (!h) handoutVisto = null;
+  $('painel-handouts').hidden = !mestre && !estado.handouts.length;
+  $('linha-novo-handout').hidden = !mestre;
+  const lista = $('handouts'); lista.textContent = '';
+  for (const ho of estado.handouts) {
+    const naTela = !!(h && h.id === ho.id);
+    const d = el('div', 'item' + (naTela ? ' sel' : ''));
+    const info = el('div'); info.style.flex = '1'; info.append(el('div', 'nome', '📜 ' + ho.titulo), el('small', '', naTela ? 'na tela da mesa agora' : 'clique para ver'));
+    d.append(info); d.onclick = () => abrirHandout(ho);
+    if (mestre) {
+      const mostrar = el('button', 'btn-redondo', naTela ? '🙈' : '📢');
+      mostrar.title = naTela ? 'Tirar da tela da mesa' : 'Mostrar à mesa';
+      mostrar.onclick = (e) => { e.stopPropagation(); post('handout/mostrar', { id: naTela ? null : ho.id }).catch(() => {}); };
+      const apagar = el('button', 'btn-redondo', '🗑️'); apagar.title = 'Apagar (clique duas vezes)';
+      apagar.onclick = (e) => {
+        e.stopPropagation();
+        if (!apagar.dataset.armado) { apagar.dataset.armado = '1'; apagar.textContent = '❗'; setTimeout(() => { delete apagar.dataset.armado; apagar.textContent = '🗑️'; }, 3000); return; }
+        post('handout/apagar', { id: ho.id }).catch(() => {});
+      };
+      d.append(mostrar, apagar);
+    }
+    lista.append(d);
+  }
+  if (!estado.handouts.length && mestre) lista.append(el('div', 'mudo', 'Mostre uma imagem na tela de todos: carta, mapa do tesouro, retrato do vilão.'));
+
+  // Música da mesa (só o mestre controla; quem toca são os bardos, no PC de casa).
+  const m = estado.musica;
+  $('painel-musica').hidden = !mestre || !m;
+  if (!mestre || !m) return;
+  $('musica-status').textContent = !m.ponte ? '🔌 Os bardos estão sem ligação com o mapa (o PC da música está desligado?).'
+    : !m.temCall ? '🔇 A mesa ainda não tem call: abra a sessão com /campanha iniciar.'
+    : m.fila ? `🎶 ${m.fila.bardo}: ${m.fila.titulo || '…'}${m.fila.pausado ? ' (pausado)' : ''}` : '🎶 Nada tocando na call da mesa.';
+  const trilhas = $('musica-trilhas');
+  if (!trilhas.children.length) for (const a of m.ambientes) { const b = el('button', '', a.nome); b.dataset.id = a.id; b.onclick = () => musica({ acao: 'ambiente', tipo: a.id }); trilhas.append(b); }
+  for (const b of trilhas.children) b.classList.toggle('on', !!(m.fila && m.fila.ambiente === b.dataset.id));
+  if (m.fila && document.activeElement !== $('musica-volume')) $('musica-volume').value = m.fila.volume;
+}
+function musica(corpo) { return post('musica', corpo).then((r) => aviso(r.msg, 'ok', 2500)).catch(() => {}); }
+for (const b of document.querySelectorAll('[data-musica]')) b.onclick = () => musica({ acao: b.dataset.musica });
+$('musica-tocar').onclick = () => {
+  const v = $('musica-busca').value.trim();
+  if (!v) return mostrarErro('Escreva o nome da música ou cole o link.');
+  musica({ acao: 'tocar', busca: v }).then(() => ($('musica-busca').value = ''));
+};
+$('musica-busca').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('musica-tocar').onclick(); } });
+$('musica-volume').onchange = (e) => musica({ acao: 'volume', volume: Number(e.target.value) });
+$('handout-arquivo').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.');
+  try {
+    const { blob } = await prepararImagem(f);
+    const titulo = $('handout-titulo').value.trim() || f.name.replace(/\.[^.]+$/, '');
+    await post('handout?titulo=' + encodeURIComponent(titulo), undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
+    $('handout-titulo').value = ''; aviso('Handout na tela da mesa!', 'ok');
+  } catch (err) { if (err && err.message && !/^(Não deu|Só o|Use uma|Imagem)/.test(err.message)) mostrarErro(err.message); }
+};
+
+// Ping: botão do meio (ou Alt + clique) no mapa mostra um "olha aqui" para todos.
+let ultimoPing = 0;
+function pingar(pt) {
+  if (Date.now() - ultimoPing < 650) return;
+  ultimoPing = Date.now();
+  fetch(api('ping'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ x: pt.x, y: pt.y }) }).catch(() => {});
+}
+function receberPing(d) {
+  pings.push({ ...d, ini: performance.now() });
+  const animar = () => { const agora = performance.now(); while (pings.length && agora - pings[0].ini > 1800) pings.shift(); desenhar(); if (pings.length) requestAnimationFrame(animar); };
+  requestAnimationFrame(animar);
+}
+cv.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); }); // sem a rolagem automática do Windows
 
 // ---------- Abas ----------
 
@@ -1542,7 +1671,10 @@ function marcarConexao(ok) { online = ok; $('ponto').classList.toggle('ok', ok);
 
 function conectar() {
   const es = new EventSource(api('eventos'));
-  es.onmessage = (e) => { (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {}); };
+  es.onmessage = (e) => {
+    if (e.data.startsWith('ping:')) { try { receberPing(JSON.parse(e.data.slice(5))); } catch {} return; }
+    (e.data === 'chat' ? carregarChat() : carregar()).catch(() => {});
+  };
   es.onopen = () => { carregar().catch(() => {}); carregarChat().catch(() => {}); };
   // Plano B: o aviso em tempo real pode não chegar (túnel, rede da empresa). A cada 3 s confere o que mudou.
   setInterval(() => {

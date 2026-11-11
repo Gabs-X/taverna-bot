@@ -558,6 +558,19 @@ const MIGRACOES: (() => void)[] = [
       CREATE INDEX IF NOT EXISTS mapa_cenas_campanha ON mapa_cenas (campanha_id);
     `);
   },
+  // 22: handouts (imagem que o mestre mostra na tela de todos: carta, mapa do tesouro, retrato do vilão).
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS mapa_handouts (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        titulo      TEXT NOT NULL,
+        imagem      TEXT NOT NULL,
+        criada_em   INTEGER NOT NULL
+      );
+      ALTER TABLE mapas ADD COLUMN handout_id INTEGER;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

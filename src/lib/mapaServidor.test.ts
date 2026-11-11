@@ -221,3 +221,67 @@ test('cenas: cada uma com as suas peças do mestre; os jogadores vão junto', as
   assert.equal((await chamar(M, 'cena/apagar', { id: nova })).status, 200);
   assert.equal((await estado(M)).cenas.length, 1);
 });
+
+test('handouts: o mestre mostra uma imagem para a mesa toda e pode esconder ou apagar', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  assert.equal((await chamar(J, 'handout?titulo=Carta', undefined, PNG)).status, 403);
+  const { corpo } = await chamar(M, 'handout?titulo=Carta%20do%20vil%C3%A3o', undefined, PNG);
+  let e = await estado(J);
+  assert.equal(e.handout.titulo, 'Carta do vilão');
+  assert.equal(e.handouts.length, 1);
+  assert.equal(Buffer.from((await chamar(J, `handout-imagem/${corpo.id}`)).corpo).length, PNG.length);
+  await chamar(M, 'handout/mostrar', { id: null });
+  assert.equal((await estado(J)).handout, null);
+  await chamar(M, 'handout/apagar', { id: corpo.id });
+  e = await estado(J);
+  assert.equal(e.handouts.length, 0);
+});
+
+test('ping chega na tela de todos pelo tempo real', async () => {
+  const M = '100000000000000001';
+  const J = '200000000000000002';
+  const controle = new AbortController();
+  const r = await fetch(`${base}/api/m/${campanha}/eventos`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, M)}` }, signal: controle.signal });
+  const leitor = r.body!.getReader();
+  await chamar(J, 'ping', { x: 100, y: 200 });
+  let texto = '';
+  while (!texto.includes('ping:')) texto += new TextDecoder().decode((await leitor.read()).value);
+  controle.abort();
+  const dados = JSON.parse(texto.slice(texto.indexOf('ping:') + 5).split('\n')[0]);
+  assert.deepEqual(dados, { x: 100, y: 200, quem: J });
+});
+
+test('ponte com os bardos: só entra com a chave, recebe o pedido do mestre e devolve a resposta', async () => {
+  const M = '100000000000000001';
+  const { readFileSync } = await import('node:fs');
+  const chave = readFileSync('dados/bardos.chave', 'utf8').trim();
+  assert.equal((await fetch(`${base}/bardos/eventos`)).status, 401);
+  assert.equal((await fetch(`${base}/bardos/eventos`, { headers: { 'x-bardos': chave, 'cf-connecting-ip': '1.2.3.4' } })).status, 401);
+
+  // Sem call da mesa ainda: o mapa avisa antes de incomodar os bardos.
+  assert.equal((await chamar(M, 'musica', { acao: 'pular' })).status, 400);
+  db.prepare("UPDATE campanhas SET canal_voz_id = '300000000000000003', canal_id = '400000000000000004' WHERE id = ?").run(campanha);
+  assert.equal((await chamar(M, 'musica', { acao: 'pular' })).status, 502); // ninguém na ponte
+
+  const controle = new AbortController();
+  const r = await fetch(`${base}/bardos/eventos`, { headers: { 'x-bardos': chave }, signal: controle.signal });
+  const leitor = r.body!.getReader();
+  const pedido = chamar(M, 'musica', { acao: 'ambiente', tipo: 'taverna' });
+  let texto = '';
+  while (!texto.includes('data:')) texto += new TextDecoder().decode((await leitor.read()).value);
+  const recebido = JSON.parse(texto.slice(texto.indexOf('data:') + 5).split('\n')[0]);
+  assert.equal(recebido.acao, 'ambiente');
+  assert.equal(recebido.tipo, 'taverna');
+  assert.equal(recebido.canalVozId, '300000000000000003');
+  const estadoFila = [{ guildId: 'g', canalId: '300000000000000003', bardo: 'Claudinho', titulo: 'Taverna', pausado: false, volume: 35, ambiente: 'taverna' }];
+  await fetch(`${base}/bardos/resposta`, { method: 'POST', headers: { 'x-bardos': chave, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: recebido.id, ok: true, msg: 'Tocando', estado: estadoFila }) });
+  const resposta = await pedido;
+  assert.equal(resposta.status, 200);
+  assert.equal(resposta.corpo.msg, 'Tocando');
+  const e = await estado(M);
+  assert.equal(e.musica.ponte, true);
+  assert.equal(e.musica.fila.bardo, 'Claudinho');
+  assert.equal((await estado('200000000000000002')).musica, null);
+  controle.abort();
+});

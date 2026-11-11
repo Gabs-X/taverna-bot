@@ -18,11 +18,11 @@ const PASTA_LOCAL = 'dados/backups-nuvem';
 const MANTER = 14;
 const PAINEL = 'https://cloud.oracle.com/compute/instances?region=sa-saopaulo-1';
 
-const destino = process.env.NUVEM_SSH;
+export const destino = process.env.NUVEM_SSH;
 const chave = process.env.NUVEM_CHAVE ?? join(homedir(), '.ssh', 'taverna_oracle');
-const opcoesSsh = ['-i', chave, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new'];
+export const opcoesSsh = ['-i', chave, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new'];
 
-function rodar(programa: string, args: string[]): Promise<string> {
+export function rodar(programa: string, args: string[]): Promise<string> {
   return new Promise((ok, falha) =>
     execFile(programa, args, { timeout: 60_000, windowsHide: true }, (erro, saida) => (erro ? falha(erro) : ok(String(saida)))),
   );
