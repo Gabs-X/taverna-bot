@@ -1,8 +1,9 @@
-import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { Client, Message } from 'discord.js';
+import { ChannelType, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
+import { nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
   chatVisivel,
@@ -17,6 +18,7 @@ import {
   limitar,
   posicaoInicial,
   rolarEntrada,
+  textoDoPersonagem,
   textoParaDiscord,
   tipoImagem,
   type LinhaChat,
@@ -24,21 +26,30 @@ import {
 } from '../lib/mapa.ts';
 
 // Mapa da campanha, estilo Roll20: um site embutido no bot. O /campanha mapa entrega a cada um um link pessoal
-// (resposta efêmera no Discord), então o site sabe quem é cada jogador: cada ficha da campanha vira uma peça
-// que só o dono (ou o mestre) move, e o chat da mesa guarda as rolagens de todos. O mestre pode rolar escondido
-// (só ele vê, nem o histórico dos jogadores recebe) e revelar a rolagem depois com um clique.
+// (resposta efêmera no Discord), então o site sabe quem é cada jogador. O jogador cria a ficha e põe a foto do
+// personagem ali mesmo; cada jogador vira uma peça que só ele (ou o mestre) move. O mestre guarda NPCs e inimigos
+// numa biblioteca da campanha e arrasta para o mapa quantas cópias quiser. O chat da mesa guarda as rolagens de todos
+// e sai no canal do Discord com o nome e a foto de quem fala (o personagem, o NPC ou o mestre).
 
 const PORTA = Number(process.env.MAPA_PORTA) || 53135;
 const ENDERECO = (process.env.MAPA_URL?.trim() || `http://localhost:${PORTA}`).replace(/\/+$/, '');
 export const mapaPublico = () => !!process.env.MAPA_URL?.trim();
 const PASTA = 'dados/mapas';
-const LIMITE_IMAGEM_NPC = 3 * 1024 * 1024;
+const LIMITE_IMAGEM_PECA = 3 * 1024 * 1024;
 const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
 type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null };
 type Mapa = { campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number };
-type Peca = { id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number };
+type Peca = {
+  id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
+  criatura_id: number | null; tipo: string | null; pv: number | null;
+};
+type CriaturaSalva = {
+  id: number; campanha_id: number; tipo: 'npc' | 'inimigo'; nome: string; imagem: string | null; versao_img: number; tamanho: number;
+  pv_max: number | null; defesa: number | null; ataque: number | null; dano: string; limiar_maior: number | null; limiar_grave: number | null; notas: string;
+};
+type Foto = { imagem: string; versao: number };
 
 /** Segredo que assina os links e as sessões do mapa: sorteado na primeira vez e guardado no banco. */
 function segredo() {
@@ -58,6 +69,13 @@ const campanhaPorId = (id: number) => db.prepare('SELECT * FROM campanhas WHERE 
 const idsJogadores = (id: number) => (db.prepare('SELECT user_id FROM campanha_personagens WHERE campanha_id = ? ORDER BY rowid').all(id) as { user_id: string }[]).map((r) => r.user_id);
 const fichaDe = (c: Campanha, u: string) =>
   db.prepare(`SELECT * FROM ${TABELA_FICHA[c.sistema]} WHERE guild_id = ? AND user_id = ?`).get(c.guild_id, u) as Record<string, unknown> | undefined;
+const fotoDe = (c: Campanha, u: string) =>
+  db.prepare('SELECT imagem, versao FROM personagem_fotos WHERE guild_id = ? AND user_id = ? AND sistema = ?').get(c.guild_id, u, c.sistema) as Foto | undefined;
+const criaturasDe = (id: number) => db.prepare('SELECT * FROM campanha_criaturas WHERE campanha_id = ? ORDER BY tipo, nome COLLATE NOCASE').all(id) as CriaturaSalva[];
+const criaturaPorId = (c: Campanha, id: unknown) =>
+  db.prepare('SELECT * FROM campanha_criaturas WHERE id = ? AND campanha_id = ?').get(Number(id), c.id) as CriaturaSalva | undefined;
+const pecaDoMestre = (c: Campanha, id: unknown) =>
+  db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(id), c.id) as Peca | undefined;
 
 function mapaDe(id: number) {
   db.prepare('INSERT OR IGNORE INTO mapas (campanha_id) VALUES (?)').run(id);
@@ -73,7 +91,8 @@ function sincronizarPecas(c: Campanha, m: Mapa) {
   }
   let n = existentes.length;
   for (const u of jogadores) {
-    const nome = String(fichaDe(c, u)?.nome ?? 'Personagem');
+    // Quem ainda não criou a ficha (agora ela nasce no próprio mapa) aparece como "Novo personagem".
+    const nome = String(fichaDe(c, u)?.nome ?? 'Novo personagem');
     const atual = existentes.find((p) => p.user_id === u);
     if (atual) {
       if (atual.nome !== nome) db.prepare('UPDATE mapa_pecas SET nome = ? WHERE id = ?').run(nome, atual.id);
@@ -81,6 +100,38 @@ function sincronizarPecas(c: Campanha, m: Mapa) {
     }
     const { x, y } = posicaoInicial(n++, m.grade);
     db.prepare('INSERT OR IGNORE INTO mapa_pecas (campanha_id, user_id, nome, x, y) VALUES (?, ?, ?, ?, ?)').run(c.id, u, nome, x, y);
+  }
+}
+
+// ---------- Imagens ----------
+
+const assinarArquivo = (arquivo: string) => createHmac('sha256', segredo()).update(`img:${arquivo}`).digest('base64url').slice(0, 24);
+/** Endereço aberto (sem login) de uma imagem do mapa, para o Discord buscar a foto do personagem no webhook. */
+const imagemPublica = (arquivo: string | null | undefined) =>
+  arquivo && SEGURO ? `${ENDERECO}/img/${encodeURIComponent(arquivo)}?k=${assinarArquivo(arquivo)}` : null;
+
+function salvarImagem(dados: Buffer, prefixo: string) {
+  const tipo = tipoImagem(dados);
+  if (!tipo) return null;
+  mkdirSync(PASTA, { recursive: true });
+  const arquivo = `${prefixo}-${Date.now()}.${tipo.ext}`;
+  writeFileSync(`${PASTA}/${arquivo}`, dados);
+  return arquivo;
+}
+const apagarImagem = (arquivo: string | null | undefined) => {
+  if (arquivo) rmSync(`${PASTA}/${arquivo}`, { force: true });
+};
+
+function servirImagem(res: ServerResponse, arquivo: string | null | undefined) {
+  try {
+    if (!arquivo || arquivo.includes('/') || arquivo.includes('\\')) throw new Error('sem imagem');
+    const dados = readFileSync(`${PASTA}/${arquivo}`);
+    const tipo = tipoImagem(dados);
+    if (!tipo) throw new Error('arquivo inválido');
+    res.writeHead(200, { 'Content-Type': tipo.mime, 'Cache-Control': 'private, max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
+    return void res.end(dados);
+  } catch {
+    return json(res, 404, { erro: 'Sem imagem.' });
   }
 }
 
@@ -114,42 +165,81 @@ async function quem(guildId: string, userId: string) {
   };
 }
 
+const urlFoto = (c: Campanha, u: string, f: Foto) => `/api/m/${c.id}/foto/${u}?v=${f.versao}`;
+const urlCriatura = (c: Campanha, cr: CriaturaSalva) => (cr.imagem ? `/api/m/${c.id}/criatura-imagem/${cr.id}?v=${cr.versao_img}` : null);
+
+/** Ficha que o mestre vê numa peça da biblioteca (cada cópia tem a sua vida). */
+function fichaDaCriatura(cr: CriaturaSalva, p: Peca) {
+  return {
+    tipo: cr.tipo,
+    pv_atual: cr.pv_max === null ? null : (p.pv ?? cr.pv_max),
+    pv_max: cr.pv_max,
+    defesa: cr.defesa,
+    ataque: cr.ataque,
+    dano: cr.dano,
+    limiar_maior: cr.limiar_maior,
+    limiar_grave: cr.limiar_grave,
+    notas: cr.notas,
+  };
+}
+
 async function montarEstado(c: Campanha, userId: string) {
   const m = mapaDe(c.id);
   sincronizarPecas(c, m);
   const pecas = db.prepare('SELECT * FROM mapa_pecas WHERE campanha_id = ? ORDER BY id').all(c.id) as Peca[];
   const souMestre = c.mestre_id === userId;
+  const criaturas = criaturasDe(c.id);
+  const porCriatura = new Map(criaturas.map((cr) => [cr.id, cr]));
   const donos = new Map<string, Awaited<ReturnType<typeof quem>>>();
   const ids = new Set([c.mestre_id, userId, ...pecas.map((p) => p.user_id).filter((u): u is string => !!u)]);
   await Promise.all([...ids].map(async (u) => donos.set(u, await quem(c.guild_id, u))));
+  const minha = pecas.find((p) => p.user_id === userId);
 
   return {
-    campanha: { nome: c.nome, sistema: c.sistema, mestre: donos.get(c.mestre_id)?.nome ?? 'Mestre' },
-    voce: { id: userId, mestre: souMestre, ...donos.get(userId)! },
+    campanha: { nome: c.nome, sistema: c.sistema, mestre: donos.get(c.mestre_id)?.nome ?? 'Mestre', mestreId: c.mestre_id, mestreAvatar: donos.get(c.mestre_id)?.avatar ?? null },
+    voce: { id: userId, mestre: souMestre, jogador: !!minha, pecaId: minha?.id ?? null, temFicha: !!fichaDe(c, userId), ...donos.get(userId)! },
     mapa: { versao: m.versao, temImagem: !!m.imagem, largura: m.largura, altura: m.altura, grade: m.grade },
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
+      const cr = p.criatura_id ? porCriatura.get(p.criatura_id) : undefined;
       // A ficha completa só aparece para o dono da peça e para o mestre; os outros veem nome, classe e nível.
       const ficha = p.user_id ? fichaDe(c, p.user_id) : undefined;
-      let dadosFicha: Record<string, unknown> | undefined;
+      let dadosFicha: Record<string, unknown> | null = null;
       if (ficha) {
         const { guild_id: _g, user_id: _u, ...resto } = ficha;
         dadosFicha = meu || souMestre ? resto : { nome: resto.nome, classe: resto.classe, nivel: resto.nivel };
-      }
+      } else if (cr && souMestre) dadosFicha = fichaDaCriatura(cr, p);
+      const foto = p.user_id ? fotoDe(c, p.user_id) : undefined;
+      let avatar: string | null;
+      if (p.user_id) avatar = foto ? urlFoto(c, p.user_id, foto) : (donos.get(p.user_id)?.avatar ?? null);
+      else if (p.imagem) avatar = `/api/m/${c.id}/peca-imagem/${p.id}?v=${p.versao_img}`;
+      else avatar = cr ? urlCriatura(c, cr) : null;
       return {
         id: p.id,
         nome: p.nome,
         x: p.x,
         y: p.y,
         npc: !p.user_id,
+        tipo: p.user_id ? 'jogador' : p.tipo === 'inimigo' ? 'inimigo' : 'npc',
+        userId: p.user_id,
+        criaturaId: cr?.id ?? null,
         meu,
         podeMover: souMestre || meu,
         jogador: p.user_id ? (donos.get(p.user_id)?.nome ?? null) : null,
         tamanho: p.tamanho,
-        avatar: p.user_id ? (donos.get(p.user_id)?.avatar ?? null) : p.imagem ? `/api/m/${c.id}/peca-imagem/${p.id}?v=${p.versao_img}` : null,
-        ficha: dadosFicha ?? null,
+        avatar,
+        imagemPropria: !!p.imagem,
+        ficha: dadosFicha,
       };
     }),
+    // A biblioteca de NPCs e inimigos é só do mestre: os jogadores não sabem o que vem pela frente.
+    biblioteca: souMestre
+      ? criaturas.map((cr) => ({
+          id: cr.id, tipo: cr.tipo, nome: cr.nome, tamanho: cr.tamanho, pv_max: cr.pv_max, defesa: cr.defesa, ataque: cr.ataque, dano: cr.dano,
+          limiar_maior: cr.limiar_maior, limiar_grave: cr.limiar_grave, notas: cr.notas, avatar: urlCriatura(c, cr),
+          noMapa: pecas.filter((p) => p.criatura_id === cr.id).length,
+        }))
+      : [],
   };
 }
 
@@ -166,11 +256,59 @@ async function autorDe(c: Campanha, userId: string) {
   return personagem ? `${personagem} (${nome})` : nome;
 }
 
+// ---------- Espelho no Discord (webhook com o nome e a foto de quem fala) ----------
+
+const webhooks = new Map<string, Webhook>();
+
+async function webhookDe(canal: TextChannel) {
+  const salvo = webhooks.get(canal.id);
+  if (salvo) return salvo;
+  const lista = await canal.fetchWebhooks();
+  const meu =
+    lista.find((w) => w.owner?.id === discord?.user?.id && !!w.token) ??
+    (await canal.createWebhook({ name: 'Mesa da Taverna', reason: 'Mensagens do mapa com o nome e a foto do personagem' }));
+  webhooks.set(canal.id, meu);
+  return meu;
+}
+
+/** Quem "fala" no Discord: o NPC (pela peça), o personagem do jogador (nome e foto da ficha) ou o mestre. */
+async function personaDe(c: Campanha, userId: string, pecaId: number | null | undefined) {
+  if (pecaId) {
+    const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(pecaId, c.id) as Peca | undefined;
+    const cr = npc?.criatura_id ? criaturaPorId(c, npc.criatura_id) : undefined;
+    if (npc) return { nome: npc.nome, avatar: imagemPublica(npc.imagem ?? cr?.imagem) };
+  }
+  const eu = await quem(c.guild_id, userId);
+  if (c.mestre_id === userId) return { nome: `${eu.nome} (mestre)`, avatar: eu.avatar };
+  const ficha = fichaDe(c, userId);
+  return { nome: String(ficha?.nome ?? eu.nome), avatar: imagemPublica(fotoDe(c, userId)?.imagem) ?? eu.avatar };
+}
+
+type Fala = { userId: string; pecaId: number | null | undefined; autor: string; tipo: LinhaChat['tipo']; texto: string; resultado: ResultadoChat | null };
+
 /** Manda ao canal do Discord ligado à campanha (se houver) o que foi dito no chat do mapa. */
-async function espelharNoDiscord(c: Campanha, conteudo: string) {
+async function espelharNoDiscord(c: Campanha, f: Fala, revelada = false) {
   if (!c.canal_id) return;
   const canal = await discord?.channels.fetch(c.canal_id).catch(() => null);
   if (!canal?.isTextBased() || !('send' in canal)) return;
+  const olho = revelada ? '👁️ ' : '';
+  if (canal.type === ChannelType.GuildText) {
+    try {
+      const p = await personaDe(c, f.userId, f.pecaId);
+      const nome = nomeDeWebhook(p.nome);
+      if (nome) {
+        const w = await webhookDe(canal);
+        await w.send({ content: (olho + textoDoPersonagem(f.tipo, f.texto, f.resultado)).slice(0, 1900), username: nome, avatarURL: p.avatar ?? undefined, allowedMentions: { parse: [] } });
+        return;
+      }
+    } catch (e) {
+      // Sem permissão de webhook ou webhook apagado à mão: esquece o guardado e manda como o bot mesmo.
+      webhooks.delete(canal.id);
+      console.error('[mapa] webhook do canal:', (e as Error).message);
+    }
+  }
+  let conteudo = textoParaDiscord(f.autor, f.tipo, f.texto, f.resultado);
+  if (revelada) conteudo = conteudo.replace(/^(\S+)/, '$1 👁️');
   await canal.send({ content: conteudo.slice(0, 1900), allowedMentions: { parse: [] } }).catch((e: Error) => console.error('[mapa] não consegui escrever no canal do Discord:', e.message));
 }
 
@@ -190,16 +328,55 @@ function gravarChat(c: Campanha, userId: string, autor: string, tipo: LinhaChat[
   // Guarda só as últimas mensagens de cada mesa.
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ? AND id <= (SELECT id FROM mapa_chat WHERE campanha_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)').run(c.id, c.id, HISTORICO * 2);
   avisar(c.id, 'chat', secreta);
-  if (paraDiscord && !secreta) void espelharNoDiscord(c, textoParaDiscord(autor, tipo, texto, resultado));
+  if (paraDiscord && !secreta) void espelharNoDiscord(c, { userId, pecaId, autor, tipo, texto, resultado });
 }
 
 /** Mensagem escrita no canal do Discord ligado a uma campanha: aparece no chat do mapa (só de quem está na mesa). */
 export async function aoMensagemDiscord(m: Message) {
-  if (m.author.bot || !m.inGuild() || !m.content) return;
+  if (m.author.bot || m.webhookId || !m.inGuild() || !m.content) return;
   const c = db.prepare('SELECT * FROM campanhas WHERE guild_id = ? AND canal_id = ?').get(m.guildId, m.channelId) as Campanha | undefined;
   if (!c || (c.mestre_id !== m.author.id && !idsJogadores(c.id).includes(m.author.id))) return;
   const texto = m.cleanContent.trim().slice(0, LIMITE_TEXTO);
   if (texto) gravarChat(c, m.author.id, await autorDe(c, m.author.id), 'msg', texto, null, false, false);
+}
+
+// ---------- Ficha do jogador (criada no mapa) ----------
+
+function salvarFichaDH(c: Campanha, u: string, f: FichaDH) {
+  db.prepare(
+    `INSERT INTO fichas_dh
+      (guild_id, user_id, nome, classe, ancestralidade, comunidade, nivel, agilidade, forca, acuidade, instinto, presenca, conhecimento,
+       evasao, proficiencia, pv_max, pv, estresse_max, estresse, esperanca, armadura_max, armadura, limiar_maior, limiar_grave, experiencias)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 2, ?, 0, ?, ?, ?)
+     ON CONFLICT (guild_id, user_id) DO UPDATE SET
+       nome = excluded.nome, classe = excluded.classe, ancestralidade = excluded.ancestralidade, comunidade = excluded.comunidade,
+       nivel = excluded.nivel, agilidade = excluded.agilidade, forca = excluded.forca, acuidade = excluded.acuidade, instinto = excluded.instinto,
+       presenca = excluded.presenca, conhecimento = excluded.conhecimento, evasao = excluded.evasao, proficiencia = excluded.proficiencia,
+       pv_max = excluded.pv_max, pv = MIN(fichas_dh.pv, excluded.pv_max), estresse_max = excluded.estresse_max,
+       estresse = MIN(fichas_dh.estresse, excluded.estresse_max), armadura_max = excluded.armadura_max,
+       armadura = MIN(fichas_dh.armadura, excluded.armadura_max), limiar_maior = excluded.limiar_maior, limiar_grave = excluded.limiar_grave,
+       experiencias = excluded.experiencias`,
+  ).run(
+    c.guild_id, u, f.nome, f.classe, f.ancestralidade, f.comunidade, f.nivel, f.agilidade, f.forca, f.acuidade, f.instinto, f.presenca, f.conhecimento,
+    f.evasao, f.proficiencia, f.pv_max, f.estresse_max, f.armadura_max, f.limiar_maior, f.limiar_grave, f.experiencias,
+  );
+}
+
+function salvarFichaDnd(c: Campanha, u: string, f: FichaDnd) {
+  db.prepare(
+    `INSERT INTO fichas
+      (guild_id, user_id, nome, classe, raca, nivel, forca, destreza, constituicao, inteligencia, sabedoria, carisma,
+       pv_max, pv_atual, ca, bba, fort, ref, von, ini_extra, pericias)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')
+     ON CONFLICT (guild_id, user_id) DO UPDATE SET
+       nome = excluded.nome, classe = excluded.classe, raca = excluded.raca, nivel = excluded.nivel, forca = excluded.forca,
+       destreza = excluded.destreza, constituicao = excluded.constituicao, inteligencia = excluded.inteligencia, sabedoria = excluded.sabedoria,
+       carisma = excluded.carisma, pv_max = excluded.pv_max, pv_atual = MIN(fichas.pv_atual, excluded.pv_max), ca = excluded.ca,
+       bba = excluded.bba, fort = excluded.fort, ref = excluded.ref, von = excluded.von, ini_extra = excluded.ini_extra`,
+  ).run(
+    c.guild_id, u, f.nome, f.classe, f.raca, f.nivel, f.forca, f.destreza, f.constituicao, f.inteligencia, f.sabedoria, f.carisma,
+    f.pv_max, f.pv_max, f.ca, f.bba, f.fort, f.ref, f.von, f.ini_extra,
+  );
 }
 
 // ---------- Servidor HTTP ----------
@@ -235,6 +412,19 @@ async function lerJson<T>(req: IncomingMessage, limite = 4_000): Promise<Partial
     return {};
   }
 }
+/** Lê a imagem enviada (peça, criatura ou foto do personagem) e guarda com o prefixo dado. */
+async function receberImagem(req: IncomingMessage, res: ServerResponse, prefixo: string) {
+  let dados: Buffer;
+  try {
+    dados = await lerCorpo(req, LIMITE_IMAGEM_PECA);
+  } catch {
+    json(res, 413, { erro: `Imagem grande demais (máximo ${LIMITE_IMAGEM_PECA / 1024 / 1024} MB).` });
+    return null;
+  }
+  const arquivo = salvarImagem(dados, prefixo);
+  if (!arquivo) json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
+  return arquivo;
+}
 
 const ABRA_DE_NOVO = 'Abra o mapa pelo comando <code>/campanha mapa</code> no Discord: o link é pessoal e liga o site à sua conta.';
 
@@ -244,6 +434,16 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if (!discord) return texto(res, 503, 'Calma', 'O bot ainda está ligando. Tente de novo em instantes.');
 
   if (rota === '/') return texto(res, 200, '🗺️ Mapas da Taverna', ABRA_DE_NOVO);
+
+  // Imagem aberta para o Discord (foto do personagem e do NPC no webhook): só com a assinatura certa.
+  const publica = rota.match(/^\/img\/([A-Za-z0-9._-]+)$/);
+  if (publica) {
+    const arquivo = publica[1];
+    const certa = Buffer.from(assinarArquivo(arquivo));
+    const veio = Buffer.from(url.searchParams.get('k') ?? '');
+    if (veio.length !== certa.length || !timingSafeEqual(veio, certa) || !existsSync(`${PASTA}/${arquivo}`)) return json(res, 404, { erro: 'Sem imagem.' });
+    return servirImagem(res, arquivo);
+  }
 
   const pagina = rota.match(/^\/m\/(\d+)$/);
   const api = rota.match(/^\/api\/m\/(\d+)\/([a-z0-9/-]+)$/);
@@ -264,7 +464,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   const c = campanhaPorId(campanhaId);
   if (!c) return api ? json(res, 404, { erro: 'Campanha apagada.' }) : texto(res, 404, 'Campanha não encontrada', 'Ela pode ter sido apagada.');
   const souMestre = c.mestre_id === userId;
-  if (!souMestre && !idsJogadores(c.id).includes(userId)) {
+  const souJogador = idsJogadores(c.id).includes(userId);
+  if (!souMestre && !souJogador) {
     return api
       ? json(res, 403, { erro: 'Você não está nessa campanha.' })
       : texto(res, 403, 'Mesa fechada 🚪', 'Você não está nessa campanha. Peça ao mestre para usar <code>/campanha adicionar</code>.');
@@ -300,33 +501,16 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    if (acao === 'imagem') {
-      const m = mapaDe(c.id);
-      if (!m.imagem) return json(res, 404, { erro: 'Sem imagem.' });
-      try {
-        const dados = readFileSync(`${PASTA}/${m.imagem}`);
-        const tipo = tipoImagem(dados);
-        if (!tipo) throw new Error('arquivo inválido');
-        res.writeHead(200, { 'Content-Type': tipo.mime, 'Cache-Control': 'private, max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
-        return void res.end(dados);
-      } catch {
-        return json(res, 404, { erro: 'Sem imagem.' });
-      }
-    }
+    if (acao === 'imagem') return servirImagem(res, mapaDe(c.id).imagem);
     const pecaImg = acao.match(/^peca-imagem\/(\d+)$/);
     if (pecaImg) {
-      const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(pecaImg[1]), c.id) as Peca | undefined;
-      if (!p?.imagem) return json(res, 404, { erro: 'Sem imagem.' });
-      try {
-        const dados = readFileSync(`${PASTA}/${p.imagem}`);
-        const tipo = tipoImagem(dados);
-        if (!tipo) throw new Error('arquivo inválido');
-        res.writeHead(200, { 'Content-Type': tipo.mime, 'Cache-Control': 'private, max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
-        return void res.end(dados);
-      } catch {
-        return json(res, 404, { erro: 'Sem imagem.' });
-      }
+      const p = db.prepare('SELECT imagem FROM mapa_pecas WHERE id = ? AND campanha_id = ?').get(Number(pecaImg[1]), c.id) as { imagem: string | null } | undefined;
+      return servirImagem(res, p?.imagem);
     }
+    const foto = acao.match(/^foto\/(\d+)$/);
+    if (foto) return servirImagem(res, idsJogadores(c.id).includes(foto[1]) ? fotoDe(c, foto[1])?.imagem : null);
+    const imgCriatura = acao.match(/^criatura-imagem\/(\d+)$/);
+    if (imgCriatura) return servirImagem(res, criaturaPorId(c, imgCriatura[1])?.imagem);
     return json(res, 404, { erro: 'Não achei.' });
   }
 
@@ -356,17 +540,50 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (secreta && !souMestre) return json(res, 403, { erro: 'Só o mestre rola escondido. Use /r para rolar para a mesa.' });
     const resultado = entrada.tipo === 'msg' ? null : rolarEntrada(entrada);
     const txt = entrada.tipo === 'msg' ? entrada.texto : entrada.rotulo;
-    // O mestre pode falar e rolar pelos NPCs dele: o chat mostra o nome do NPC.
+    // O mestre pode falar e rolar pelos NPCs e inimigos dele: o chat mostra o nome da peça.
     let autor = await autorDe(c, userId);
     let pecaId: number | null = null;
     if (b.como !== undefined && b.como !== null) {
       if (!souMestre) return json(res, 403, { erro: 'Só o mestre fala por um NPC.' });
-      const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.como), c.id) as Peca | undefined;
+      const npc = pecaDoMestre(c, b.como);
       if (!npc) return json(res, 404, { erro: 'Esse NPC não está mais no mapa.' });
-      autor = `🎭 ${npc.nome} (NPC)`;
+      autor = `${npc.tipo === 'inimigo' ? '👹' : '🎭'} ${npc.nome} (${npc.tipo === 'inimigo' ? 'inimigo' : 'NPC'})`;
       pecaId = npc.id;
     }
     gravarChat(c, userId, autor, entrada.tipo, txt, resultado, secreta, true, pecaId);
+    return json(res, 200, { ok: true });
+  }
+
+  // A ficha do jogador nasce e muda aqui (no sistema da campanha). O mestre não tem ficha na própria mesa.
+  if (acao === 'ficha') {
+    if (!souJogador) return json(res, 403, { erro: 'Só quem joga na campanha tem ficha nela.' });
+    const b = await lerJson<Record<string, unknown>>(req, 8_000);
+    const r = validarFicha(c.sistema, b);
+    if (!r.ok) return json(res, 400, { erro: r.erro });
+    if (c.sistema === 'dh') salvarFichaDH(c, userId, r.valores as FichaDH);
+    else salvarFichaDnd(c, userId, r.valores as FichaDnd);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'ficha/foto') {
+    if (!souJogador) return json(res, 403, { erro: 'Só quem joga na campanha tem foto de personagem.' });
+    const arquivo = await receberImagem(req, res, `pj-${c.guild_id}-${userId}`);
+    if (!arquivo) return;
+    const antiga = fotoDe(c, userId);
+    db.prepare(
+      `INSERT INTO personagem_fotos (guild_id, user_id, sistema, imagem, versao) VALUES (?, ?, ?, ?, 1)
+       ON CONFLICT (guild_id, user_id, sistema) DO UPDATE SET imagem = excluded.imagem, versao = personagem_fotos.versao + 1`,
+    ).run(c.guild_id, userId, c.sistema, arquivo);
+    apagarImagem(antiga?.imagem);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'ficha/foto/remover') {
+    apagarImagem(fotoDe(c, userId)?.imagem);
+    db.prepare('DELETE FROM personagem_fotos WHERE guild_id = ? AND user_id = ? AND sistema = ?').run(c.guild_id, userId, c.sistema);
+    avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
   }
 
@@ -379,7 +596,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (!r.changes) return json(res, 404, { erro: 'Essa rolagem já está à mostra.' });
     avisar(c.id, 'chat');
     const l = db.prepare('SELECT * FROM mapa_chat WHERE id = ?').get(Number(b.id)) as LinhaChat | undefined;
-    if (l) void espelharNoDiscord(c, textoParaDiscord(l.autor, l.tipo, l.texto, l.resultado ? (JSON.parse(l.resultado) as ResultadoChat) : null).replace(/^(\S+)/, '$1 👁️'));
+    if (l) {
+      const resultado = l.resultado ? (JSON.parse(l.resultado) as ResultadoChat) : null;
+      void espelharNoDiscord(c, { userId: l.user_id, pecaId: l.peca_id, autor: l.autor, tipo: l.tipo, texto: l.texto, resultado }, true);
+    }
     return json(res, 200, { ok: true });
   }
 
@@ -396,13 +616,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     } catch {
       return json(res, 413, { erro: `Imagem grande demais (máximo ${LIMITE_IMAGEM / 1024 / 1024} MB).` });
     }
-    const tipo = tipoImagem(dados);
-    if (!tipo) return json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
     const m = mapaDe(c.id);
-    mkdirSync(PASTA, { recursive: true });
-    const arquivo = `${c.id}-${Date.now()}.${tipo.ext}`;
-    writeFileSync(`${PASTA}/${arquivo}`, dados);
-    if (m.imagem) rmSync(`${PASTA}/${m.imagem}`, { force: true });
+    const arquivo = salvarImagem(dados, String(c.id));
+    if (!arquivo) return json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
+    apagarImagem(m.imagem);
     const largura = Math.round(limitar(url.searchParams.get('l'), 100, 20_000, m.largura));
     const altura = Math.round(limitar(url.searchParams.get('a'), 100, 20_000, m.altura));
     db.prepare('UPDATE mapas SET imagem = ?, largura = ?, altura = ?, versao = versao + 1 WHERE campanha_id = ?').run(arquivo, largura, altura, c.id);
@@ -413,26 +630,108 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (acao === 'npc/imagem') {
-    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(url.searchParams.get('peca')), c.id) as Peca | undefined;
+    const p = pecaDoMestre(c, url.searchParams.get('peca'));
     if (!p) return json(res, 404, { erro: 'NPC não encontrado.' });
-    let dados: Buffer;
-    try {
-      dados = await lerCorpo(req, LIMITE_IMAGEM_NPC);
-    } catch {
-      return json(res, 413, { erro: `Imagem grande demais para um NPC (máximo ${LIMITE_IMAGEM_NPC / 1024 / 1024} MB).` });
-    }
-    const tipo = tipoImagem(dados);
-    if (!tipo) return json(res, 415, { erro: 'Use uma imagem PNG, JPG, WEBP ou GIF.' });
-    mkdirSync(PASTA, { recursive: true });
-    const arquivo = `npc-${c.id}-${p.id}-${Date.now()}.${tipo.ext}`;
-    writeFileSync(`${PASTA}/${arquivo}`, dados);
-    if (p.imagem) rmSync(`${PASTA}/${p.imagem}`, { force: true });
+    const arquivo = await receberImagem(req, res, `npc-${c.id}-${p.id}`);
+    if (!arquivo) return;
+    apagarImagem(p.imagem);
     db.prepare('UPDATE mapa_pecas SET imagem = ?, versao_img = versao_img + 1 WHERE id = ?').run(arquivo, p.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
   }
 
-  const b = await lerJson<{ grade: number; nome: string; peca: number; tamanho: number }>(req);
+  if (acao === 'criatura/imagem') {
+    const cr = criaturaPorId(c, url.searchParams.get('id'));
+    if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
+    const arquivo = await receberImagem(req, res, `cri-${c.id}-${cr.id}`);
+    if (!arquivo) return;
+    apagarImagem(cr.imagem);
+    db.prepare('UPDATE campanha_criaturas SET imagem = ?, versao_img = versao_img + 1 WHERE id = ?').run(arquivo, cr.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  const b = await lerJson<Record<string, unknown>>(req, 8_000);
+
+  // Biblioteca: cria (sem id) ou edita (com id) um NPC ou inimigo. As cópias no mapa acompanham tamanho e vida máxima.
+  if (acao === 'criatura') {
+    const r = validarCriatura(b);
+    if (!r.ok) return json(res, 400, { erro: r.erro });
+    const v = r.valores;
+    if (b.id) {
+      const cr = criaturaPorId(c, b.id);
+      if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
+      db.prepare(
+        `UPDATE campanha_criaturas SET tipo = ?, nome = ?, tamanho = ?, pv_max = ?, defesa = ?, ataque = ?, dano = ?, limiar_maior = ?,
+         limiar_grave = ?, notas = ? WHERE id = ?`,
+      ).run(v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, cr.id);
+      db.prepare('UPDATE mapa_pecas SET tipo = ?, tamanho = ?, pv = CASE WHEN ? IS NULL THEN NULL ELSE MIN(COALESCE(pv, ?), ?) END WHERE criatura_id = ? AND campanha_id = ?').run(
+        v.tipo, v.tamanho, v.pv_max, v.pv_max, v.pv_max, cr.id, c.id,
+      );
+      avisar(c.id, 'estado');
+      return json(res, 200, { ok: true, id: cr.id });
+    }
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM campanha_criaturas WHERE campanha_id = ?').get(c.id) as { n: number }).n;
+    if (total >= 300) return json(res, 400, { erro: 'A biblioteca chegou a 300 personagens. Apague alguns antes.' });
+    const novo = db.prepare(
+      `INSERT INTO campanha_criaturas (campanha_id, tipo, nome, tamanho, pv_max, defesa, ataque, dano, limiar_maior, limiar_grave, notas, criada_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(c.id, v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, Date.now());
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+  }
+
+  // Apagar da biblioteca tira também as cópias dele do mapa.
+  if (acao === 'criatura/remover') {
+    const cr = criaturaPorId(c, b.id);
+    if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
+    for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE criatura_id = ? AND campanha_id = ?').all(cr.id, c.id) as { imagem: string | null }[]) apagarImagem(p.imagem);
+    db.prepare('DELETE FROM mapa_pecas WHERE criatura_id = ? AND campanha_id = ?').run(cr.id, c.id);
+    apagarImagem(cr.imagem);
+    db.prepare('DELETE FROM campanha_criaturas WHERE id = ?').run(cr.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'criatura/imagem/remover') {
+    const cr = criaturaPorId(c, b.id);
+    if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
+    apagarImagem(cr.imagem);
+    db.prepare('UPDATE campanha_criaturas SET imagem = NULL, versao_img = versao_img + 1 WHERE id = ?').run(cr.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  // Põe uma cópia no mapa (arrastada da biblioteca ou pelo botão): Goblin, Goblin 2... cada uma com a sua vida.
+  if (acao === 'criatura/colocar') {
+    const cr = criaturaPorId(c, b.id);
+    if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
+    const m = mapaDe(c.id);
+    const pecas = db.prepare('SELECT nome FROM mapa_pecas WHERE campanha_id = ?').all(c.id) as { nome: string }[];
+    if (pecas.length >= 200) return json(res, 400, { erro: 'O mapa já tem 200 peças. Tire algumas antes.' });
+    const padrao = posicaoInicial(pecas.length, m.grade);
+    const x = limitar(b.x, 0, m.largura, padrao.x);
+    const y = limitar(b.y, 0, m.altura, padrao.y);
+    const nome = nomeDaCopia(cr.nome, pecas.map((p) => p.nome));
+    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)').run(
+      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max,
+    );
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true, peca: Number(nova.lastInsertRowid), nome });
+  }
+
+  // Vida de uma cópia da biblioteca: delta (-7 tira, +5 cura) ou valor exato.
+  if (acao === 'peca/pv') {
+    const p = pecaDoMestre(c, b.peca);
+    const cr = p?.criatura_id ? criaturaPorId(c, p.criatura_id) : undefined;
+    if (!p || !cr || cr.pv_max === null) return json(res, 404, { erro: 'Essa peça não tem PV na biblioteca.' });
+    const atual = p.pv ?? cr.pv_max;
+    const novo = b.valor !== undefined ? Number(b.valor) : atual + Number(b.delta);
+    if (!Number.isFinite(novo)) return json(res, 400, { erro: 'Valor de PV inválido.' });
+    db.prepare('UPDATE mapa_pecas SET pv = ? WHERE id = ?').run(Math.round(Math.min(cr.pv_max, Math.max(0, novo))), p.id);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
 
   // Tamanho em casas (0,5 a 6, de meio em meio): o mestre aumenta monstros e diminui familiares.
   if (acao === 'peca/tamanho') {
@@ -444,9 +743,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (acao === 'npc/imagem/remover') {
-    const p = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.peca), c.id) as Peca | undefined;
+    const p = pecaDoMestre(c, b.peca);
     if (!p) return json(res, 404, { erro: 'NPC não encontrado.' });
-    if (p.imagem) rmSync(`${PASTA}/${p.imagem}`, { force: true });
+    apagarImagem(p.imagem);
     db.prepare('UPDATE mapa_pecas SET imagem = NULL, versao_img = versao_img + 1 WHERE id = ?').run(p.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
@@ -458,19 +757,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true });
   }
 
-  if (acao === 'npc') {
-    const m = mapaDe(c.id);
-    const n = (db.prepare('SELECT COUNT(*) AS n FROM mapa_pecas WHERE campanha_id = ?').get(c.id) as { n: number }).n;
-    const { x, y } = posicaoInicial(n, m.grade);
-    const nome = String(b.nome ?? '').trim().slice(0, 40) || 'NPC';
-    db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y) VALUES (?, NULL, ?, ?, ?)').run(c.id, nome, x, y);
-    avisar(c.id, 'estado');
-    return json(res, 200, { ok: true });
-  }
-
   if (acao === 'npc/remover') {
-    const npc = db.prepare('SELECT * FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').get(Number(b.peca), c.id) as Peca | undefined;
-    if (npc?.imagem) rmSync(`${PASTA}/${npc.imagem}`, { force: true });
+    const npc = pecaDoMestre(c, b.peca);
+    apagarImagem(npc?.imagem);
     db.prepare('DELETE FROM mapa_pecas WHERE id = ? AND campanha_id = ? AND user_id IS NULL').run(Number(b.peca), c.id);
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
@@ -479,12 +768,14 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   return json(res, 404, { erro: 'Ação desconhecida.' });
 }
 
-/** Apaga mapa, imagem, peças e chat de uma campanha (chamado quando ela é apagada). */
+/** Apaga mapa, imagens, peças, biblioteca e chat de uma campanha (chamado quando ela é apagada). */
 export function apagarMapa(campanhaId: number) {
   const m = db.prepare('SELECT imagem FROM mapas WHERE campanha_id = ?').get(campanhaId) as { imagem: string | null } | undefined;
-  if (m?.imagem) rmSync(`${PASTA}/${m.imagem}`, { force: true });
-  for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) rmSync(`${PASTA}/${p.imagem}`, { force: true });
+  apagarImagem(m?.imagem);
+  for (const p of db.prepare('SELECT imagem FROM mapa_pecas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) apagarImagem(p.imagem);
+  for (const cr of db.prepare('SELECT imagem FROM campanha_criaturas WHERE campanha_id = ? AND imagem IS NOT NULL').all(campanhaId) as { imagem: string }[]) apagarImagem(cr.imagem);
   db.prepare('DELETE FROM mapa_pecas WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM campanha_criaturas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);
   for (const o of ouvintes.get(campanhaId) ?? []) o.res.end();
@@ -502,4 +793,5 @@ export function iniciarMapa(client: Client) {
   });
   servidor.on('error', (e) => console.error(`[mapa] não consegui abrir a porta ${PORTA}:`, e.message));
   servidor.listen(PORTA, '0.0.0.0', () => console.log(`🗺️ Mapa das campanhas em ${ENDERECO}`));
+  return servidor;
 }

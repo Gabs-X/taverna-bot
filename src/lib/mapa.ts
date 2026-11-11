@@ -163,6 +163,16 @@ export function textoParaDiscord(autor: string, tipo: 'msg' | 'dados' | 'dualida
   return `🌗 **${nome}** rolou dualidade${vantagem}${motivo}: Esperança [${resultado.esperanca}] · Medo [${resultado.medo}] = **${resultado.total}** ${sorte}`;
 }
 
+/** Mesmo texto, mas para sair pelo webhook com o nome e a foto do personagem (o nome já aparece em cima). */
+export function textoDoPersonagem(tipo: 'msg' | 'dados' | 'dualidade', texto: string, resultado: ResultadoChat | null) {
+  if (tipo === 'msg' || !resultado) return texto;
+  const motivo = texto ? ` · ${texto}` : '';
+  if (resultado.tipo === 'dados') return `🎲 rolou \`${resultado.expressao}\`${motivo}: **${resultado.total}**`;
+  const sorte = { critico: '✨ sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[resultado.resultado];
+  const vantagem = resultado.vantagem === 1 ? ' (vantagem)' : resultado.vantagem === -1 ? ' (desvantagem)' : '';
+  return `🌗 rolou dualidade${vantagem}${motivo}: Esperança [${resultado.esperanca}] · Medo [${resultado.medo}] = **${resultado.total}** ${sorte}`;
+}
+
 export type LinhaChat = { id: number; user_id: string; autor: string; tipo: 'msg' | 'dados' | 'dualidade'; texto: string; resultado: string | null; secreta: number; revelada: number; criada_em: number; peca_id?: number | null };
 
 /** O que cada um recebe do histórico: rolagem escondida só chega ao mestre, nem pelo histórico os jogadores a veem. */

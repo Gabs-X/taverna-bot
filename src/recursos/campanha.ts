@@ -25,8 +25,8 @@ import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
 import { apagarMapa, avisarMapa, linkDoMapa, mapaPublico } from './mapa.ts';
 
-// Campanhas: um mestre cria a mesa, escolhe o sistema e adiciona os jogadores. Cada personagem é a ficha
-// que o jogador já criou (/dh ficha criar ou /ficha criar), no sistema da campanha.
+// Campanhas: um mestre cria a mesa, escolhe o sistema e adiciona os jogadores. Cada personagem é a ficha do
+// jogador no sistema da campanha: ele cria no próprio mapa (com foto) ou pelo /dh ficha criar e /ficha criar.
 // O /campanha mapa leva cada um para o mapa da mesa (servidor em mapa.ts), com link pessoal: é ele que diz ao site
 // quem é cada jogador. No mapa fica o chat da mesa com as rolagens de todos (e as escondidas do mestre).
 
@@ -70,7 +70,7 @@ const SEM_PERMISSAO = { content: 'Só o mestre da campanha (ou um mestre do serv
 function embedCampanha(c: Campanha, g: string) {
   const linhas = personagens(c.id).map((u) => {
     const f = fichaDe(c.sistema, g, u);
-    return f ? `**${f.nome}** · ${f.classe} nível ${f.nivel} · <@${u}>` : `_ficha apagada_ · <@${u}>`;
+    return f ? `**${f.nome}** · ${f.classe} nível ${f.nivel} · <@${u}>` : `_personagem ainda não criado (no mapa)_ · <@${u}>`;
   });
   return new EmbedBuilder()
     .setColor(COR)
@@ -199,7 +199,7 @@ export const campanha: Comando = {
     .addSubcommand((s) =>
       s
         .setName('adicionar')
-        .setDescription('Adiciona um jogador e o personagem dele (a ficha no sistema da campanha)')
+        .setDescription('Adiciona um jogador à mesa (ele cria o personagem no mapa)')
         .addStringOption((o) => o.setName('campanha').setDescription('Campanha').setRequired(true).setAutocomplete(true))
         .addUserOption((o) => o.setName('jogador').setDescription('Quem joga o personagem').setRequired(true)),
     )
@@ -359,7 +359,9 @@ export const campanha: Comando = {
           .setTitle(`🗺️ ${c.nome} · a sessão vai começar`)
           .setDescription(
             `<@${c.mestre_id}> abriu o mapa da campanha.\n` +
-              (ficha ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n` : '') +
+              (ficha
+                ? `Seu personagem: **${ficha.nome}** (${ficha.classe}, nível ${ficha.nivel}).\n`
+                : 'Você ainda não tem personagem nesta mesa: ao entrar no mapa, crie a ficha com nome e foto.\n') +
               (salas ? `Sala da mesa: ${salas.texto} · call: ${salas.voz}\n` : '') +
               'Clique em **Entrar no mapa**: o link é só seu e vale por 12 horas. Não compartilhe.',
           )
@@ -385,7 +387,7 @@ export const campanha: Comando = {
         content:
           (jogadores.length
             ? `🗺️ Convites de **${c.nome}** enviados no privado: ${enviados.length}/${jogadores.length}.`
-            : `🗺️ Sessão de **${c.nome}** aberta, por enquanto só com você: ainda não há jogadores (use \`/campanha adicionar\`; quem tem ficha entra e o próximo \`/campanha iniciar\` manda o convite).`) +
+            : `🗺️ Sessão de **${c.nome}** aberta, por enquanto só com você: ainda não há jogadores (use \`/campanha adicionar\`; o jogador cria o personagem no mapa e o próximo \`/campanha iniciar\` manda o convite).`) +
           (falharam.length
             ? `\n⚠️ Não consegui falar no privado com ${falharam.map((id) => `<@${id}>`).join(', ')} (DMs fechadas). Peça para usarem \`/campanha mapa\`.`
             : '') +
@@ -403,15 +405,14 @@ export const campanha: Comando = {
 
       if (sub === 'adicionar') {
         if (ja) return i.reply({ content: `${jogador} já está em **${c.nome}**.`, flags: MessageFlags.Ephemeral });
-        if (!fichaDe(c.sistema, g, jogador.id)) {
-          return i.reply({
-            content: `${jogador} ainda não tem ficha de ${SISTEMAS[c.sistema].nome}. Peça para criar com \`/${c.sistema === 'dh' ? 'dh ficha criar' : 'ficha criar'}\`.`,
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+        // Não precisa de ficha antes: quem ainda não tem cria o personagem (ficha e foto) no próprio mapa.
         db.prepare('INSERT INTO campanha_personagens (campanha_id, user_id) VALUES (?, ?)').run(c.id, jogador.id);
         avisarMapa(c.id);
-        return i.reply({ content: `⚔️ ${jogador} entrou em **${c.nome}**.`, embeds: [embedCampanha(c, g)] });
+        const semFicha = !fichaDe(c.sistema, g, jogador.id);
+        return i.reply({
+          content: `⚔️ ${jogador} entrou em **${c.nome}**.` + (semFicha ? ' O personagem (ficha e foto) é criado no mapa, pelo `/campanha mapa`.' : ''),
+          embeds: [embedCampanha(c, g)],
+        });
       }
 
       if (!ja) return i.reply({ content: `${jogador} não está em **${c.nome}**.`, flags: MessageFlags.Ephemeral });

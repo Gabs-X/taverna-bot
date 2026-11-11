@@ -484,6 +484,41 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE campanhas ADD COLUMN canal_sessao_id TEXT;
     `);
   },
+  // 19: ficha criada no mapa (foto do personagem, separada da ficha para o /ficha criar não apagá-la),
+  // biblioteca de NPCs e inimigos do mestre e, nas peças, de qual personagem da biblioteca vieram e a vida de cada cópia.
+  () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS personagem_fotos (
+        guild_id TEXT NOT NULL,
+        user_id  TEXT NOT NULL,
+        sistema  TEXT NOT NULL,
+        imagem   TEXT NOT NULL,
+        versao   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id, sistema)
+      );
+      CREATE TABLE IF NOT EXISTS campanha_criaturas (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id  INTEGER NOT NULL,
+        tipo         TEXT NOT NULL,
+        nome         TEXT NOT NULL,
+        imagem       TEXT,
+        versao_img   INTEGER NOT NULL DEFAULT 0,
+        tamanho      REAL NOT NULL DEFAULT 1,
+        pv_max       INTEGER,
+        defesa       INTEGER,
+        ataque       INTEGER,
+        dano         TEXT NOT NULL DEFAULT '',
+        limiar_maior INTEGER,
+        limiar_grave INTEGER,
+        notas        TEXT NOT NULL DEFAULT '',
+        criada_em    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS campanha_criaturas_campanha ON campanha_criaturas (campanha_id);
+      ALTER TABLE mapa_pecas ADD COLUMN criatura_id INTEGER;
+      ALTER TABLE mapa_pecas ADD COLUMN tipo TEXT;
+      ALTER TABLE mapa_pecas ADD COLUMN pv INTEGER;
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

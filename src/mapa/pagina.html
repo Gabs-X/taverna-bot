@@ -164,6 +164,36 @@
   #texto { flex: 1; }
   #enviar { width: 42px; padding: 8px 0; justify-content: center; }
 
+  /* ---------- Janelas (ficha do personagem e biblioteca do mestre) ---------- */
+  .modal { position: fixed; inset: 0; background: rgba(5, 2, 10, .7); display: grid; place-items: center; z-index: 30; padding: 16px; animation: entra .15s ease-out; }
+  .modal > .caixa { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 18px; padding: 18px 18px 16px; background: var(--painel); border: 1px solid var(--borda); box-shadow: var(--sombra); position: relative; }
+  .modal h2 { margin: 0 0 2px; font-size: 18px; }
+  .modal .fechar { position: absolute; right: 12px; top: 12px; width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: var(--mudo); cursor: pointer; font-size: 15px; }
+  .modal .fechar:hover { background: var(--painel3); color: #fff; }
+  .form-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px 10px; }
+  .campo { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mudo); min-width: 0; }
+  .campo.largo { grid-column: 1 / -1; }
+  textarea { width: 100%; min-height: 64px; resize: vertical; background: var(--bg); border: 1px solid var(--borda); border-radius: 10px; color: var(--texto); padding: 8px 10px; font: inherit; font-size: 13px; outline: none; }
+  textarea:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(166, 108, 255, .2); }
+  .foto-edit { display: flex; gap: 14px; align-items: center; margin: 12px 0 4px; flex-wrap: wrap; }
+  .foto-edit .avatar { width: 76px; height: 76px; font-size: 26px; border-width: 3px; }
+  .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  .filtros { display: flex; gap: 4px; margin-bottom: 8px; }
+  .filtros button { flex: 1; padding: 6px 8px; border-radius: 9px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--mudo); }
+  .filtros button.on { background: var(--painel3); color: #fff; border-color: var(--acento); }
+  .lib-item { display: flex; align-items: center; gap: 9px; padding: 6px 7px; border-radius: 10px; cursor: grab; border: 1px solid transparent; }
+  .lib-item:hover { background: var(--painel2); border-color: var(--borda); }
+  .lib-item .info { flex: 1; min-width: 0; }
+  .lib-item .nome { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lib-item small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lib-item .mini { width: 28px; height: 28px; padding: 0; border-radius: 8px; border: 0; background: transparent; cursor: pointer; flex: none; }
+  .lib-item .mini:hover { background: var(--painel3); }
+  .tag { font-size: 10px; padding: 1px 7px; border-radius: 99px; background: #3a2a55; color: #d6c2ff; margin-left: 5px; vertical-align: 1px; }
+  .tag.inimigo { background: #5c1a26; color: #ffb3bd; }
+  .pv-edit { display: flex; gap: 6px; align-items: center; }
+  .pv-edit input { width: 76px; text-align: center; }
+  .item small .tag { margin-left: 0; }
+
   @media (max-width: 820px) {
     body { flex-direction: column; }
     aside { width: 100%; height: 48vh; border-left: 0; border-top: 1px solid var(--borda); }
@@ -217,17 +247,19 @@
     <div class="tracos" id="tracos"></div>
     <div class="rotulo-sec">Ficha</div>
     <dl id="ficha"></dl>
+    <div class="linha"><button id="editar-ficha" class="btn" hidden>✏️ Editar meu personagem</button></div>
     <div id="gestao" hidden>
       <div class="rotulo-sec">Mestre</div>
+      <div class="linha pv-edit" id="linha-pv" hidden><span class="mudo" style="flex:1">PV desta cópia</span><button class="btn sec" id="pv-menos" title="Tirar 1 PV">−</button><input id="pv-valor" type="text" inputmode="numeric" title="Número exato, ou -7 para tirar e +5 para curar (Enter)"><button class="btn sec" id="pv-mais" title="Curar 1 PV">＋</button></div>
       <div class="linha"><span class="mudo" style="flex:1">Tamanho no mapa</span><button class="btn sec" id="tam-menos" title="Diminuir">−</button><b id="tam-valor" style="min-width:34px;text-align:center">1×</b><button class="btn sec" id="tam-mais" title="Aumentar">＋</button></div>
       <div class="linha" id="linha-npc-img"><label class="btn sec" for="arquivo-npc">🖼️ Imagem do NPC</label><input id="arquivo-npc" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button class="btn sec" id="tirar-imagem">Tirar</button></div>
-      <div class="linha"><button id="rolar-como" class="btn" hidden>🎲 Rolar como este NPC</button></div>
+      <div class="linha"><button id="rolar-como" class="btn" hidden>🎲 Falar e rolar como esta peça</button><button id="editar-criatura" class="btn sec" hidden>✏️ Biblioteca</button></div>
     </div>
-    <div class="linha"><button id="remover-npc" class="btn perigo" hidden>Remover NPC</button></div>
+    <div class="linha"><button id="remover-npc" class="btn perigo" hidden>Tirar do mapa</button></div>
   </div>
 
   <div id="bandeja" class="vidro" hidden></div>
-  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem para mover</div>
+  <div id="dica-mapa" class="vidro">Arraste o fundo para andar · roda do mouse para zoom · arraste o seu personagem ou ande com WASD / setas</div>
   <div id="solte">🖼️ Solte a imagem aqui para usar como mapa</div>
   <div id="toasts"></div>
 </div>
@@ -270,8 +302,19 @@
       <input id="arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
       <div class="mudo" style="margin-top:6px">PNG, JPG, WEBP ou GIF. Também dá para arrastar o arquivo para o mapa. Imagens muito grandes são reduzidas.</div>
       <div class="linha"><input id="grade" type="number" min="10" max="400" placeholder="Tamanho da casa (px)"><button id="salvar-grade" class="btn sec">Aplicar</button></div>
-      <div class="linha"><input id="npc-nome" type="text" maxlength="40" placeholder="Nome do NPC / monstro"><button id="add-npc" class="btn sec">+ NPC</button></div>
       <div class="linha"><button id="limpar-chat" class="btn sec">🧹 Limpar o chat</button></div>
+    </section>
+    <section id="painel-biblioteca" hidden>
+      <h2>Biblioteca de personagens</h2>
+      <div class="filtros" id="filtros"><button data-f="todos" class="on">Todos</button><button data-f="npc">🎭 NPCs</button><button data-f="inimigo">👹 Inimigos</button></div>
+      <div id="biblioteca"></div>
+      <div class="linha"><button id="nova-npc" class="btn sec">+ NPC</button><button id="nova-inimigo" class="btn sec">+ Inimigo</button></div>
+      <div class="mudo" style="margin-top:6px">Arraste da lista para o mapa (ou use 📍). Cada cópia ganha um número e a sua própria vida.</div>
+    </section>
+    <section id="painel-meu" hidden>
+      <h2>Meu personagem</h2>
+      <div class="item" id="meu-resumo"><div class="avatar" id="meu-avatar"></div><div><div class="nome" id="meu-nome"></div><small id="meu-sub"></small></div></div>
+      <div class="linha"><button id="abrir-ficha" class="btn">✏️ Ficha e foto</button></div>
     </section>
     <section>
       <h2>Personagens</h2>
@@ -279,6 +322,41 @@
     </section>
   </div>
 </aside>
+
+<div class="modal" id="modal-ficha" hidden>
+  <div class="caixa">
+    <button class="fechar" data-fecha="modal-ficha" title="Fechar (Esc)">✕</button>
+    <h2 id="mf-titulo">Seu personagem</h2>
+    <small id="mf-sub"></small>
+    <div class="foto-edit">
+      <div class="avatar" id="mf-avatar"></div>
+      <div>
+        <label class="btn sec" for="mf-arquivo">🖼️ Escolher foto</label><input id="mf-arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <button class="btn sec" id="mf-tirar" hidden>Tirar foto</button>
+        <div class="mudo" style="margin-top:6px">A foto aparece na sua peça, no chat do mapa e no canal da campanha no Discord.</div>
+      </div>
+    </div>
+    <form id="mf-form" autocomplete="off"></form>
+    <div class="acoes"><button class="btn sec" data-fecha="modal-ficha">Depois</button><button class="btn" id="mf-salvar">💾 Salvar personagem</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-criatura" hidden>
+  <div class="caixa">
+    <button class="fechar" data-fecha="modal-criatura" title="Fechar (Esc)">✕</button>
+    <h2 id="mc-titulo">Novo personagem da biblioteca</h2>
+    <small>Fica salvo na campanha: use quantas vezes quiser, em qualquer mapa.</small>
+    <div class="foto-edit">
+      <div class="avatar" id="mc-avatar"></div>
+      <div>
+        <label class="btn sec" for="mc-arquivo">🖼️ Escolher imagem</label><input id="mc-arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <button class="btn sec" id="mc-tirar" hidden>Tirar imagem</button>
+      </div>
+    </div>
+    <form id="mc-form" autocomplete="off"></form>
+    <div class="acoes"><button class="btn perigo" id="mc-apagar" hidden>🗑️ Apagar</button><span style="flex:1"></span><button class="btn sec" data-fecha="modal-criatura">Cancelar</button><button class="btn" id="mc-salvar">💾 Salvar</button></div>
+  </div>
+</div>
 
 <script>
 const ID = location.pathname.split('/').pop();
@@ -291,7 +369,7 @@ let cam = { x: 0, y: 0, z: 1 }, ajustou = false;
 let selecionada = null, arrasto = null, regua = null, usandoRegua = false;
 let chat = [], ultimoChat = 0, novas = 0, primeiroChat = true;
 let sigEstado = '', sigChat = ''; // para não redesenhar à toa quando nada mudou
-let online = false;
+let online = false, passoPendente = null, ultimoPasso = 0, filtroLib = 'todos';
 const avatares = new Map();
 const CORES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
 
@@ -350,6 +428,12 @@ async function carregar() {
   sigEstado = sig;
   // Quem está arrastando não perde a peça por causa de um aviso de outro jogador.
   if (arrasto && arrasto.peca) { const p = novo.pecas.find((q) => q.id === arrasto.peca.id); if (p) { p.x = arrasto.peca.x; p.y = arrasto.peca.y; arrasto.peca = p; } }
+  // Passo do WASD ainda a caminho do servidor: a peça não volta para trás por causa de uma leitura antiga.
+  if (passoPendente) {
+    const p = novo.pecas.find((q) => q.id === passoPendente.id);
+    if (!p || Date.now() > passoPendente.ate || (p.x === passoPendente.x && p.y === passoPendente.y)) passoPendente = null;
+    else { p.x = passoPendente.x; p.y = passoPendente.y; }
+  }
   const primeira = !estado;
   estado = novo;
   if (versaoImagem !== estado.mapa.versao) {
@@ -361,6 +445,8 @@ async function carregar() {
   if (primeira) montarBarra();
   painel(); desenhar();
   if (chat.length) desenharChat(); // a foto de um NPC pode ter mudado
+  // Jogador sem personagem nesta mesa: a ficha abre sozinha na primeira vez.
+  if (primeira && estado.voce.jogador && !estado.voce.temFicha) abrirFicha();
 }
 
 function dimensionar() {
@@ -400,7 +486,7 @@ function painel() {
     const d = el('div', 'item' + (p.id === selecionada ? ' sel' : ''));
     const av = el('div', 'avatar'); pintarAvatar(av, p.nome, p.avatar, corDe(p));
     const t = el('div');
-    t.append(el('div', 'nome', p.nome + (p.meu ? ' (você)' : '')), el('small', '', p.npc ? 'NPC do mestre' : p.jogador));
+    t.append(el('div', 'nome', p.nome + (p.meu ? ' (você)' : '')), el('small', '', p.tipo === 'inimigo' ? '👹 Inimigo' : p.npc ? '🎭 NPC do mestre' : p.jogador));
     d.append(av, t);
     d.onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
     lista.append(d);
@@ -413,9 +499,11 @@ function painel() {
   if (estado.voce.mestre) {
     const sel = $('como'), atual = sel.value; sel.textContent = '';
     sel.append(new Option('Eu (mestre)', ''));
-    for (const p of estado.pecas) if (p.npc) sel.append(new Option(p.nome, String(p.id)));
+    for (const p of estado.pecas) if (p.npc) sel.append(new Option((p.tipo === 'inimigo' ? '👹 ' : '🎭 ') + p.nome, String(p.id)));
     sel.value = [...sel.options].some((o) => o.value === atual) ? atual : '';
   }
+  painelBiblioteca();
+  painelMeu();
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
   const bandeja = $('bandeja'); bandeja.textContent = '';
@@ -427,7 +515,7 @@ function painel() {
     l1.append(av, el('div', 'nome', p.nome)); c.append(l1);
     const pv = fracPV(p);
     if (pv) { const b = el('div', 'barra-pv ' + classeBarra(pv.frac)); const i = el('i'); i.style.width = Math.round(pv.frac * 100) + '%'; b.append(i); c.append(b, el('small', '', pv.texto)); }
-    else c.append(el('small', '', p.npc ? 'NPC' : (p.ficha && p.ficha.classe) || p.jogador || ''));
+    else c.append(el('small', '', p.tipo === 'inimigo' ? 'Inimigo' : p.npc ? 'NPC' : (p.ficha && p.ficha.classe) || p.jogador || ''));
     c.onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
     bandeja.append(c);
   }
@@ -439,7 +527,8 @@ const NOMES = { forca: 'Força', destreza: 'Destreza', constituicao: 'Constitui�
   fort: 'Fortitude', ref: 'Reflexos', von: 'Vontade', bba: 'Ataque base', ca: 'CA', evasao: 'Evasão', pv: 'PV marcados', pv_atual: 'PV', pv_max: 'PV máx.',
   estresse: 'Estresse', estresse_max: 'Estresse máx.', esperanca: 'Esperança', armadura: 'Armadura usada', armadura_max: 'Armadura', limiar_maior: 'Limiar Maior',
   limiar_grave: 'Limiar Grave', proficiencia: 'Proficiência', ini_extra: 'Iniciativa extra', pericias: 'Perícias', experiencias: 'Experiências', nivel: 'Nível', classe: 'Classe',
-  raca: 'Raça', ancestralidade: 'Ancestralidade', comunidade: 'Comunidade' };
+  raca: 'Raça', ancestralidade: 'Ancestralidade', comunidade: 'Comunidade', ataque: 'Ataque', dano: 'Dano', notas: 'Notas' };
+const nomeDefesa = () => (estado && estado.campanha.sistema === 'dh' ? 'Dificuldade' : 'CA');
 const TRACOS_DH = ['agilidade', 'forca', 'acuidade', 'instinto', 'presenca', 'conhecimento'];
 const ATRIBUTOS_DND = ['forca', 'destreza', 'constituicao', 'inteligencia', 'sabedoria', 'carisma'];
 const sinal = (n) => (n >= 0 ? '+' + n : String(n));
@@ -451,17 +540,22 @@ function fichaCard() {
   const f = p.ficha || {};
   pintarAvatar($('ficha-avatar'), p.nome, p.avatar, corDe(p));
   $('ficha-titulo').textContent = p.nome;
-  $('ficha-sub').textContent = p.npc ? 'NPC do mestre' : [f.classe, f.nivel ? 'nível ' + f.nivel : '', p.jogador].filter(Boolean).join(' · ');
+  const daBiblioteca = p.npc && !!p.criaturaId;
+  $('ficha-sub').textContent = p.tipo === 'inimigo' ? '👹 Inimigo do mestre' : p.npc ? '🎭 NPC do mestre' : [f.classe, f.nivel ? 'nível ' + f.nivel : '', p.jogador].filter(Boolean).join(' · ');
   const pvBox = $('ficha-pv'); pvBox.textContent = '';
   const pv = fracPV(p);
   if (pv) { const b = el('div', 'barra-pv ' + classeBarra(pv.frac)); b.style.height = '8px'; const i = el('i'); i.style.width = Math.round(pv.frac * 100) + '%'; b.append(i); pvBox.append(b, el('small', '', pv.texto)); }
   const tracos = $('tracos'); tracos.textContent = '';
   // Botões que rolam direto no chat com o valor da ficha (só aparecem para o dono e o mestre, que veem a ficha toda).
-  const botao = (rotulo, valor, comando) => {
-    const b = el('button'); b.append(el('span', '', '🎲 ' + rotulo), el('b', '', sinal(valor)));
-    b.onclick = () => enviar(comando); tracos.append(b);
+  const botao = (rotulo, valor, comando, como) => {
+    const b = el('button'); b.append(el('span', '', '🎲 ' + rotulo), el('b', '', typeof valor === 'number' ? sinal(valor) : valor));
+    b.onclick = () => enviar(comando, como).catch(() => {}); tracos.append(b);
   };
-  if (estado.campanha.sistema === 'dh') {
+  if (daBiblioteca) {
+    // Cópia da biblioteca: ataque e dano saem no chat em nome dela.
+    if (typeof f.ataque === 'number') botao('Ataque', f.ataque, d20(f.ataque, 'Ataque'), p.id);
+    if (f.dano) botao('Dano', f.dano, `/r ${f.dano} # Dano`, p.id);
+  } else if (estado.campanha.sistema === 'dh') {
     for (const k of TRACOS_DH) if (typeof f[k] === 'number') botao(NOMES[k], f[k], dualidade(f[k], NOMES[k]));
   } else {
     for (const k of ATRIBUTOS_DND) if (typeof f[k] === 'number') { const m = Math.floor((f[k] - 10) / 2); botao(NOMES[k] + ' ' + f[k], m, d20(m, NOMES[k])); }
@@ -469,23 +563,35 @@ function fichaCard() {
   }
   $('rotulo-tracos').hidden = !tracos.children.length;
   const dl = $('ficha'); dl.textContent = '';
-  for (const [k, v] of Object.entries(f)) {
-    if (v === null || v === '' || k === 'nome' || k === 'classe' || k === 'nivel' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
-    dl.append(el('dt', '', NOMES[k] || k.replaceAll('_', ' ')), el('dd', '', String(v)));
+  if (daBiblioteca) {
+    const linhas = [[nomeDefesa(), f.defesa], ['Ataque', typeof f.ataque === 'number' ? sinal(f.ataque) : null], ['Dano', f.dano],
+      ['Limiares', f.limiar_maior ? `Maior ${f.limiar_maior} · Grave ${f.limiar_grave ?? '—'}` : null], ['Notas', f.notas]];
+    for (const [k, v] of linhas) if (v !== null && v !== undefined && v !== '') dl.append(el('dt', '', k), el('dd', '', String(v)));
+  } else {
+    for (const [k, v] of Object.entries(f)) {
+      if (v === null || v === '' || k === 'nome' || k === 'classe' || k === 'nivel' || TRACOS_DH.includes(k) || (estado.campanha.sistema === 'dnd' && ATRIBUTOS_DND.includes(k))) continue;
+      dl.append(el('dt', '', NOMES[k] || k.replaceAll('_', ' ')), el('dd', '', k === 'experiencias' ? experienciasEmTexto(v) : String(v)));
+    }
   }
-  if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? 'NPC do mestre.' : 'Sem ficha.'));
+  if (!p.ficha) dl.append(el('span', 'mudo', p.npc ? (p.tipo === 'inimigo' ? 'Inimigo do mestre.' : 'NPC do mestre.') : p.meu ? 'Você ainda não criou o seu personagem.' : 'Ainda sem ficha.'));
+  $('editar-ficha').hidden = !p.meu;
+  $('editar-ficha').textContent = p.ficha ? '✏️ Editar meu personagem' : '✨ Criar meu personagem';
+  $('editar-criatura').hidden = !(daBiblioteca && estado.voce.mestre);
+  const comPV = daBiblioteca && estado.voce.mestre && typeof f.pv_max === 'number';
+  $('linha-pv').hidden = !comPV;
+  if (comPV && document.activeElement !== $('pv-valor')) $('pv-valor').value = String(f.pv_atual);
   $('remover-npc').hidden = !(p.npc && estado.voce.mestre);
   // Só o mestre mexe no tamanho (de qualquer peça) e na imagem e nas rolagens dos NPCs.
   $('gestao').hidden = !estado.voce.mestre;
   $('tam-valor').textContent = String(p.tamanho || 1).replace('.', ',') + '×';
   $('linha-npc-img').hidden = !p.npc;
-  $('tirar-imagem').hidden = !(p.npc && p.avatar);
+  $('tirar-imagem').hidden = !(p.npc && p.imagemPropria);
   $('rolar-como').hidden = !p.npc;
 }
 $('fechar-ficha').onclick = () => { selecionada = null; painel(); desenhar(); };
 
 function centralizar(p) { cam.x = cv.width / 2 - p.x * cam.z; cam.y = cv.height / 2 - p.y * cam.z; }
-function corDe(p) { return CORES[p.id % CORES.length]; }
+function corDe(p) { return p.tipo === 'inimigo' ? '#d63c4f' : CORES[p.id % CORES.length]; }
 function avatarDe(url) {
   if (!url) return null;
   if (!avatares.has(url)) { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = desenhar; i.src = url; avatares.set(url, i); }
@@ -539,9 +645,10 @@ function pintar() {
     ctx.lineWidth = (sel ? 4.5 : 3) * px; ctx.strokeStyle = sel ? '#f5c451' : cor; ctx.stroke();
     if (p.meu) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 4 * px, 0, Math.PI * 2); ctx.lineWidth = 1.6 * px; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(); }
     if (sel) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 8 * px, 0, Math.PI * 2); ctx.lineWidth = 6 * px; ctx.strokeStyle = 'rgba(245,196,81,.25)'; ctx.stroke(); }
-    if (p.npc) { // selinho de NPC
-      ctx.fillStyle = '#111c'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.34}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N', p.x + r * 0.78, p.y - r * 0.76);
+    if (p.npc) { // selinho: N para NPC, caveira para inimigo
+      const inimigo = p.tipo === 'inimigo';
+      ctx.fillStyle = inimigo ? '#8f1d2ce6' : '#111c'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.34}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(inimigo ? '☠' : 'N', p.x + r * 0.78, p.y - r * 0.76);
     }
     // barra de PV (só quem pode ver a ficha)
     const pv = fracPV(p); let yBase = p.y + r + 5 * px;
@@ -648,11 +755,31 @@ $('f-painel').onclick = () => alternar('painel');
 $('f-regua').onclick = () => { usandoRegua = !usandoRegua; if (!usandoRegua) regua = null; aplicarPrefs(); desenhar(); };
 aplicarPrefs();
 
+// WASD e setas: o jogador anda com a própria peça uma casa por tecla; o mestre move a peça selecionada.
+const PASSOS = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] };
+function andar(dx, dy, repetida) {
+  if (!estado) return false;
+  const sel = estado.pecas.find((q) => q.id === selecionada && q.podeMover && (estado.voce.mestre || q.meu));
+  const p = sel || estado.pecas.find((q) => q.id === estado.voce.pecaId);
+  if (!p) return false;
+  const agora = Date.now();
+  if (repetida && agora - ultimoPasso < 110) return true; // tecla segurada anda num ritmo que o servidor acompanha
+  ultimoPasso = agora;
+  const g = estado.mapa.grade, t = p.tamanho || 1;
+  let x = Math.min(estado.mapa.largura, Math.max(0, p.x + dx * g)), y = Math.min(estado.mapa.altura, Math.max(0, p.y + dy * g));
+  if (prefs.encaixar) { x = encaixe(x, g, t, estado.mapa.largura); y = encaixe(y, g, t, estado.mapa.altura); }
+  p.x = x; p.y = y; passoPendente = { id: p.id, x, y, ate: agora + 2000 };
+  enviarMover(p, true); esconderDica(); desenhar();
+  return true;
+}
+
 addEventListener('keydown', (e) => {
   const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
-  if (e.key === 'Escape') { if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
-  if (digitando || e.ctrlKey || e.metaKey || e.altKey) return;
+  const aberta = document.querySelector('.modal:not([hidden])');
+  if (e.key === 'Escape') { if (aberta) aberta.hidden = true; else if (usandoRegua) $('f-regua').onclick(); else if (selecionada) $('fechar-ficha').onclick(); return; }
+  if (aberta || digitando || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
+  if (PASSOS[k]) { if (andar(PASSOS[k][0], PASSOS[k][1], e.repeat)) e.preventDefault(); return; }
   if (k === '/') { e.preventDefault(); abrirAba('chat'); if (!prefs.painel) alternar('painel'); $('texto').focus(); }
   else if (k === 'f') $('f-enquadrar').onclick();
   else if (k === 'g') $('f-grade').onclick();
@@ -699,7 +826,20 @@ let arrastosArquivo = 0;
 addEventListener('dragenter', (e) => { if (estado && estado.voce.mestre && [...(e.dataTransfer.types || [])].includes('Files')) { arrastosArquivo++; $('solte').classList.add('on'); } });
 addEventListener('dragleave', () => { arrastosArquivo = Math.max(0, arrastosArquivo - 1); if (!arrastosArquivo) $('solte').classList.remove('on'); });
 addEventListener('dragover', (e) => e.preventDefault());
-addEventListener('drop', (e) => { e.preventDefault(); arrastosArquivo = 0; $('solte').classList.remove('on'); if (estado && estado.voce.mestre && e.dataTransfer.files[0]) importarMapa(e.dataTransfer.files[0]); });
+addEventListener('drop', (e) => {
+  e.preventDefault(); arrastosArquivo = 0; $('solte').classList.remove('on');
+  if (!estado || !estado.voce.mestre) return;
+  // Personagem arrastado da biblioteca: cai onde foi solto (encaixado na casa, se o ímã estiver ligado).
+  const criatura = e.dataTransfer.getData('application/x-criatura');
+  if (criatura) {
+    if (e.target !== cv) return;
+    const pt = mundo(e), cr = estado.biblioteca.find((c) => c.id === Number(criatura)), t = (cr && cr.tamanho) || 1, g = estado.mapa.grade;
+    const x = prefs.encaixar ? encaixe(pt.x, g, t, estado.mapa.largura) : pt.x, y = prefs.encaixar ? encaixe(pt.y, g, t, estado.mapa.altura) : pt.y;
+    colocarCriatura(Number(criatura), x, y);
+    return;
+  }
+  if (e.dataTransfer.files[0]) importarMapa(e.dataTransfer.files[0]);
+});
 
 // ---------- Tamanho e imagem das peças (só o mestre) ----------
 function mudarTamanho(passo) {
@@ -740,7 +880,6 @@ $('rolar-como').onclick = () => {
 };
 
 $('salvar-grade').onclick = () => post('grade', { grade: Number($('grade').value) }).then(() => aviso('Grade atualizada.', 'ok')).catch(() => {});
-$('add-npc').onclick = () => { post('npc', { nome: $('npc-nome').value }).then(() => ($('npc-nome').value = '')).catch(() => {}); };
 $('remover-npc').onclick = () => { if (selecionada) post('npc/remover', { peca: selecionada }).then(() => { selecionada = null; }).catch(() => {}); };
 $('limpar-chat').onclick = () => { if (confirmarLimpeza()) post('chat/limpar', {}).catch(() => {}); };
 // Sem diálogo do navegador: o primeiro clique arma, o segundo (em até 4 s) confirma.
@@ -751,6 +890,230 @@ function confirmarLimpeza() {
   setTimeout(() => { delete b.dataset.armado; b.textContent = '🧹 Limpar o chat'; }, 4000);
   return false;
 }
+
+// ---------- Janelas ----------
+for (const b of document.querySelectorAll('[data-fecha]')) b.onclick = (e) => { e.preventDefault(); $(b.dataset.fecha).hidden = true; };
+for (const m of document.querySelectorAll('.modal')) m.addEventListener('pointerdown', (e) => { if (e.target === m) m.hidden = true; });
+
+/** Monta os campos de um formulário a partir da lista (rótulo, tipo, limites e valor atual). */
+function montarCampos(form, campos, valores) {
+  form.textContent = '';
+  let grade = null;
+  for (const c of campos) {
+    if (c.secao) { form.append(el('div', 'rotulo-sec', c.secao)); grade = el('div', 'form-grade'); form.append(grade); continue; }
+    if (!grade) { grade = el('div', 'form-grade'); form.append(grade); }
+    const rot = el('label', 'campo' + (c.largo ? ' largo' : ''));
+    rot.append(document.createTextNode(c.r + (c.obr ? ' *' : '')));
+    let input;
+    if (c.t === 'sel') { input = el('select'); for (const [v, n] of c.op) input.append(new Option(n, v)); }
+    else if (c.t === 'area') { input = el('textarea'); input.maxLength = c.max; }
+    else {
+      input = el('input'); input.type = c.t === 'num' ? 'number' : 'text';
+      if (c.t === 'num') { input.min = c.min; input.max = c.max; input.step = c.passo || 1; } else input.maxLength = c.max;
+      if (c.dica) input.placeholder = c.dica;
+    }
+    input.name = c.k;
+    const v = valores && valores[c.k] !== undefined && valores[c.k] !== null ? valores[c.k] : c.pad;
+    if (v !== undefined && v !== null) input.value = String(v);
+    rot.append(input); grade.append(rot);
+  }
+}
+function lerCampos(form, campos) {
+  const r = {};
+  for (const c of campos) if (c.k) { const v = form.elements[c.k].value.trim(); r[c.k] = c.t === 'num' ? (v === '' ? null : Number(v)) : v; }
+  return r;
+}
+// "Ladrão de Cofres|2,Criado nas Ruas|3" (como fica salvo) ↔ "Ladrão de Cofres +2, Criado nas Ruas +3" (como se escreve)
+const experienciasEmTexto = (v) => String(v || '').split(',').filter(Boolean).map((i) => { const [n, b] = i.split('|'); return `${n} +${b || 2}`; }).join(', ');
+
+// ---------- Ficha do jogador (criada aqui no mapa) ----------
+const num = (k, r, min, max, pad, extra) => ({ k, r, t: 'num', min, max, pad, ...extra });
+const txt = (k, r, max, extra) => ({ k, r, t: 'txt', max, ...extra });
+const CAMPOS_FICHA = {
+  dh: [
+    { secao: 'Quem é' },
+    txt('nome', 'Nome', 60, { obr: true, largo: true }), txt('classe', 'Classe (subclasse)', 50, { obr: true, dica: 'Patrulheiro (Andarilho)' }),
+    txt('ancestralidade', 'Ancestralidade', 40, { dica: 'Fungril' }), txt('comunidade', 'Comunidade', 40, { dica: 'Das Montanhas' }), num('nivel', 'Nível', 1, 10, 1),
+    { secao: 'Traços' },
+    ...TRACOS_DH.map((t) => num(t, NOMES[t], -5, 10, 0)),
+    { secao: 'Defesa e vida' },
+    num('evasao', 'Evasão', 1, 40, 10), num('pv_max', 'PV (espaços)', 1, 12, 6), num('estresse_max', 'Estresse', 1, 12, 6),
+    num('armadura_max', 'Armadura (espaços)', 0, 12, 3), num('limiar_maior', 'Limiar Maior', 1, 99, 6), num('limiar_grave', 'Limiar Grave', 2, 199, 12),
+    num('proficiencia', 'Proficiência', 1, 6, 1),
+    { secao: 'Experiências' },
+    txt('experiencias', 'Separe por vírgula', 300, { largo: true, dica: 'Ladrão de Cofres +2, Criado nas Ruas +2' }),
+  ],
+  dnd: [
+    { secao: 'Quem é' },
+    txt('nome', 'Nome', 60, { obr: true, largo: true }), txt('classe', 'Classe', 40, { obr: true, dica: 'Guerreiro 3 / Ladino 2' }),
+    txt('raca', 'Raça', 40, { dica: 'Elfo' }), num('nivel', 'Nível', 1, 40, 1),
+    { secao: 'Atributos' },
+    ...ATRIBUTOS_DND.map((a) => num(a, NOMES[a], 1, 50, 10)),
+    { secao: 'Combate' },
+    num('pv_max', 'PV máximo', 1, 999, 10), num('ca', 'CA', 1, 80, 10), num('bba', 'Ataque base', 0, 40, 0),
+    num('fort', 'Fortitude base', 0, 30, 0), num('ref', 'Reflexos base', 0, 30, 0), num('von', 'Vontade base', 0, 30, 0), num('ini_extra', 'Iniciativa extra', -10, 30, 0),
+  ],
+};
+const minhaPeca = () => estado && estado.pecas.find((p) => p.id === estado.voce.pecaId);
+
+function abrirFicha() {
+  const p = minhaPeca(); if (!p) return;
+  const f = p.ficha ? { ...p.ficha } : null;
+  if (f && f.experiencias !== undefined) f.experiencias = experienciasEmTexto(f.experiencias);
+  $('mf-titulo').textContent = f ? '✏️ ' + p.nome : '✨ Crie o seu personagem';
+  $('mf-sub').textContent = (estado.campanha.sistema === 'dh' ? 'Daggerheart' : 'D&D 3.5') + ' · ' + estado.campanha.nome + (f ? '' : ' · os campos com * são obrigatórios');
+  montarCampos($('mf-form'), CAMPOS_FICHA[estado.campanha.sistema], f);
+  fotoNaFicha();
+  $('modal-ficha').hidden = false;
+  setTimeout(() => $('mf-form').elements.nome.focus(), 30);
+}
+function fotoNaFicha() {
+  const p = minhaPeca(); if (!p) return;
+  pintarAvatar($('mf-avatar'), p.nome, p.avatar, corDe(p));
+  $('mf-tirar').hidden = !(p.avatar && p.avatar.includes('/foto/'));
+}
+$('mf-salvar').onclick = () => {
+  const dados = lerCampos($('mf-form'), CAMPOS_FICHA[estado.campanha.sistema]);
+  post('ficha', dados).then(() => { $('modal-ficha').hidden = true; aviso('Personagem salvo!', 'ok'); }).catch(() => {});
+};
+$('mf-form').addEventListener('submit', (e) => { e.preventDefault(); $('mf-salvar').onclick(); });
+$('mf-arquivo').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.');
+  try {
+    const blob = await reduzirImagem(f, 512);
+    await post('ficha/foto', undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: blob });
+    aviso('Foto do personagem atualizada.', 'ok');
+    setTimeout(fotoNaFicha, 400);
+  } catch (err) { if (err && err.message && !/^(Não deu|Só |Use uma|Imagem)/.test(err.message)) mostrarErro(err.message); }
+};
+$('mf-tirar').onclick = () => post('ficha/foto/remover', {}).then(() => setTimeout(fotoNaFicha, 400)).catch(() => {});
+$('editar-ficha').onclick = abrirFicha;
+$('abrir-ficha').onclick = abrirFicha;
+
+function painelMeu() {
+  const p = minhaPeca();
+  $('painel-meu').hidden = !p;
+  if (!p) return;
+  pintarAvatar($('meu-avatar'), p.nome, p.avatar, corDe(p));
+  $('meu-nome').textContent = p.ficha ? p.nome : 'Personagem ainda não criado';
+  $('meu-sub').textContent = p.ficha ? [p.ficha.classe, p.ficha.nivel ? 'nível ' + p.ficha.nivel : ''].filter(Boolean).join(' · ') : 'Crie a ficha e escolha a foto';
+  $('abrir-ficha').textContent = p.ficha ? '✏️ Ficha e foto' : '✨ Criar meu personagem';
+  $('meu-resumo').onclick = () => { selecionada = p.id; centralizar(p); painel(); desenhar(); };
+}
+
+// ---------- Biblioteca do mestre (NPCs e inimigos) ----------
+function camposCriatura() {
+  const dh = estado.campanha.sistema === 'dh';
+  return [
+    { k: 'nome', r: 'Nome', t: 'txt', max: 40, obr: true, largo: true, dica: dh ? 'Bandido da Estrada' : 'Goblin' },
+    { k: 'tipo', r: 'Tipo', t: 'sel', op: [['npc', '🎭 NPC'], ['inimigo', '👹 Inimigo']], pad: 'npc' },
+    num('tamanho', 'Tamanho (casas)', 0.5, 6, 1, { passo: 0.5 }),
+    num('pv_max', dh ? 'PV (espaços)' : 'PV', 1, 9999, null),
+    num('defesa', dh ? 'Dificuldade' : 'CA', 0, 99, null),
+    num('ataque', 'Ataque (bônus)', -20, 50, null),
+    txt('dano', 'Dano', 30, { dica: '1d8+2' }),
+    ...(dh ? [num('limiar_maior', 'Limiar Maior', 1, 99, null), num('limiar_grave', 'Limiar Grave', 2, 199, null)] : []),
+    { k: 'notas', r: 'Notas (só você vê)', t: 'area', max: 1000, largo: true },
+  ];
+}
+let criaturaEditada = null, imagemCriatura = null;
+function abrirCriatura(cr, tipo) {
+  criaturaEditada = cr || null; imagemCriatura = null;
+  $('mc-titulo').textContent = cr ? '✏️ ' + cr.nome : tipo === 'inimigo' ? '👹 Novo inimigo' : '🎭 Novo NPC';
+  montarCampos($('mc-form'), camposCriatura(), cr || { tipo: tipo || 'npc' });
+  pintarAvatar($('mc-avatar'), cr ? cr.nome : '?', cr && cr.avatar, cr && cr.tipo === 'inimigo' ? '#d63c4f' : null);
+  $('mc-tirar').hidden = !(cr && cr.avatar);
+  $('mc-apagar').hidden = !cr;
+  delete $('mc-apagar').dataset.armado; $('mc-apagar').textContent = '🗑️ Apagar';
+  $('modal-criatura').hidden = false;
+  setTimeout(() => $('mc-form').elements.nome.focus(), 30);
+}
+$('mc-arquivo').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return mostrarErro('Use uma imagem PNG, JPG, WEBP ou GIF.');
+  try {
+    imagemCriatura = await reduzirImagem(f, 512);
+    const url = URL.createObjectURL(imagemCriatura);
+    pintarAvatar($('mc-avatar'), '?', url);
+  } catch (err) { mostrarErro(err.message || 'Não consegui ler essa imagem.'); }
+};
+$('mc-tirar').onclick = () => {
+  if (!criaturaEditada) return;
+  post('criatura/imagem/remover', { id: criaturaEditada.id }).then(() => { $('mc-tirar').hidden = true; pintarAvatar($('mc-avatar'), criaturaEditada.nome, null); }).catch(() => {});
+};
+$('mc-salvar').onclick = async () => {
+  const dados = lerCampos($('mc-form'), camposCriatura());
+  if (criaturaEditada) dados.id = criaturaEditada.id;
+  try {
+    const r = await post('criatura', dados);
+    if (imagemCriatura) await post('criatura/imagem?id=' + r.id, undefined, { headers: { 'Content-Type': 'application/octet-stream' }, body: imagemCriatura });
+    $('modal-criatura').hidden = true;
+    aviso(criaturaEditada ? 'Biblioteca atualizada.' : 'Salvo na biblioteca. Arraste para o mapa!', 'ok');
+  } catch {}
+};
+$('mc-form').addEventListener('submit', (e) => { e.preventDefault(); $('mc-salvar').onclick(); });
+$('mc-apagar').onclick = () => {
+  const b = $('mc-apagar');
+  if (!criaturaEditada) return;
+  if (!b.dataset.armado) {
+    b.dataset.armado = '1';
+    b.textContent = criaturaEditada.noMapa ? `Apagar e tirar ${criaturaEditada.noMapa} do mapa?` : 'Clique de novo para apagar';
+    setTimeout(() => { delete b.dataset.armado; b.textContent = '🗑️ Apagar'; }, 4000);
+    return;
+  }
+  post('criatura/remover', { id: criaturaEditada.id }).then(() => { $('modal-criatura').hidden = true; aviso('Apagado da biblioteca.', 'ok'); }).catch(() => {});
+};
+$('nova-npc').onclick = () => abrirCriatura(null, 'npc');
+$('nova-inimigo').onclick = () => abrirCriatura(null, 'inimigo');
+for (const b of $('filtros').children) b.onclick = () => { filtroLib = b.dataset.f; for (const o of $('filtros').children) o.classList.toggle('on', o === b); painelBiblioteca(); };
+
+function colocarCriatura(id, x, y) {
+  post('criatura/colocar', { id, x, y }).then((r) => { aviso(`${r.nome} entrou no mapa.`, 'ok', 2000); }).catch(() => {});
+}
+/** Centro da tela em coordenadas do mapa: onde cai o personagem posto pelo botão 📍. */
+function centroDaTela() {
+  const g = estado.mapa.grade, x = (cv.width / 2 - cam.x) / cam.z, y = (cv.height / 2 - cam.y) / cam.z;
+  return { x: Math.min(estado.mapa.largura, Math.max(0, prefs.encaixar ? encaixe(x, g, 1, estado.mapa.largura) : x)), y: Math.min(estado.mapa.altura, Math.max(0, prefs.encaixar ? encaixe(y, g, 1, estado.mapa.altura) : y)) };
+}
+
+function painelBiblioteca() {
+  $('painel-biblioteca').hidden = !estado.voce.mestre;
+  if (!estado.voce.mestre) return;
+  const caixa = $('biblioteca'); caixa.textContent = '';
+  const lista = estado.biblioteca.filter((c) => filtroLib === 'todos' || c.tipo === filtroLib);
+  if (!lista.length) caixa.append(el('span', 'mudo', estado.biblioteca.length ? 'Nada neste filtro.' : 'Vazia. Crie NPCs e inimigos para usar nas sessões.'));
+  for (const cr of lista) {
+    const d = el('div', 'lib-item'); d.draggable = true; d.title = 'Arraste para o mapa';
+    d.addEventListener('dragstart', (e) => { e.dataTransfer.setData('application/x-criatura', String(cr.id)); e.dataTransfer.effectAllowed = 'copy'; });
+    const av = el('div', 'avatar'); pintarAvatar(av, cr.nome, cr.avatar, cr.tipo === 'inimigo' ? '#d63c4f' : null);
+    const info = el('div', 'info');
+    const nome = el('div', 'nome', cr.nome); nome.append(el('span', 'tag' + (cr.tipo === 'inimigo' ? ' inimigo' : ''), cr.tipo === 'inimigo' ? 'inimigo' : 'NPC'));
+    const detalhes = [cr.pv_max ? cr.pv_max + ' PV' : '', cr.defesa !== null ? nomeDefesa() + ' ' + cr.defesa : '', cr.ataque !== null ? 'atq ' + sinal(cr.ataque) : '', cr.noMapa ? cr.noMapa + ' no mapa' : ''].filter(Boolean).join(' · ');
+    info.append(nome, el('small', '', detalhes || 'sem números'));
+    const por = el('button', 'mini', '📍'); por.title = 'Pôr no centro da tela'; por.onclick = (e) => { e.stopPropagation(); const c = centroDaTela(); colocarCriatura(cr.id, c.x, c.y); };
+    const edt = el('button', 'mini', '✏️'); edt.title = 'Editar'; edt.onclick = (e) => { e.stopPropagation(); abrirCriatura(cr); };
+    d.append(av, info, por, edt);
+    caixa.append(d);
+  }
+}
+$('editar-criatura').onclick = () => {
+  const p = estado.pecas.find((q) => q.id === selecionada), cr = p && estado.biblioteca.find((c) => c.id === p.criaturaId);
+  if (cr) abrirCriatura(cr);
+};
+
+// Vida de uma cópia: − e + mexem de 1 em 1; no campo, um número fixa o PV e -7 / +5 tiram ou curam.
+function mudarPV(corpo) { const p = estado.pecas.find((q) => q.id === selecionada); if (p) post('peca/pv', { peca: p.id, ...corpo }).catch(() => {}); }
+$('pv-menos').onclick = () => mudarPV({ delta: -1 });
+$('pv-mais').onclick = () => mudarPV({ delta: 1 });
+$('pv-valor').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const v = e.target.value.trim().replace(',', '.');
+  if (!/^[+-]?\d+$/.test(v)) return mostrarErro('Escreva um número, ou -7 para tirar e +5 para curar.');
+  mudarPV(/^[+-]/.test(v) ? { delta: Number(v) } : { valor: Number(v) });
+  e.target.blur();
+});
 
 // ---------- Abas ----------
 
@@ -794,10 +1157,10 @@ function montarBarra() {
 }
 
 /** Envia texto ao chat. Com "Escondida" marcada, o mestre transforma /r em /gr e /dh em /gdh. */
-async function enviar(texto) {
+async function enviar(texto, comoPeca) {
   let t = texto.trim(); if (!t) return;
   if (escondida()) t = t.replace(/^\/(r|roll|rolar)(\s|$)/i, '/gr$2').replace(/^\/(dh|dualidade)(\s|$)/i, '/gdh$2');
-  const como = estado && estado.voce.mestre && $('como').value ? Number($('como').value) : undefined;
+  const como = !estado || !estado.voce.mestre ? undefined : comoPeca ? comoPeca : $('como').value ? Number($('como').value) : undefined;
   await post('chat', { texto: t, como });
   if (!prefs.painel) alternar('painel');
   abrirAba('chat');
@@ -849,9 +1212,13 @@ function desenharChat() {
     const minha = estado && m.userId === estado.voce.id;
     const d = el('div', 'msg' + (minha ? ' minha' : ''));
     // Quando o mestre fala por um NPC, aparece a foto do NPC no lugar da dele.
+    // Jogador aparece com a foto do personagem; o mestre, com a foto dele do Discord.
     const npc = m.pecaId && estado ? estado.pecas.find((p) => p.id === m.pecaId) : null;
+    const personagem = !m.pecaId && estado ? estado.pecas.find((p) => p.userId && p.userId === m.userId) : null;
     const av = el('div', 'avatar');
-    if (npc) pintarAvatar(av, npc.nome, npc.avatar, corDe(npc)); else pintarAvatar(av, m.autor, minha ? estado.voce.avatar : null);
+    if (npc) pintarAvatar(av, npc.nome, npc.avatar, corDe(npc));
+    else if (personagem) pintarAvatar(av, m.autor, personagem.avatar, corDe(personagem));
+    else pintarAvatar(av, m.autor, estado && m.userId === estado.campanha.mestreId ? estado.campanha.mestreAvatar : minha ? estado.voce.avatar : null);
     const c = el('div', 'conteudo');
     const topo = el('div', 'topo'); topo.append(el('b', '', m.autor), el('time', '', hora(m.em)));
     c.append(topo);
