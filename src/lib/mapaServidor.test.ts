@@ -369,3 +369,41 @@ test('fala escrita direto no canal sai como o personagem; mestre e fora do perso
   const chat = (await chamar('100000000000000001', 'chat')).corpo.map((l: any) => l.texto);
   for (const t of ['Eu saco a espada!', '(já volto)', 'Rolem iniciativa.']) assert.ok(chat.includes(t), t);
 });
+
+test('livro de regras: só o mestre envia, a mesa lê em pedaços (Range) e o mestre tira', async () => {
+  const { faixaPedida } = await import('../recursos/mapa.ts');
+  assert.deepEqual(faixaPedida('bytes=0-9', 100), { ini: 0, fim: 9 });
+  assert.deepEqual(faixaPedida('bytes=90-', 100), { ini: 90, fim: 99 });
+  assert.deepEqual(faixaPedida('bytes=-10', 100), { ini: 90, fim: 99 });
+  assert.deepEqual(faixaPedida('bytes=50-500', 100), { ini: 50, fim: 99 });
+  assert.equal(faixaPedida('bytes=200-', 100), 'invalida');
+  assert.equal(faixaPedida(undefined, 100), null);
+
+  const J = '200000000000000002', M = '100000000000000001';
+  const ler = (quem: string, range?: string) => fetch(`${base}/api/m/${campanha}/livro`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, quem)}`, ...(range ? { range } : {}) } });
+  assert.equal((await ler(J)).status, 404);
+  assert.equal((await estado(J)).livro, null);
+
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(5000, 65), Buffer.from('\n%%EOF')]);
+  assert.equal((await chamar(J, 'livro', undefined, pdf)).status, 403);
+  assert.equal((await chamar(M, 'livro', undefined, Buffer.from('não é pdf'))).status, 415);
+  assert.equal((await chamar(M, 'livro', undefined, pdf)).status, 200);
+
+  const e = await estado(J);
+  assert.equal(e.livro.tamanho, pdf.length);
+  assert.ok(e.livro.url.startsWith(`/api/m/${campanha}/livro?v=`), e.livro.url);
+  const inteiro = await ler(J);
+  assert.equal(inteiro.status, 200);
+  assert.equal(inteiro.headers.get('content-type'), 'application/pdf');
+  assert.equal(inteiro.headers.get('accept-ranges'), 'bytes');
+  assert.equal(Buffer.from(await inteiro.arrayBuffer()).length, pdf.length);
+  const pedaco = await ler(J, 'bytes=0-4');
+  assert.equal(pedaco.status, 206);
+  assert.equal(pedaco.headers.get('content-range'), `bytes 0-4/${pdf.length}`);
+  assert.equal(Buffer.from(await pedaco.arrayBuffer()).toString(), '%PDF-');
+  assert.equal((await ler(J, 'bytes=999999-')).status, 416);
+
+  assert.equal((await chamar(J, 'livro/remover', {})).status, 403);
+  assert.equal((await chamar(M, 'livro/remover', {})).status, 200);
+  assert.equal((await ler(J)).status, 404);
+});

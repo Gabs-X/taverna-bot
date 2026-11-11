@@ -4,237 +4,344 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#120a1c">
+<meta name="theme-color" content="#20140b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;0,800;1,400&family=Cinzel:wght@500;700;900&display=swap">
 <title>🗺️ Mapa da campanha</title>
 <style>
+  /* ======================================================================
+     Tema "Taverna": madeira escura, latão, pergaminho e luz de vela.
+     As cores vêm das variáveis; o pergaminho (ficha, janelas, avisos e
+     rolagens) troca as variáveis para tinta escura sobre papel.
+     ====================================================================== */
   :root {
-    --bg: #110a1b; --painel: #1b1028; --painel2: #251637; --painel3: #301d47; --borda: #3b2655;
-    --texto: #f2ebfa; --mudo: #a899c0; --acento: #a66cff; --acento2: #e0609a; --ouro: #f5c451;
-    --ok: #3ecf8e; --perigo: #ff5d6c; --vidro: rgba(24, 14, 36, .82);
-    --sombra: 0 8px 28px rgba(0, 0, 0, .45);
+    --bg: #120b06; --painel: #23160d; --painel2: #2e1e12; --painel3: #3e2a19; --borda: #5c4026;
+    --texto: #f3e6c8; --mudo: #b89f7a; --acento: #d9a441; --acento2: #c4502c; --ouro: #f0c35a;
+    --ok: #79c25e; --perigo: #d8493e; --vidro: rgba(32, 20, 11, .93);
+    --sombra: 0 10px 30px rgba(0, 0, 0, .55);
+    --tinta: #3b2814; --tinta-mudo: #7b6040;
+    --latao: linear-gradient(180deg, #f6d585 0%, #d9a441 45%, #a8732a 100%);
+    --madeira:
+      repeating-linear-gradient(0deg, rgba(255, 220, 160, .025) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(0deg, rgba(0, 0, 0, .12) 0 1px, transparent 1px 31px),
+      linear-gradient(180deg, #2b1b0f, #20140b);
+    --papel: radial-gradient(ellipse at 25% 15%, #fbf1d8 0%, #efdcb2 55%, #e0c58f 100%);
+    --fonte-titulo: 'Cinzel', 'Palatino Linotype', Georgia, serif;
+    --fonte: 'Alegreya Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --fonte-texto: 'Alegreya', Georgia, 'Times New Roman', serif;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body { margin: 0; display: flex; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--texto); overflow: hidden; }
+  body { margin: 0; display: flex; font-family: var(--fonte); font-size: 14px; background: #0d0805; color: var(--texto); overflow: hidden; }
   button, input, select { font: inherit; color: inherit; }
-  small, .mudo { color: var(--mudo); font-size: 12px; }
-  ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: var(--borda); border-radius: 8px; } ::-webkit-scrollbar-track { background: transparent; }
+  small, .mudo { color: var(--mudo); font-size: 12.5px; }
+  ::selection { background: rgba(217, 164, 65, .45); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; } ::-webkit-scrollbar-thumb { background: #5c4026; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; } ::-webkit-scrollbar-track { background: transparent; }
+
+  /* Pergaminho: tinta escura sobre papel */
+  #ficha-card, .modal > .caixa, .toast, #vazio > div, #aviso-espera, .cartao {
+    --texto: var(--tinta); --mudo: var(--tinta-mudo); --bg: #fcf5e3; --painel: #f3e4c2; --painel2: rgba(130, 88, 34, .09);
+    --painel3: rgba(130, 88, 34, .2); --borda: #c4a46f; --acento: #8e5a1c; --ouro: #94601a; --ok: #2f7a28; --perigo: #a3291f;
+    color: var(--tinta);
+  }
 
   /* ---------- Palco (mapa) ---------- */
   #palco { flex: 1; position: relative; min-width: 0; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   canvas.arrastando { cursor: grabbing; }
   canvas.regua { cursor: crosshair; }
-  .vidro { background: var(--vidro); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--borda); box-shadow: var(--sombra); }
+  /* Luz de vela: borda escura e um calor que respira devagar por cima do mapa */
+  #luz { position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at 50% 42%, rgba(255, 168, 70, .08), transparent 62%), radial-gradient(ellipse at center, transparent 58%, rgba(8, 4, 2, .62) 100%);
+    animation: vela 5s ease-in-out infinite alternate; }
+  @keyframes vela { 0% { opacity: .82; } 35% { opacity: 1; } 55% { opacity: .9; } 100% { opacity: .97; } }
+  #palco > :not(canvas):not(#luz) { z-index: 2; }
 
-  #topo { position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border-radius: 14px; max-width: calc(100% - 90px); }
-  #topo .ico { font-size: 22px; }
-  #topo h1 { margin: 0; font-size: 15px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #topo small { display: block; line-height: 1.2; }
-  .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 3px rgba(255, 93, 108, .2); flex: none; }
-  .ponto.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(62, 207, 142, .2); }
+  .vidro { background: var(--madeira); background-color: #23160d; border: 1px solid #6b4a2b; box-shadow: inset 0 1px rgba(255, 220, 160, .08), inset 0 0 0 1px rgba(0, 0, 0, .35), var(--sombra); }
 
-  #ferramentas { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 14px; }
-  .ferr { width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 17px; display: grid; place-items: center; position: relative; transition: background .15s, transform .1s; }
-  .ferr:hover { background: var(--painel3); }
-  .ferr:active { transform: scale(.94); }
-  .ferr.on { background: var(--acento); color: #fff; }
-  .ferr::after { content: attr(data-dica); position: absolute; right: 46px; top: 50%; transform: translateY(-50%); background: #000d; padding: 4px 9px; border-radius: 7px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+  #topo { position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 11px; padding: 8px 16px 8px 12px; border-radius: 12px; max-width: calc(100% - 90px); border-color: #8a6233; }
+  #topo::before, #topo::after { content: ''; position: absolute; top: -9px; width: 2px; height: 9px; background: linear-gradient(#8a6233, #3a2615); }
+  #topo::before { left: 26px; } #topo::after { right: 26px; }
+  #topo .ico { font-size: 24px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5)); }
+  #topo h1 { margin: 0; font-family: var(--fonte-titulo); font-weight: 700; font-size: 16px; letter-spacing: .03em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ouro); text-shadow: 0 1px 0 #000, 0 0 12px rgba(240, 195, 90, .25); }
+  #topo small { display: block; line-height: 1.2; font-style: italic; }
+  .ponto { width: 10px; height: 10px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 3px rgba(216, 73, 62, .2); flex: none; }
+  .ponto.ok { background: #ffb347; box-shadow: 0 0 0 3px rgba(255, 179, 71, .18), 0 0 10px #ffb347; animation: brasa 2.4s ease-in-out infinite; }
+  @keyframes brasa { 50% { box-shadow: 0 0 0 3px rgba(255, 179, 71, .1), 0 0 4px #ffb347; } }
+
+  #ferramentas { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 12px; }
+  .ferr { width: 38px; height: 38px; border: 1px solid transparent; border-radius: 9px; background: transparent; cursor: pointer; font-size: 17px; display: grid; place-items: center; position: relative; color: var(--ouro); transition: background .15s, transform .1s, border-color .15s; }
+  .ferr:hover { background: #3e2a19; border-color: #7a5532; }
+  .ferr:active { transform: scale(.92); }
+  .ferr.on { background: var(--latao); color: #2b1a08; border-color: #7a5218; box-shadow: inset 0 1px rgba(255, 255, 255, .45), 0 1px 0 #4a300e; }
+  .ferr::after { content: attr(data-dica); position: absolute; right: 48px; top: 50%; transform: translateY(-50%); background: var(--papel); color: var(--tinta); border: 1px solid #b08c55; padding: 4px 10px; border-radius: 6px; font-size: 12.5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); }
   .ferr:hover::after { opacity: 1; }
-  .sep { height: 1px; background: var(--borda); margin: 2px 4px; }
+  .sep { height: 1px; background: linear-gradient(90deg, transparent, #7a5532, transparent); margin: 2px 4px; }
 
-  #bandeja { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; border-radius: 16px; max-width: calc(100% - 28px); overflow-x: auto; }
-  .card { width: 108px; flex: none; padding: 7px 8px; border-radius: 11px; background: var(--painel2); border: 1px solid transparent; cursor: pointer; display: flex; flex-direction: column; gap: 5px; transition: transform .12s, border-color .12s, background .12s; }
-  .card:hover { background: var(--painel3); transform: translateY(-2px); }
-  .card.sel { border-color: var(--ouro); }
+  #bandeja { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; padding: 9px 10px; border-radius: 12px; max-width: calc(100% - 28px); overflow-x: auto; border-top: 2px solid #8a6233; }
+  .card { width: 116px; flex: none; padding: 7px 8px; border-radius: 9px; background: linear-gradient(180deg, #3a2717, #2a1b10); border: 1px solid #5c4026; cursor: pointer; display: flex; flex-direction: column; gap: 5px; transition: transform .14s, border-color .14s, box-shadow .14s; box-shadow: inset 0 1px rgba(255, 220, 160, .07); }
+  .card:hover { transform: translateY(-3px); border-color: #a87a3c; box-shadow: 0 6px 14px rgba(0, 0, 0, .4); }
+  .card.sel { border-color: var(--ouro); box-shadow: 0 0 0 1px var(--ouro), 0 0 16px rgba(240, 195, 90, .35); }
   .card.meu .nome::after { content: ' ★'; color: var(--ouro); }
   .card .linha1 { display: flex; align-items: center; gap: 7px; min-width: 0; }
-  .card .nome { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .avatar { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #fff; background-size: cover; background-position: center; border: 2px solid var(--cor, var(--borda)); }
-  .barra-pv { height: 5px; background: #0006; border-radius: 4px; overflow: hidden; }
-  .barra-pv > i { display: block; height: 100%; border-radius: 4px; background: var(--ok); transition: width .3s; }
-  .barra-pv.baixo > i { background: var(--perigo); } .barra-pv.medio > i { background: var(--ouro); }
-  .card small { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .nome { font-family: var(--fonte-titulo); font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; font-family: var(--fonte-titulo); font-weight: 700; font-size: 12px; color: #fff; text-shadow: 0 1px 2px #0008; background-size: cover; background-position: center; border: 2px solid var(--cor, var(--borda)); box-shadow: 0 0 0 2px #1a0f08, 0 0 0 3px rgba(217, 164, 65, .55), 0 2px 6px rgba(0, 0, 0, .45); }
+  .barra-pv { height: 6px; background: rgba(0, 0, 0, .45); border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5), 0 0 0 1px rgba(217, 164, 65, .25); }
+  .barra-pv > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(180deg, #9be07a, #4f9a36); transition: width .4s; }
+  .barra-pv.baixo > i { background: linear-gradient(180deg, #ff7a6b, #b3261c); } .barra-pv.medio > i { background: linear-gradient(180deg, #ffd27a, #d08a1e); }
+  .card small { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   #vazio { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-  #vazio > div { pointer-events: auto; text-align: center; padding: 22px 26px; border-radius: 18px; max-width: 340px; }
-  #vazio h2 { margin: 6px 0; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--texto); }
-  #vazio p { margin: 0 0 12px; color: var(--mudo); font-size: 13px; line-height: 1.4; }
-  #vazio .grande { font-size: 40px; }
+  #vazio > div, #aviso-espera { background: var(--papel); border: 1px solid #a07a44; box-shadow: inset 0 0 0 4px rgba(251, 241, 216, .7), inset 0 0 0 5px #c4a46f, inset 0 0 40px rgba(140, 90, 30, .25), 0 18px 50px rgba(0, 0, 0, .6); }
+  #vazio > div { pointer-events: auto; text-align: center; padding: 26px 30px; border-radius: 6px; max-width: 360px; }
+  #vazio h2 { margin: 6px 0; font-family: var(--fonte-titulo); font-size: 19px; color: #5a3510; }
+  #vazio p { margin: 0 0 14px; color: var(--mudo); font-size: 14px; line-height: 1.45; font-family: var(--fonte-texto); }
+  #vazio .grande, #aviso-espera div:first-child { font-size: 42px; filter: drop-shadow(0 3px 4px rgba(90, 50, 10, .35)); animation: flutua 3.2s ease-in-out infinite; }
+  @keyframes flutua { 50% { transform: translateY(-5px) rotate(-3deg); } }
+  #aviso-espera { font-family: var(--fonte-texto); font-size: 15px; font-style: italic; border-radius: 6px !important; }
 
-  #solte { position: absolute; inset: 10px; border: 3px dashed var(--acento); border-radius: 18px; background: rgba(166, 108, 255, .14); display: none; place-items: center; font-size: 18px; font-weight: 600; pointer-events: none; z-index: 8; }
+  #solte { position: absolute; inset: 10px; border: 3px dashed var(--ouro); border-radius: 14px; background: rgba(217, 164, 65, .12); display: none; place-items: center; font-family: var(--fonte-titulo); font-size: 20px; font-weight: 700; color: var(--ouro); text-shadow: 0 2px 4px #000; pointer-events: none; z-index: 8 !important; }
   #solte.on { display: grid; }
 
-  #ficha-card { position: absolute; left: 14px; top: 76px; width: 300px; max-height: calc(100% - 190px); overflow-y: auto; border-radius: 16px; padding: 14px; display: none; z-index: 4; }
-  #ficha-card.aberta { display: block; animation: entra .18s ease-out; }
+  /* Ficha: folha de pergaminho presa no mapa */
+  #ficha-card { position: absolute; left: 14px; top: 78px; width: 310px; max-height: calc(100% - 190px); overflow-y: auto; border-radius: 6px; padding: 16px 16px 14px; display: none; z-index: 4 !important;
+    background: var(--papel); border: 1px solid #a07a44; box-shadow: inset 0 0 0 4px rgba(251, 241, 216, .6), inset 0 0 0 5px #c4a46f, inset 0 0 50px rgba(140, 90, 30, .22), 0 16px 40px rgba(0, 0, 0, .55); }
+  #ficha-card.aberta { display: block; animation: desenrola .25s ease-out; }
   @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  #ficha-card .cab { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding-right: 26px; }
-  #ficha-card .cab .avatar { width: 46px; height: 46px; font-size: 18px; }
-  #ficha-card h2 { margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--texto); }
-  #ficha-card .fechar { position: absolute; right: 10px; top: 10px; width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--mudo); cursor: pointer; }
-  #ficha-card .fechar:hover { background: var(--painel3); color: #fff; }
-  .rotulo-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--mudo); margin: 12px 0 6px; font-weight: 700; }
+  @keyframes desenrola { from { opacity: 0; transform: translateY(-8px) scaleY(.92); transform-origin: top; } to { opacity: 1; transform: none; } }
+  #ficha-card .cab { display: flex; gap: 11px; align-items: center; margin-bottom: 10px; padding: 0 26px 10px 0; border-bottom: 1px solid #c4a46f; }
+  #ficha-card .cab .avatar { width: 52px; height: 52px; font-size: 19px; box-shadow: 0 0 0 2px #fbf1d8, 0 0 0 4px #a8732a, 0 3px 8px rgba(60, 30, 5, .4); }
+  #ficha-card h2 { margin: 0; font-family: var(--fonte-titulo); font-size: 18px; color: #4a2a0c; }
+  #ficha-card .fechar, .modal .fechar { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; color: #fde9d9; font-size: 13px; font-weight: 700;
+    background: radial-gradient(circle at 35% 30%, #d4533f, #8e2418 60%, #5e140c); box-shadow: 0 2px 4px rgba(0, 0, 0, .35), inset 0 -2px 3px rgba(0, 0, 0, .3); transition: transform .12s; }
+  #ficha-card .fechar:hover, .modal .fechar:hover { transform: rotate(12deg) scale(1.08); }
+  .rotulo-sec { font-family: var(--fonte-titulo); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--acento); margin: 14px 0 7px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .rotulo-sec::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--borda), transparent); }
   .tracos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .tracos button { padding: 7px 9px; border-radius: 10px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: 12.5px; transition: background .12s, border-color .12s; text-align: left; }
-  .tracos button:hover { background: var(--painel3); border-color: var(--acento); }
-  .tracos button b { color: var(--ouro); font-size: 14px; }
-  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
-  dt { color: var(--mudo); } dd { margin: 0; word-break: break-word; }
+  .tracos button { padding: 7px 9px; border-radius: 7px; border: 1px solid var(--borda); background: rgba(255, 250, 235, .55); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; transition: background .12s, border-color .12s, transform .08s; text-align: left; }
+  .tracos button:hover { background: #fff8e6; border-color: #8e5a1c; transform: translateY(-1px); }
+  .tracos button:active { transform: scale(.97); }
+  .tracos button b { color: var(--ouro); font-family: var(--fonte-titulo); font-size: 15px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13.5px; }
+  dt { color: var(--mudo); font-style: italic; } dd { margin: 0; word-break: break-word; }
 
-  #dica-mapa { position: absolute; left: 14px; bottom: 14px; padding: 7px 12px; border-radius: 10px; font-size: 12px; color: var(--mudo); max-width: 260px; line-height: 1.35; }
-  #toasts { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 9; pointer-events: none; width: min(92%, 440px); }
-  .toast { pointer-events: auto; padding: 10px 16px; border-radius: 12px; font-size: 13px; box-shadow: var(--sombra); animation: entra .2s ease-out; border: 1px solid var(--borda); background: var(--painel); max-width: 100%; }
-  .toast.erro { background: #5c1a26; border-color: var(--perigo); }
-  .toast.ok { background: #163a2b; border-color: var(--ok); }
-  .toast.dado { background: var(--painel2); border-color: var(--acento); }
+  #dica-mapa { position: absolute; left: 14px; bottom: 14px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; color: var(--mudo); max-width: 270px; line-height: 1.4; font-style: italic; }
+  #toasts { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 9 !important; pointer-events: none; width: min(92%, 440px); }
+  .toast { pointer-events: auto; padding: 10px 18px; border-radius: 5px; font-size: 14px; font-weight: 500; animation: entra .22s ease-out; background: var(--papel); border: 1px solid #a07a44; border-left: 5px solid #8e5a1c; max-width: 100%; box-shadow: 0 8px 22px rgba(0, 0, 0, .5); }
+  .toast.erro { border-left-color: #a3291f; background: linear-gradient(90deg, #f6d6cc, #f1e1c2 40%); }
+  .toast.ok { border-left-color: #3f7d2c; }
+  .toast.dado { border-left-color: var(--acento); }
 
-  /* ---------- Painel lateral ---------- */
-  aside { width: 372px; background: var(--painel); border-left: 1px solid var(--borda); display: flex; flex-direction: column; min-height: 0; transition: margin .22s ease; }
-  body.recolhido aside { margin-right: -372px; }
-  .cabeca { padding: 14px 16px 12px; background: linear-gradient(135deg, #2c1745, #1b1028 70%); border-bottom: 1px solid var(--borda); }
-  .cabeca h1 { font-size: 17px; margin: 0 0 2px; }
-  .voce { display: flex; align-items: center; gap: 9px; margin-top: 10px; font-size: 13px; }
-  .voce .avatar { width: 30px; height: 30px; }
-  .voce .papel { margin-left: auto; font-size: 11px; padding: 2px 9px; border-radius: 99px; background: var(--painel3); color: var(--ouro); }
-  .abas { display: flex; border-bottom: 1px solid var(--borda); background: var(--painel); }
-  .abas button { flex: 1; background: transparent; border: 0; padding: 11px 8px; color: var(--mudo); cursor: pointer; position: relative; font-weight: 600; font-size: 13px; }
-  .abas button:hover { color: #fff; }
-  .abas button.ativa { color: #fff; box-shadow: inset 0 -2px var(--acento); }
-  .contador { background: var(--acento2); color: #fff; border-radius: 99px; padding: 0 7px; font-size: 11px; margin-left: 5px; }
+  /* ---------- Painel lateral: o balcão da taverna ---------- */
+  aside { width: 376px; background: var(--madeira); background-color: #20140b; border-left: 3px solid #3a2615; box-shadow: inset 1px 0 #6b4a2b, -8px 0 24px rgba(0, 0, 0, .45); display: flex; flex-direction: column; min-height: 0; transition: margin .22s ease; position: relative; z-index: 3; }
+  body.recolhido aside { margin-right: -376px; }
+  .cabeca { padding: 14px 16px 12px; background: radial-gradient(ellipse at 50% 0%, rgba(255, 170, 80, .14), transparent 70%), linear-gradient(180deg, #33210f, #24170d); border-bottom: 2px solid #8a6233; box-shadow: 0 1px 0 #1a0f08; text-align: left; }
+  .cabeca::before { content: '— Mesa da Taverna —'; display: block; font-family: var(--fonte-titulo); font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: var(--mudo); margin-bottom: 4px; }
+  .cabeca h1 { font-family: var(--fonte-titulo); font-weight: 900; font-size: 19px; letter-spacing: .02em; margin: 0 0 2px; color: var(--ouro); text-shadow: 0 2px 0 #000, 0 0 14px rgba(240, 195, 90, .3); }
+  .cabeca small { font-style: italic; }
+  .voce { display: flex; align-items: center; gap: 9px; margin-top: 11px; font-size: 14px; font-weight: 500; }
+  .voce .avatar { width: 32px; height: 32px; }
+  .voce .papel { margin-left: auto; font-family: var(--fonte-titulo); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--latao); color: #2b1a08; box-shadow: inset 0 1px rgba(255, 255, 255, .45), 0 1px 0 #4a300e; }
+  .abas { display: flex; border-bottom: 1px solid #5c4026; background: #1a100a; padding: 0 8px; gap: 4px; }
+  .abas button { flex: 1; background: transparent; border: 0; padding: 11px 8px 10px; color: var(--mudo); cursor: pointer; position: relative; font-family: var(--fonte-titulo); font-weight: 700; font-size: 13px; letter-spacing: .04em; transition: color .15s; }
+  .abas button:hover { color: var(--texto); }
+  .abas button.ativa { color: var(--ouro); }
+  .abas button.ativa::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--latao); box-shadow: 0 0 10px rgba(240, 195, 90, .5); }
+  .contador { background: var(--acento2); color: #fff; border-radius: 99px; padding: 0 7px; font-family: var(--fonte); font-size: 11px; margin-left: 5px; box-shadow: 0 0 8px rgba(196, 80, 44, .6); }
   .aba { flex: 1; min-height: 0; display: none; flex-direction: column; }
   .aba.ativa { display: flex; }
   #aba-mesa { overflow-y: auto; }
-  #aba-mesa section { padding: 14px 16px; border-bottom: 1px solid var(--borda); }
-  #aba-mesa h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--mudo); margin: 0 0 10px; }
+  #aba-mesa section { padding: 14px 16px; border-bottom: 1px solid rgba(92, 64, 38, .7); box-shadow: 0 1px rgba(255, 220, 160, .03); }
+  #aba-mesa h2 { font-family: var(--fonte-titulo); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ouro); margin: 0 0 11px; display: flex; align-items: center; gap: 9px; }
+  #aba-mesa h2::before { content: '✦'; color: var(--acento2); font-size: 11px; }
+  #aba-mesa h2::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #7a5532, transparent); }
 
-  button.btn, label.btn { background: var(--acento); color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; transition: filter .12s, transform .08s; }
-  button.btn:hover, label.btn:hover { filter: brightness(1.12); }
-  button.btn:active, label.btn:active { transform: scale(.97); }
-  button.btn.sec, label.btn.sec { background: var(--painel3); }
-  button.btn.perigo { background: #6b2231; }
-  input[type=text], input[type=number], select { width: 100%; background: var(--bg); border: 1px solid var(--borda); border-radius: 10px; color: var(--texto); padding: 8px 10px; font-size: 13px; outline: none; }
-  input:focus, select:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(166, 108, 255, .2); }
+  button.btn, label.btn { background: var(--latao); color: #2b1a08; border: 1px solid #7a5218; border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; text-shadow: 0 1px rgba(255, 255, 255, .3);
+    box-shadow: inset 0 1px rgba(255, 255, 255, .5), 0 2px 0 #5a3a10, 0 3px 8px rgba(0, 0, 0, .3); transition: filter .12s, transform .08s, box-shadow .08s; }
+  button.btn:hover, label.btn:hover { filter: brightness(1.08) saturate(1.1); }
+  button.btn:active, label.btn:active { transform: translateY(2px); box-shadow: inset 0 1px rgba(255, 255, 255, .4), 0 0 0 #5a3a10, 0 1px 3px rgba(0, 0, 0, .3); }
+  button.btn.sec, label.btn.sec { background: linear-gradient(180deg, #4d3420, #3a2617); color: var(--texto); border-color: #6b4a2c; text-shadow: 0 1px #000; box-shadow: inset 0 1px rgba(255, 220, 160, .1), 0 2px 0 #170e07, 0 3px 6px rgba(0, 0, 0, .25); }
+  button.btn.perigo { background: linear-gradient(180deg, #b23a2e, #7a2018); color: #fde9d9; border-color: #4f130e; text-shadow: 0 1px #000; box-shadow: inset 0 1px rgba(255, 200, 180, .25), 0 2px 0 #3a0d08, 0 3px 6px rgba(0, 0, 0, .3); }
+  #ficha-card button.btn.sec, #ficha-card label.btn.sec, .modal button.btn.sec, .modal label.btn.sec { background: linear-gradient(180deg, #f6e9cb, #ddc596); color: var(--tinta); border-color: #b08c55; text-shadow: none; box-shadow: inset 0 1px rgba(255, 255, 255, .7), 0 2px 0 #a8875a, 0 3px 6px rgba(80, 50, 15, .2); }
+  input[type=text], input[type=number], select { width: 100%; background: var(--bg); border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); padding: 8px 10px; font-size: 13.5px; outline: none; box-shadow: inset 0 2px 4px rgba(0, 0, 0, .25); transition: border-color .12s, box-shadow .12s; }
+  input::placeholder, textarea::placeholder { color: var(--mudo); opacity: .8; font-style: italic; }
+  input:focus, select:focus { border-color: var(--acento); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .2), 0 0 0 3px rgba(217, 164, 65, .25); }
+  input[type=range] { accent-color: var(--acento); }
+  input[type=checkbox] { accent-color: var(--acento); }
   .linha { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
-  .item { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 10px; cursor: pointer; }
-  .item:hover, .item.sel { background: var(--painel3); }
-  .item .nome { font-weight: 600; font-size: 14px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: background .12s, border-color .12s; }
+  .item:hover, .item.sel { background: rgba(255, 220, 160, .06); border-color: #5c4026; }
+  .item .nome { font-weight: 700; font-size: 14px; }
 
-  /* ---------- Chat ---------- */
-  #mensagens { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
-  .vazio-chat { margin: auto; text-align: center; color: var(--mudo); font-size: 13px; line-height: 1.5; }
-  .vazio-chat .grande { font-size: 34px; display: block; margin-bottom: 4px; }
-  .msg { display: flex; gap: 9px; align-items: flex-start; }
-  .msg .avatar { width: 30px; height: 30px; margin-top: 1px; }
+  /* ---------- Chat: a conversa da mesa ---------- */
+  #mensagens { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; background: radial-gradient(ellipse at 50% 100%, rgba(255, 150, 60, .06), transparent 60%); }
+  .vazio-chat { margin: auto; text-align: center; color: var(--mudo); font-size: 14px; line-height: 1.55; font-family: var(--fonte-texto); font-style: italic; }
+  .vazio-chat .grande { font-size: 38px; display: block; margin-bottom: 6px; font-style: normal; animation: flutua 3.2s ease-in-out infinite; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg .avatar { width: 32px; height: 32px; margin-top: 1px; }
   .msg .conteudo { min-width: 0; flex: 1; }
   .msg .topo { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
-  .msg .topo b { color: #d9c6f5; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .msg .topo time { color: #75668c; font-size: 11px; margin-left: auto; flex: none; }
+  .msg .topo b { font-family: var(--fonte-titulo); color: #e3c48a; font-weight: 700; font-size: 12.5px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg .topo time { color: #7d6646; font-size: 11px; margin-left: auto; flex: none; }
   .msg.minha .topo b { color: var(--ouro); }
-  .msg .corpo { white-space: pre-wrap; word-break: break-word; font-size: 13.5px; line-height: 1.4; margin-top: 2px; }
-  .cartao { margin-top: 5px; background: var(--painel2); border-radius: 12px; border-left: 4px solid var(--acento); padding: 8px 11px; }
-  .cartao.dualidade { border-left-color: var(--ouro); }
-  .cartao.critico { border-left-color: var(--ok); box-shadow: 0 0 0 1px rgba(62, 207, 142, .35), 0 0 18px rgba(62, 207, 142, .18); }
-  .cartao.secreta { border-left-color: #5d9bff; background: #172540; border-style: dashed; }
-  .cartao .rotulo { font-weight: 600; font-size: 13px; }
-  .cartao .expr { color: var(--mudo); font-size: 12px; }
-  .dados { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 6px 0 4px; }
-  .dado { min-width: 27px; height: 27px; padding: 0 6px; border-radius: 7px; background: var(--painel3); display: inline-grid; place-items: center; font-weight: 700; font-size: 13px; }
-  .dado.max { background: #1d7a4a; } .dado.um { background: #9b2c3a; }
-  .dado.fora { opacity: .35; text-decoration: line-through; }
-  .dado.esperanca { background: #a87408; } .dado.medo { background: #5b2a96; }
+  .msg .corpo { white-space: pre-wrap; word-break: break-word; font-family: var(--fonte-texto); font-size: 15px; line-height: 1.42; margin-top: 2px; }
+  .msg.nova { animation: entra .3s ease-out; }
+  .cartao { margin-top: 6px; background: var(--papel); border-radius: 5px; border: 1px solid #b08c55; border-left: 5px solid #8e5a1c; padding: 9px 12px 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, .35), inset 0 0 24px rgba(140, 90, 30, .18); position: relative; }
+  .cartao.dualidade { border-left-color: #c0901f; }
+  .cartao.critico { border-left-color: #c0901f; box-shadow: 0 0 0 1px #e6b648, 0 0 22px rgba(240, 195, 90, .5), inset 0 0 24px rgba(240, 195, 90, .25); }
+  .cartao.critico::after { content: '✨'; position: absolute; right: 10px; top: 6px; font-size: 18px; animation: brilha 1.6s ease-in-out infinite; }
+  @keyframes brilha { 50% { transform: scale(1.25) rotate(15deg); opacity: .7; } }
+  .cartao.secreta { border-left-color: #4a6b9a; border-style: dashed; background: linear-gradient(180deg, #e8e6dc, #d6d3c4); }
+  .cartao .rotulo { font-family: var(--fonte-titulo); font-weight: 700; font-size: 13.5px; color: #4a2a0c; }
+  .cartao .expr { color: var(--mudo); font-size: 12.5px; font-style: italic; }
+  .dados { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 7px 0 5px; }
+  .dado { min-width: 29px; height: 29px; padding: 0 6px; border-radius: 7px; display: inline-grid; place-items: center; font-family: var(--fonte-titulo); font-weight: 900; font-size: 14px; color: var(--tinta);
+    background: linear-gradient(160deg, #fffdf6, #eadfc6); border: 1px solid #b89c6c; box-shadow: inset 0 -3px rgba(120, 80, 30, .14), 0 2px 3px rgba(60, 35, 10, .3); }
+  .dado.max { background: linear-gradient(160deg, #eaffdc, #a9db8c); border-color: #4f8a36; color: #1f4a14; box-shadow: inset 0 -3px rgba(40, 90, 20, .2), 0 0 10px rgba(110, 200, 80, .55); }
+  .dado.um { background: linear-gradient(160deg, #ffe3dc, #eba596); border-color: #a3291f; color: #6a130b; }
+  .dado.fora { opacity: .38; text-decoration: line-through; }
+  .dado.esperanca { background: linear-gradient(160deg, #fff0b8, #e7b54a); border-color: #9a6a12; color: #4a2e05; }
+  .dado.medo { background: linear-gradient(160deg, #8a62b3, #4b2a6e); border-color: #2e1747; color: #f4eaff; text-shadow: 0 1px #0008; }
+  .msg.nova .dado { animation: rola .6s cubic-bezier(.2, .9, .3, 1.25) both; }
+  @keyframes rola { 0% { transform: translateY(-14px) rotate(-200deg) scale(.6); opacity: 0; } 70% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+  .msg.nova .dado.fora { animation-name: rolaFora; }
+  @keyframes rolaFora { 0% { transform: translateY(-14px) rotate(-200deg) scale(.6); opacity: 0; } 100% { transform: none; opacity: .38; } }
   .op { color: var(--mudo); font-weight: 700; }
-  .total { font-size: 26px; font-weight: 800; line-height: 1; }
-  .resultado { font-size: 12.5px; font-weight: 700; margin-left: 8px; }
-  .resultado.critico { color: var(--ok); } .resultado.esperanca { color: var(--ouro); } .resultado.medo { color: #c9a2ff; }
-  .selo { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #3a5f99; color: #fff; margin: 6px 6px 0 0; }
-  .selo.revelada { background: #6c5a2a; }
+  .total { font-family: var(--fonte-titulo); font-size: 30px; font-weight: 900; line-height: 1; color: #5a300a; text-shadow: 0 1px rgba(255, 255, 255, .6); }
+  .msg.nova .total { animation: carimbo .45s .35s cubic-bezier(.2, .9, .3, 1.4) both; }
+  @keyframes carimbo { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .resultado { font-family: var(--fonte-titulo); font-size: 13px; font-weight: 700; margin-left: 9px; }
+  .resultado.critico { color: #9a6a12; } .resultado.esperanca { color: #94601a; } .resultado.medo { color: #4b2a6e; }
+  .faixa { display: inline-block; margin-left: 9px; padding: 2px 9px; border-radius: 4px; font-family: var(--fonte-titulo); font-size: 11.5px; font-weight: 900; letter-spacing: .06em; vertical-align: 5px; }
+  .faixa.vinte { background: var(--latao); color: #2b1a08; box-shadow: 0 0 12px rgba(240, 195, 90, .7); }
+  .faixa.um { background: linear-gradient(180deg, #b23a2e, #6e1a12); color: #fde9d9; }
+  .selo { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: #2f4a72; color: #e6efff; margin: 6px 6px 0 0; }
+  .selo.revelada { background: var(--latao); color: #2b1a08; }
 
-  #barra { border-top: 1px solid var(--borda); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--painel); }
+  #barra { border-top: 2px solid #5c4026; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(180deg, #2a1b10, #1d120a); box-shadow: 0 -6px 16px rgba(0, 0, 0, .3); }
   .botoes-dado { display: flex; flex-wrap: wrap; gap: 5px; }
-  .botoes-dado button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; font-size: 12.5px; font-weight: 600; transition: background .12s, border-color .12s, transform .08s; }
-  .botoes-dado button:hover { background: var(--painel3); border-color: var(--acento); }
-  .botoes-dado button:active { transform: scale(.94); }
-  .botoes-dado button.d20 { background: linear-gradient(135deg, #5b2a96, #a66cff); border-color: transparent; }
-  .botoes-dado button.dh { background: linear-gradient(90deg, #a87408, #5b2a96); border-color: transparent; }
+  .botoes-dado button { padding: 6px 10px; border-radius: 8px; border: 1px solid #b89c6c; background: linear-gradient(160deg, #fffaf0, #e3d4b4); color: var(--tinta); cursor: pointer; font-family: var(--fonte-titulo); font-size: 12.5px; font-weight: 900; box-shadow: inset 0 -3px rgba(120, 80, 30, .16), 0 2px 0 #6b4a2c; transition: transform .1s, filter .12s; }
+  .botoes-dado button:hover { filter: brightness(1.06); transform: translateY(-2px) rotate(-3deg); }
+  .botoes-dado button:active { transform: translateY(1px) rotate(8deg) scale(.94); }
+  .botoes-dado button.d20 { background: var(--latao); border-color: #7a5218; color: #2b1a08; box-shadow: inset 0 1px rgba(255, 255, 255, .5), 0 2px 0 #5a3a10; }
+  .botoes-dado button.dh { background: linear-gradient(90deg, #e7b54a, #6b3f94); border-color: #3a2152; color: #fff; text-shadow: 0 1px 2px #000; }
   #barra .linha { margin-top: 0; }
   #mod { width: 66px; flex: none; }
   #vantagem { flex: 1; }
-  label.escondida { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #9fc1f0; white-space: nowrap; cursor: pointer; }
-  #texto { flex: 1; }
-  #enviar { width: 42px; padding: 8px 0; justify-content: center; }
+  label.escondida { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: #a9c4e8; white-space: nowrap; cursor: pointer; }
+  #texto { flex: 1; font-family: var(--fonte-texto); font-size: 14.5px; }
+  #enviar { width: 44px; padding: 8px 0; justify-content: center; }
 
-  /* ---------- Janelas (ficha do personagem e biblioteca do mestre) ---------- */
-  .modal { position: fixed; inset: 0; background: rgba(5, 2, 10, .7); display: grid; place-items: center; z-index: 30; padding: 16px; animation: entra .15s ease-out; }
-  .modal > .caixa { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 18px; padding: 18px 18px 16px; background: var(--painel); border: 1px solid var(--borda); box-shadow: var(--sombra); position: relative; }
-  .modal h2 { margin: 0 0 2px; font-size: 18px; }
-  .modal .fechar { position: absolute; right: 12px; top: 12px; width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: var(--mudo); cursor: pointer; font-size: 15px; }
-  .modal .fechar:hover { background: var(--painel3); color: #fff; }
-  .form-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px 10px; }
-  .campo { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mudo); min-width: 0; }
+  /* ---------- Janelas: folhas de pergaminho ---------- */
+  .modal { position: fixed; inset: 0; background: radial-gradient(ellipse at center, rgba(20, 10, 4, .6), rgba(5, 2, 1, .85)); display: grid; place-items: center; z-index: 30; padding: 16px; animation: entra .15s ease-out; }
+  .modal > .caixa { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 6px; padding: 22px 22px 18px; background: var(--papel); border: 1px solid #a07a44; position: relative; animation: desenrola .25s ease-out;
+    box-shadow: inset 0 0 0 5px rgba(251, 241, 216, .65), inset 0 0 0 6px #c4a46f, inset 0 0 60px rgba(140, 90, 30, .25), 0 24px 70px rgba(0, 0, 0, .7); }
+  .modal h2 { margin: 0 0 2px; font-family: var(--fonte-titulo); font-size: 21px; color: #4a2a0c; padding-right: 34px; }
+  .modal .fechar { right: 14px; top: 14px; }
+  .form-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 9px 10px; margin-top: 4px; }
+  .campo { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--mudo); min-width: 0; font-weight: 500; }
   .campo.largo { grid-column: 1 / -1; }
-  textarea { width: 100%; min-height: 64px; resize: vertical; background: var(--bg); border: 1px solid var(--borda); border-radius: 10px; color: var(--texto); padding: 8px 10px; font: inherit; font-size: 13px; outline: none; }
-  textarea:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(166, 108, 255, .2); }
-  .foto-edit { display: flex; gap: 14px; align-items: center; margin: 12px 0 4px; flex-wrap: wrap; }
-  .foto-edit .avatar { width: 76px; height: 76px; font-size: 26px; border-width: 3px; }
-  .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  textarea { width: 100%; min-height: 64px; resize: vertical; background: var(--bg); border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); padding: 8px 10px; font-family: var(--fonte-texto); font-size: 14px; outline: none; box-shadow: inset 0 2px 4px rgba(0, 0, 0, .15); }
+  textarea:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(217, 164, 65, .25); }
+  .foto-edit { display: flex; gap: 16px; align-items: center; margin: 14px 0 6px; flex-wrap: wrap; }
+  .foto-edit .avatar { width: 84px; height: 84px; font-size: 28px; border-width: 3px; box-shadow: 0 0 0 3px #fbf1d8, 0 0 0 5px #a8732a, 0 4px 12px rgba(60, 30, 5, .4); }
+  .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
   .filtros { display: flex; gap: 4px; margin-bottom: 8px; }
-  .filtros button { flex: 1; padding: 6px 8px; border-radius: 9px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--mudo); }
-  .filtros button.on { background: var(--painel3); color: #fff; border-color: var(--acento); }
-  .lib-item { display: flex; align-items: center; gap: 9px; padding: 6px 7px; border-radius: 10px; cursor: grab; border: 1px solid transparent; }
-  .lib-item:hover { background: var(--painel2); border-color: var(--borda); }
+  .filtros button { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid #5c4026; background: #2a1b10; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--mudo); transition: color .12s, border-color .12s; }
+  .filtros button.on { background: #3e2a19; color: var(--ouro); border-color: var(--acento); }
+  .lib-item { display: flex; align-items: center; gap: 9px; padding: 6px 7px; border-radius: 8px; cursor: grab; border: 1px solid transparent; transition: background .12s, border-color .12s, transform .12s; }
+  .lib-item:hover { background: rgba(255, 220, 160, .06); border-color: #5c4026; transform: translateX(2px); }
   .lib-item .info { flex: 1; min-width: 0; }
-  .lib-item .nome { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lib-item .nome { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lib-item small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lib-item .mini { width: 28px; height: 28px; padding: 0; border-radius: 8px; border: 0; background: transparent; cursor: pointer; flex: none; }
-  .lib-item .mini:hover { background: var(--painel3); }
-  .tag { font-size: 10px; padding: 1px 7px; border-radius: 99px; background: #3a2a55; color: #d6c2ff; margin-left: 5px; vertical-align: 1px; }
-  .tag.inimigo { background: #5c1a26; color: #ffb3bd; }
+  .lib-item .mini { width: 28px; height: 28px; padding: 0; border-radius: 7px; border: 0; background: transparent; cursor: pointer; flex: none; }
+  .lib-item .mini:hover { background: #3e2a19; }
+  .tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: #3e2a19; color: #e3c48a; border: 1px solid #6b4a2c; margin-left: 5px; vertical-align: 1px; }
+  .tag.inimigo { background: #5c1a14; color: #ffc4b8; border-color: #8e2a1f; }
   .pv-edit { display: flex; gap: 6px; align-items: center; }
   .pv-edit input { width: 76px; text-align: center; }
   .item small .tag { margin-left: 0; }
 
   /* ---------- Combate ---------- */
-  #combate { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 14px; max-width: calc(100% - 120px); overflow-x: auto; z-index: 3; }
-  body.em-combate #ficha-card { top: 124px; max-height: calc(100% - 238px); }
-  #combate .rodada { font-size: 12px; font-weight: 700; color: var(--ouro); white-space: nowrap; padding: 0 4px; }
-  .chip { display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px; border-radius: 99px; background: var(--painel2); border: 2px solid transparent; cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: 600; flex: none; }
-  .chip .avatar { width: 24px; height: 24px; font-size: 10px; border-width: 2px; }
-  .chip b { color: var(--ouro); }
-  .chip.vez { border-color: var(--ouro); box-shadow: 0 0 12px rgba(245, 196, 81, .35); }
-  .chip.agiu { opacity: .45; }
-  .chip.medo { cursor: default; background: #3a1d5c; padding-left: 9px; }
-  .chip .mini { width: 20px; height: 20px; border-radius: 6px; border: 0; background: #0005; cursor: pointer; padding: 0; }
-  .btn-redondo { width: 32px; height: 32px; border-radius: 10px; border: 0; background: var(--painel3); cursor: pointer; flex: none; }
-  .btn-redondo:hover { background: var(--acento); }
+  #combate { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 12px; max-width: calc(100% - 120px); overflow-x: auto; z-index: 3 !important; border-color: #8e2a1f; box-shadow: inset 0 1px rgba(255, 220, 160, .08), 0 0 0 1px rgba(0, 0, 0, .4), 0 0 24px rgba(196, 60, 30, .3), var(--sombra); }
+  body.em-combate #ficha-card { top: 126px; max-height: calc(100% - 240px); }
+  #combate .rodada { font-family: var(--fonte-titulo); font-size: 12.5px; font-weight: 900; color: var(--ouro); white-space: nowrap; padding: 0 5px; text-shadow: 0 1px #000; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: linear-gradient(180deg, #3a2717, #2a1b10); border: 2px solid #5c4026; cursor: pointer; white-space: nowrap; font-size: 12.5px; font-weight: 700; flex: none; transition: border-color .15s, opacity .2s; }
+  .chip .avatar { width: 24px; height: 24px; font-size: 10px; border-width: 2px; box-shadow: none; }
+  .chip b { color: var(--ouro); font-family: var(--fonte-titulo); }
+  .chip.vez { border-color: var(--ouro); animation: vez 1.6s ease-in-out infinite; }
+  @keyframes vez { 0%, 100% { box-shadow: 0 0 6px rgba(240, 195, 90, .35); } 50% { box-shadow: 0 0 18px rgba(240, 195, 90, .75); } }
+  .chip.agiu { opacity: .42; filter: grayscale(.5); }
+  .chip.medo { cursor: default; background: linear-gradient(180deg, #4b2a6e, #2e1747); border-color: #6b4594; padding-left: 10px; }
+  .chip .mini { width: 20px; height: 20px; border-radius: 6px; border: 0; background: #0006; cursor: pointer; padding: 0; }
+  .btn-redondo { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #7a5218; background: var(--latao); color: #2b1a08; cursor: pointer; flex: none; box-shadow: inset 0 1px rgba(255, 255, 255, .45), 0 2px 0 #4a300e; transition: transform .1s; }
+  .btn-redondo:hover { transform: scale(1.08); }
   .conds { display: flex; flex-wrap: wrap; gap: 4px; }
-  .conds button, .conds span { font-size: 11.5px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; }
-  .conds button.on, .conds span { background: #4a2a6e; border-color: var(--acento); }
+  .conds button, .conds span { font-size: 12px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--borda); background: var(--painel2); cursor: pointer; transition: background .12s, border-color .12s; }
+  .conds button:hover { border-color: var(--acento); }
+  .conds button.on, .conds span { background: var(--acento); border-color: var(--acento); color: #fff8e6; font-weight: 700; }
   .conds span { cursor: default; }
-  .recurso { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 13px; }
+  .recurso { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13.5px; }
   .recurso .rot { flex: 1; color: var(--mudo); }
-  .recurso b { min-width: 46px; text-align: center; }
-  .recurso button { width: 28px; height: 28px; border-radius: 8px; border: 0; background: var(--painel3); cursor: pointer; }
+  .recurso b { min-width: 48px; text-align: center; font-family: var(--fonte-titulo); font-size: 15px; }
+  .recurso button { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--borda); background: var(--painel3); cursor: pointer; font-weight: 700; }
+  .recurso button:hover { border-color: var(--acento); }
+  #ouro { color: var(--ouro); font-size: 18px; text-shadow: 0 0 10px rgba(240, 195, 90, .35); }
   #ataque .linha > * { min-width: 0; }
 
+  /* ---------- Livro de regras (leitor próprio com PDF.js) ---------- */
+  .modal > .caixa.livro { width: min(1240px, 100%); height: calc(100vh - 32px); display: flex; flex-direction: column; padding: 18px 18px 14px; }
+  .livro-barra { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+  .livro-barra .grupo { display: flex; gap: 4px; align-items: center; }
+  .livro-barra input[type=number] { width: 70px; text-align: center; }
+  .livro-barra select { width: auto; max-width: 230px; }
+  .livro-barra .btn { padding: 7px 11px; }
+  #ml-total { font-family: var(--fonte-titulo); font-weight: 700; color: var(--mudo); white-space: nowrap; }
+  #ml-busca { width: 220px; flex: 1 1 160px; }
+  .livro-corpo { flex: 1; min-height: 0; display: flex; gap: 10px; margin-top: 10px; }
+  #ml-folha { flex: 1; min-width: 0; overflow: auto; border: 1px solid #a07a44; border-radius: 4px; background: radial-gradient(ellipse at center, #5a3d22, #2b1b10); box-shadow: inset 0 0 30px rgba(0, 0, 0, .6); padding: 14px; text-align: center; position: relative; }
+  #ml-canvas { display: inline-block; box-shadow: 0 8px 28px rgba(0, 0, 0, .6); background: #fff; max-width: none; }
+  #ml-carregando { position: absolute; inset: 0; display: grid; place-items: center; color: #f3e6c8; font-family: var(--fonte-titulo); font-size: 15px; text-shadow: 0 2px 4px #000; pointer-events: none; }
+  #ml-carregando span { display: block; font-size: 40px; animation: flutua 2s ease-in-out infinite; }
+  #ml-resultados { width: 290px; flex: none; overflow-y: auto; border: 1px solid var(--borda); border-radius: 4px; background: rgba(255, 250, 235, .55); padding: 8px; }
+  #ml-resultados .titulo { font-family: var(--fonte-titulo); font-weight: 700; font-size: 13px; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+  #ml-resultados .titulo button { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 14px; color: var(--mudo); }
+  .achado { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 6px 7px; cursor: pointer; font-family: var(--fonte-texto); font-size: 13.5px; line-height: 1.35; color: var(--tinta); }
+  .achado:hover, .achado.atual { background: #fff8e6; border-color: #c4a46f; }
+  .achado b { font-family: var(--fonte-titulo); color: #8e5a1c; margin-right: 4px; }
+  .achado mark { background: #f6d77e; color: inherit; border-radius: 2px; padding: 0 1px; }
+  .link-livro { margin-top: 6px; }
+  @media (max-width: 820px) {
+    .livro-corpo { flex-direction: column; }
+    #ml-resultados { width: auto; max-height: 34%; order: -1; }
+    #ml-busca { width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
   @media (max-width: 820px) {
     body { flex-direction: column; }
-    aside { width: 100%; height: 48vh; border-left: 0; border-top: 1px solid var(--borda); }
+    aside { width: 100%; height: 48vh; border-left: 0; border-top: 3px solid #3a2615; box-shadow: inset 0 1px #6b4a2b, 0 -8px 24px rgba(0, 0, 0, .45); }
     body.recolhido aside { margin-right: 0; margin-bottom: -48vh; }
-    #ficha-card { width: calc(100% - 28px); top: 70px; }
+    #ficha-card { width: calc(100% - 28px); top: 72px; }
     #bandeja { bottom: 10px; }
     .ferr::after { display: none; }
     #dica-mapa { display: none; }
+    #topo::before, #topo::after { display: none; }
   }
 </style>
 </head>
 <body>
 <div id="palco">
   <canvas id="c"></canvas>
+  <div id="luz"></div>
 
   <div id="topo" class="vidro">
     <span class="ico">🗺️</span>
-    <div style="min-width:0"><h1 id="titulo">Carregando…</h1><small id="sub"></small></div>
+    <div style="min-width:0"><h1 id="titulo">Acendendo as velas…</h1><small id="sub"></small></div>
     <span class="ponto" id="ponto" title="Conexão com a mesa"></span>
   </div>
 
@@ -250,6 +357,7 @@
     <button class="ferr" id="f-regua" data-dica="Régua: arraste para medir (R)">📏</button>
     <button class="ferr" id="f-revelar" data-dica="Névoa: arraste para revelar uma área" hidden>🔦</button>
     <button class="ferr" id="f-cobrir" data-dica="Névoa: arraste para cobrir uma área" hidden>☁️</button>
+    <button class="ferr" id="f-livro" data-dica="Livro de regras (L)" hidden>📖</button>
     <div class="sep"></div>
     <button class="ferr" id="f-painel" data-dica="Mostrar/esconder o painel (P)">◧</button>
   </div>
@@ -263,7 +371,7 @@
     </div>
   </div>
   <div id="aviso-espera" class="vidro" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 20px;border-radius:14px;text-align:center">
-    <div style="font-size:30px">⏳</div><div style="margin-top:4px">O mestre ainda vai importar o mapa…</div>
+    <div style="font-size:30px">📜</div><div style="margin-top:6px">O mestre ainda está desenrolando o mapa da aventura…</div>
   </div>
 
   <div id="ficha-card" class="vidro">
@@ -358,6 +466,12 @@
       <div id="handouts"></div>
       <div class="linha" id="linha-novo-handout"><input id="handout-titulo" type="text" maxlength="60" placeholder="Título (ex.: Carta do vilão)"><label class="btn sec" for="handout-arquivo">📜 Mostrar</label><input id="handout-arquivo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
     </section>
+    <section id="painel-livro" hidden>
+      <h2>Livro de regras</h2>
+      <div class="mudo" id="livro-status"></div>
+      <div class="linha"><label class="btn sec" for="livro-arquivo">📖 Enviar PDF</label><input id="livro-arquivo" type="file" accept="application/pdf" hidden><button class="btn sec" id="livro-abrir">Abrir</button><span style="flex:1"></span><button class="btn perigo" id="livro-tirar">Tirar</button></div>
+      <div class="mudo" style="margin-top:6px">Todo mundo da mesa consulta pelo botão 📖 do mapa. Pelo mapa vão PDFs de até 95 MB; livros maiores são copiados direto no servidor.</div>
+    </section>
     <section id="painel-cenas" hidden>
       <h2>Cenas e névoa</h2>
       <div id="cenas"></div>
@@ -419,6 +533,36 @@
     <button class="fechar" data-fecha="modal-handout" title="Fechar (Esc)">✕</button>
     <h2 id="mh-titulo"></h2>
     <img id="mh-img" alt="" style="width:100%;border-radius:12px;margin-top:10px;display:block">
+  </div>
+</div>
+
+<div class="modal" id="modal-livro" hidden>
+  <div class="caixa livro">
+    <button class="fechar" data-fecha="modal-livro" title="Fechar (Esc)">✕</button>
+    <h2>📖 Livro de regras</h2>
+    <small id="ml-sub">← → trocam de página · procure qualquer palavra na caixa de busca</small>
+    <div class="livro-barra">
+      <div class="grupo">
+        <button class="btn sec" id="ml-ant" title="Página anterior (←)">◀</button>
+        <input id="ml-pagina" type="number" min="1" max="9999" title="Página (Enter para ir)">
+        <span id="ml-total">/ …</span>
+        <button class="btn sec" id="ml-prox" title="Próxima página (→)">▶</button>
+      </div>
+      <div class="grupo">
+        <button class="btn sec" id="ml-menos" title="Diminuir">－</button>
+        <button class="btn sec" id="ml-mais" title="Aumentar">＋</button>
+      </div>
+      <input id="ml-busca" type="text" maxlength="60" placeholder="🔎 Procurar no livro (ex.: Medo, armadura)…" autocomplete="off">
+      <select id="ml-marcadores" title="Seus marcadores (ficam neste navegador)"><option value="">🔖 Marcadores…</option></select>
+      <button class="btn sec" id="ml-marcar" title="Marcar esta página">＋ 🔖</button>
+      <button class="btn sec" id="ml-desmarcar" title="Tirar o marcador escolhido" hidden>🗑️</button>
+      <button class="btn" id="ml-mesa" title="Manda no chat um atalho para esta página">📣 Mostrar à mesa</button>
+      <button class="btn sec" id="ml-aba" title="Baixar ou abrir o PDF fora do mapa">⬇</button>
+    </div>
+    <div class="livro-corpo">
+      <div id="ml-resultados" hidden></div>
+      <div id="ml-folha"><canvas id="ml-canvas"></canvas><div id="ml-carregando"><div><span>📖</span>Abrindo o livro…</div></div></div>
+    </div>
   </div>
 </div>
 
@@ -604,6 +748,7 @@ function painel() {
   painelCenas();
   painelImersao();
   painelEntreSessoes();
+  painelLivro();
   if (estado.voce.mestre && document.activeElement !== $('vida-inimigos')) $('vida-inimigos').value = estado.vidaInimigos;
 
   // Bandeja do grupo (jogadores sempre; NPCs só o mestre vê aqui)
@@ -703,6 +848,39 @@ function avatarDe(url) {
 }
 function rodada(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
+const FONTE_TITULO = "'Cinzel', 'Palatino Linotype', Georgia, serif";
+// As fontes do tema chegam depois do primeiro desenho: redesenha quando carregarem.
+if (document.fonts) document.fonts.ready.then(() => desenhar());
+
+// Tábuas de madeira da mesa, feitas uma vez só (veios com ruído fixo, sem imagem externa).
+let mesaCache = null;
+function texturaMesa() {
+  if (mesaCache) return mesaCache;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 384;
+  const g = c.getContext('2d'); let semente = 7;
+  const acaso = () => ((semente = (semente * 16807) % 2147483647) / 2147483647);
+  const alturaTabua = 64;
+  for (let y = 0; y < c.height; y += alturaTabua) {
+    const base = 26 + Math.floor(acaso() * 8), grad = g.createLinearGradient(0, y, 0, y + alturaTabua);
+    grad.addColorStop(0, 'rgb(' + (base + 22) + ',' + (base + 8) + ',' + Math.round(base * 0.35) + ')');
+    grad.addColorStop(1, 'rgb(' + (base + 10) + ',' + base + ',' + Math.round(base * 0.2) + ')');
+    g.fillStyle = grad; g.fillRect(0, y, c.width, alturaTabua);
+    for (let k = 0; k < 26; k++) { // veios
+      const yy = y + acaso() * alturaTabua;
+      g.strokeStyle = 'rgba(' + (acaso() < 0.5 ? '0,0,0' : '255,210,150') + ',' + (0.04 + acaso() * 0.06) + ')'; g.lineWidth = 0.6 + acaso() * 1.4;
+      g.beginPath(); g.moveTo(0, yy); for (let x = 0; x <= c.width; x += 32) g.lineTo(x, yy + Math.sin(x / (40 + k * 3) + k) * 1.6); g.stroke();
+    }
+    if (acaso() < 0.7) { // nó da madeira
+      const nx = acaso() * c.width, ny = y + 14 + acaso() * (alturaTabua - 28), n = g.createRadialGradient(nx, ny, 0, nx, ny, 12);
+      n.addColorStop(0, 'rgba(10,5,2,.55)'); n.addColorStop(1, 'rgba(10,5,2,0)');
+      g.fillStyle = n; g.beginPath(); g.ellipse(nx, ny, 14, 6, 0, 0, Math.PI * 2); g.fill();
+    }
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, y, c.width, 2); g.fillStyle = 'rgba(255,220,160,.06)'; g.fillRect(0, y + 2, c.width, 1);
+    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(Math.floor(acaso() * c.width), y, 2, alturaTabua); // emenda entre tábuas
+  }
+  return (mesaCache = c);
+}
+
 // Vários pedidos de desenho no mesmo instante viram um só por quadro (arrastar não engasga).
 let quadro = 0;
 function desenhar() { if (!quadro) quadro = requestAnimationFrame(() => { quadro = 0; pintar(); }); }
@@ -710,22 +888,31 @@ function desenhar() { if (!quadro) quadro = requestAnimationFrame(() => { quadro
 function pintar() {
   if (dimensionar() && estado && !ajustou) ajustar();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const g = ctx.createRadialGradient(cv.width / 2, cv.height / 2, 0, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * 0.7);
-  g.addColorStop(0, '#1d1230'); g.addColorStop(1, '#0d0715');
+  // Fundo: o tampo de madeira da mesa (anda junto com o mapa) e a luz da vela no meio.
+  const mesa = texturaMesa(), dpr = devicePixelRatio || 1;
+  ctx.save(); ctx.translate(cam.x % (mesa.width * dpr), cam.y % (mesa.height * dpr)); ctx.scale(dpr, dpr);
+  ctx.fillStyle = ctx.createPattern(mesa, 'repeat'); ctx.fillRect(-mesa.width, -mesa.height, cv.width / dpr + mesa.width * 2, cv.height / dpr + mesa.height * 2); ctx.restore();
+  const g = ctx.createRadialGradient(cv.width / 2, cv.height * 0.45, 0, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * 0.75);
+  g.addColorStop(0, 'rgba(255,170,80,.10)'); g.addColorStop(0.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
-  // Pontinhos no fundo, andam junto com o mapa
-  const passo = 36 * (devicePixelRatio || 1), ox = ((cam.x % passo) + passo) % passo, oy = ((cam.y % passo) + passo) % passo;
-  ctx.fillStyle = 'rgba(255,255,255,.05)';
-  for (let x = ox; x < cv.width; x += passo) for (let y = oy; y < cv.height; y += passo) ctx.fillRect(x, y, 2, 2);
   if (!estado) return;
   const { largura, altura, grade } = estado.mapa;
   ctx.setTransform(cam.z, 0, 0, cam.z, cam.x, cam.y);
   // Sombra do mapa sem blur (blur em imagem grande deixa o arrastar pesado): três molduras escuras e suaves.
   for (let k = 3; k >= 1; k--) { ctx.fillStyle = `rgba(0,0,0,${0.16 / k})`; const e = k * 9 / cam.z; ctx.fillRect(-e, -e, largura + 2 * e, altura + 2 * e); }
-  ctx.fillStyle = '#2a1a3c'; ctx.fillRect(0, 0, largura, altura);
+  // Moldura de madeira com filete de latão; sem imagem, o mapa é uma folha de pergaminho.
+  const bm = Math.max(10 / cam.z, Math.min(largura, altura) * 0.018);
+  ctx.fillStyle = '#3a2413'; ctx.fillRect(-bm, -bm, largura + 2 * bm, altura + 2 * bm);
+  ctx.strokeStyle = '#1c0f06'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(-bm, -bm, largura + 2 * bm, altura + 2 * bm);
+  ctx.strokeStyle = 'rgba(255,220,160,.18)'; ctx.lineWidth = 1 / cam.z; ctx.strokeRect(-bm * 0.55, -bm * 0.55, largura + bm * 1.1, altura + bm * 1.1);
   if (imagem) ctx.drawImage(imagem, 0, 0, largura, altura);
+  else {
+    const pg = ctx.createRadialGradient(largura * 0.4, altura * 0.3, 0, largura / 2, altura / 2, Math.max(largura, altura) * 0.75);
+    pg.addColorStop(0, '#f6e8c6'); pg.addColorStop(0.7, '#e3cb98'); pg.addColorStop(1, '#c9a86c');
+    ctx.fillStyle = pg; ctx.fillRect(0, 0, largura, altura);
+  }
   if (prefs.grade) {
-    ctx.strokeStyle = imagem ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.1)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
+    ctx.strokeStyle = imagem ? 'rgba(255,236,200,.24)' : 'rgba(90,55,20,.28)'; ctx.lineWidth = 1 / cam.z; ctx.beginPath();
     for (let x = 0; x <= largura; x += grade) { ctx.moveTo(x, 0); ctx.lineTo(x, altura); }
     for (let y = 0; y <= altura; y += grade) { ctx.moveTo(0, y); ctx.lineTo(largura, y); }
     ctx.stroke();
@@ -733,7 +920,8 @@ function pintar() {
   // Névoa: opaca para os jogadores, translúcida para o mestre (ele precisa ver o mapa para revelar).
   const nev = camadaNevoa();
   if (nev) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = estado.voce.mestre ? 0.55 : 1; ctx.drawImage(nev, 0, 0, nev.width * grade, nev.height * grade); ctx.restore(); }
-  ctx.strokeStyle = 'rgba(166,108,255,.7)'; ctx.lineWidth = 2 / cam.z; ctx.strokeRect(0, 0, largura, altura);
+  ctx.strokeStyle = '#d9a441'; ctx.lineWidth = 2.5 / cam.z; ctx.strokeRect(0, 0, largura, altura);
+  ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1 / cam.z; ctx.strokeRect(-1.5 / cam.z, -1.5 / cam.z, largura + 3 / cam.z, altura + 3 / cam.z);
 
   const px = 1 / cam.z;
   // As maiores primeiro, para as pequenas ficarem por cima.
@@ -747,15 +935,26 @@ function pintar() {
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.clip();
     const av = avatarDe(p.avatar);
     if (av) { const lado = Math.min(av.naturalWidth, av.naturalHeight); ctx.drawImage(av, (av.naturalWidth - lado) / 2, (av.naturalHeight - lado) / 2, lado, lado, p.x - r, p.y - r, r * 2, r * 2); } // recorta ao centro, sem esticar
-    else { ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.95}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(iniciais(p.nome), p.x, p.y + r * 0.04); }
+    else { ctx.fillStyle = '#fff'; ctx.font = '700 ' + (r * 0.85) + 'px ' + FONTE_TITULO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(iniciais(p.nome), p.x, p.y + r * 0.04); }
     ctx.restore();
-    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.lineWidth = (sel ? 4.5 : 3) * px; ctx.strokeStyle = sel ? '#f5c451' : cor; ctx.stroke();
-    if (p.meu) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 4 * px, 0, Math.PI * 2); ctx.lineWidth = 1.6 * px; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke(); }
-    if (sel) { ctx.beginPath(); ctx.arc(p.x, p.y, r + 8 * px, 0, Math.PI * 2); ctx.lineWidth = 6 * px; ctx.strokeStyle = 'rgba(245,196,81,.25)'; ctx.stroke(); }
+    // Aro de metal: latão nos jogadores, ferro avermelhado nos inimigos, prata nos NPCs; por dentro, a cor da peça.
+    const aro = Math.max(3 * px, r * 0.13), met = ctx.createLinearGradient(p.x, p.y - r, p.x, p.y + r);
+    const tons = p.tipo === 'inimigo' ? ['#ff9a85', '#b3362a', '#5e140c'] : p.npc ? ['#f4f1ea', '#a39d92', '#55504a'] : ['#fbe39a', '#d9a441', '#7a4f17'];
+    met.addColorStop(0, tons[0]); met.addColorStop(0.5, tons[1]); met.addColorStop(1, tons[2]);
+    ctx.beginPath(); ctx.arc(p.x, p.y, r - aro * 0.5 - 1.2 * px, 0, Math.PI * 2); ctx.lineWidth = 1.6 * px; ctx.strokeStyle = cor; ctx.stroke();
+    ctx.save();
+    if (sel) { ctx.shadowColor = 'rgba(255,200,90,.95)'; ctx.shadowBlur = 16 * px; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.lineWidth = aro; ctx.strokeStyle = met; ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.arc(p.x, p.y, r + aro / 2, 0, Math.PI * 2); ctx.lineWidth = 1 * px; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.stroke();
+    if (p.meu) { // estrelinha de latão: "este é você"
+      const sx = p.x - r * 0.78, sy = p.y - r * 0.78, sr = Math.max(6 * px, r * 0.26);
+      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fillStyle = met; ctx.fill(); ctx.lineWidth = 1 * px; ctx.strokeStyle = '#3a2410'; ctx.stroke();
+      ctx.fillStyle = '#3a2410'; ctx.font = '900 ' + (sr * 1.25) + 'px ' + FONTE_TITULO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', sx, sy + sr * 0.05);
+    }
     if (p.npc) { // selinho: N para NPC, caveira para inimigo
       const inimigo = p.tipo === 'inimigo';
-      ctx.fillStyle = inimigo ? '#8f1d2ce6' : '#111c'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = inimigo ? '#8e2418' : '#2b1b10'; ctx.beginPath(); ctx.arc(p.x + r * 0.78, p.y - r * 0.78, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1.2 * px; ctx.strokeStyle = inimigo ? '#ff9a85' : '#d9a441'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.font = `bold ${r * 0.34}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(inimigo ? '☠' : 'N', p.x + r * 0.78, p.y - r * 0.76);
     }
     // Peça da vez no combate: anel dourado tracejado.
@@ -768,34 +967,41 @@ function pintar() {
       const fsC = Math.max(11 * px, r * 0.42), icones = p.condicoes.map((c) => (CONDICOES[c] || '?').split(' ')[0]).join('');
       ctx.font = `${fsC}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       const wC = ctx.measureText(icones).width + fsC * 0.6;
-      rodada(ctx, p.x - wC / 2, p.y - r - fsC * 1.45, wC, fsC * 1.3, fsC * 0.65); ctx.fillStyle = 'rgba(12,6,20,.75)'; ctx.fill();
+      rodada(ctx, p.x - wC / 2, p.y - r - fsC * 1.45, wC, fsC * 1.3, fsC * 0.65); ctx.fillStyle = 'rgba(30,18,9,.85)'; ctx.fill(); ctx.lineWidth = 1 * px; ctx.strokeStyle = 'rgba(217,164,65,.6)'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.fillText(icones, p.x, p.y - r - fsC * 0.22);
     }
     // barra de PV (a ficha do grupo, ou o que o mestre deixa ver dos inimigos)
     const pv = fracPV(p) || (p.vida && p.vida.frac !== null ? p.vida : null); let yBase = p.y + r + 5 * px;
     if (pv) {
       const w = r * 1.7, h = Math.max(4 * px, grade * 0.09), x0 = p.x - w / 2;
-      rodada(ctx, x0, yBase, w, h, h / 2); ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fill();
-      rodada(ctx, x0, yBase, Math.max(h, w * pv.frac), h, h / 2); ctx.fillStyle = pv.frac <= 0.25 ? '#ff5d6c' : pv.frac <= 0.55 ? '#f5c451' : '#3ecf8e'; ctx.fill();
+      rodada(ctx, x0, yBase, w, h, h / 2); ctx.fillStyle = 'rgba(20,12,6,.8)'; ctx.fill();
+      rodada(ctx, x0, yBase, Math.max(h, w * pv.frac), h, h / 2); ctx.fillStyle = pv.frac <= 0.25 ? '#e0473a' : pv.frac <= 0.55 ? '#e6a93a' : '#6cbf4c'; ctx.fill();
+      rodada(ctx, x0, yBase, w, h, h / 2); ctx.lineWidth = 1 * px; ctx.strokeStyle = 'rgba(217,164,65,.7)'; ctx.stroke();
       yBase += h + 3 * px;
     } else if (p.vida) { // só o estado: "Ferido", "Quase morto"...
       const fsV = Math.max(10 * px, grade * 0.2); ctx.font = `700 ${fsV}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillStyle = p.vida.texto === 'Ileso' ? '#3ecf8e' : p.vida.texto === 'Ferido' ? '#f5c451' : '#ff5d6c';
+      ctx.fillStyle = p.vida.texto === 'Ileso' ? '#8fe070' : p.vida.texto === 'Ferido' ? '#ffcc5c' : '#ff7a6b';
+      ctx.font = '700 ' + fsV + 'px ' + FONTE_TITULO; ctx.lineWidth = 3 * px; ctx.strokeStyle = 'rgba(20,12,6,.85)'; ctx.strokeText(p.vida.texto, p.x, yBase);
       ctx.fillText(p.vida.texto, p.x, yBase); yBase += fsV * 1.25;
     }
     // nome em uma etiqueta
     const fs = Math.max(12 * px, grade * 0.26);
-    ctx.font = `600 ${fs}px 'Segoe UI', system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    const tw = ctx.measureText(p.nome).width + fs * 0.9, th = fs * 1.5;
-    rodada(ctx, p.x - tw / 2, yBase, tw, th, th / 2); ctx.fillStyle = 'rgba(12,6,20,.82)'; ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText((p.escondida ? '🙈 ' : '') + p.nome, p.x, yBase + fs * 0.22);
+    ctx.font = '700 ' + fs + 'px ' + FONTE_TITULO; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const rotulo = (p.escondida ? '🙈 ' : '') + p.nome, tw = ctx.measureText(rotulo).width + fs * 1.1, th = fs * 1.5, xf = p.x - tw / 2, pont = th * 0.35;
+    // fita com as pontas recortadas
+    ctx.beginPath(); ctx.moveTo(xf - pont, yBase); ctx.lineTo(xf + tw + pont, yBase); ctx.lineTo(xf + tw, yBase + th / 2); ctx.lineTo(xf + tw + pont, yBase + th);
+    ctx.lineTo(xf - pont, yBase + th); ctx.lineTo(xf, yBase + th / 2); ctx.closePath();
+    const fita = ctx.createLinearGradient(0, yBase, 0, yBase + th);
+    fita.addColorStop(0, p.tipo === 'inimigo' ? '#f3d2c4' : '#f8ecd0'); fita.addColorStop(1, p.tipo === 'inimigo' ? '#d9a690' : '#dcc292');
+    ctx.fillStyle = fita; ctx.fill(); ctx.lineWidth = 1.2 * px; ctx.strokeStyle = p.tipo === 'inimigo' ? '#7a2018' : '#7a5218'; ctx.stroke();
+    ctx.fillStyle = p.tipo === 'inimigo' ? '#5e140c' : '#3b2814'; ctx.fillText(rotulo, p.x, yBase + fs * 0.24);
     ctx.globalAlpha = 1;
   }
 
   // Pings: dois anéis que crescem e somem.
   const agoraPing = performance.now();
   for (const pg of pings) {
-    const t = Math.min(1, (agoraPing - pg.ini) / 1800), cor = pg.quem === estado.voce.id ? '245,196,81' : '166,108,255';
+    const t = Math.min(1, (agoraPing - pg.ini) / 1800), cor = pg.quem === estado.voce.id ? '240,195,90' : '255,128,64';
     for (const atraso of [0, 0.25]) {
       const tt = Math.max(0, t - atraso); if (tt <= 0) continue;
       ctx.beginPath(); ctx.arc(pg.x, pg.y, grade * (0.3 + 2.2 * tt), 0, Math.PI * 2);
@@ -818,10 +1024,10 @@ function pintar() {
     ctx.strokeStyle = '#f5c451'; ctx.lineWidth = 3 * px; ctx.setLineDash([10 * px, 7 * px]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
     for (const q of [a, b]) { ctx.beginPath(); ctx.arc(q.x, q.y, 5 * px, 0, Math.PI * 2); ctx.fillStyle = '#f5c451'; ctx.fill(); }
     const txt = d.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + (Math.abs(d - 1) < 0.05 ? ' casa' : ' casas');
-    const fs = 14 * px; ctx.font = `700 ${fs}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 16 * px, w = ctx.measureText(txt).width + fs;
-    rodada(ctx, mx - w / 2, my - fs * 0.9, w, fs * 1.8, fs * 0.9); ctx.fillStyle = 'rgba(12,6,20,.9)'; ctx.fill();
-    ctx.fillStyle = '#f5c451'; ctx.fillText(txt, mx, my);
+    const fs = 14 * px; ctx.font = '700 ' + fs + 'px ' + FONTE_TITULO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 16 * px, w = ctx.measureText(txt).width + fs * 1.2;
+    rodada(ctx, mx - w / 2, my - fs * 0.9, w, fs * 1.8, fs * 0.3); ctx.fillStyle = '#f3e4c2'; ctx.fill(); ctx.lineWidth = 1.2 * px; ctx.strokeStyle = '#7a5218'; ctx.stroke();
+    ctx.fillStyle = '#3b2814'; ctx.fillText(txt, mx, my);
   }
 }
 
@@ -940,6 +1146,7 @@ addEventListener('keydown', (e) => {
   else if (k === 'g') $('f-grade').onclick();
   else if (k === 'r') $('f-regua').onclick();
   else if (k === 'p') $('f-painel').onclick();
+  else if (k === 'l' && estado && estado.livro) abrirLivro();
 });
 
 // ---------- Importar mapa ----------
@@ -1045,6 +1252,165 @@ function confirmarLimpeza() {
   setTimeout(() => { delete b.dataset.armado; b.textContent = '🧹 Limpar o chat'; }, 4000);
   return false;
 }
+
+// ---------- Livro de regras ----------
+// Leitor próprio com PDF.js: busca só os pedaços de cada página (Range), troca de página na hora e funciona no celular.
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/';
+const chaveMarcadores = 'mapa_livro_' + ID;
+const lerMarcadores = () => { try { return JSON.parse(localStorage.getItem(chaveMarcadores) || '[]').filter((m) => m && m.p > 0); } catch { return []; } };
+const gravarMarcadores = (l) => { try { localStorage.setItem(chaveMarcadores, JSON.stringify(l.slice(0, 60))); } catch {} };
+const mb = (n) => (n / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' MB';
+const livro = { url: '', doc: null, abrindo: null, pagina: 1, zoom: 1, tarefa: null, textos: [], busca: 0 };
+
+function painelLivro() {
+  const l = estado.livro;
+  $('f-livro').hidden = !l;
+  $('painel-livro').hidden = !estado.voce.mestre;
+  $('livro-status').textContent = l ? '✅ Livro na mesa (' + mb(l.tamanho) + ').' : 'Nenhum livro ainda. Envie o PDF das regras para a mesa consultar.';
+  $('livro-abrir').hidden = !l; $('livro-tirar').hidden = !l;
+  if (!l && !$('modal-livro').hidden) $('modal-livro').hidden = true;
+}
+
+function desenharMarcadores() {
+  const sel = $('ml-marcadores'), atual = sel.value; sel.textContent = '';
+  const lista = lerMarcadores();
+  sel.append(new Option(lista.length ? '🔖 Marcadores (' + lista.length + ')' : '🔖 Sem marcadores ainda', ''));
+  for (const m of lista) sel.append(new Option('p. ' + m.p + ' · ' + m.nome, String(m.p)));
+  sel.value = [...sel.options].some((o) => o.value === atual) ? atual : '';
+  $('ml-desmarcar').hidden = !sel.value;
+}
+
+/** Carrega o PDF.js e abre o documento (uma vez por versão do livro). */
+async function documentoDoLivro() {
+  const l = estado.livro;
+  if (livro.doc && livro.url === l.url) return livro.doc;
+  if (livro.abrindo && livro.url === l.url) return livro.abrindo;
+  livro.url = l.url; livro.doc = null; livro.textos = [];
+  livro.abrindo = (async () => {
+    const pdfjs = await import(PDFJS + 'pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
+    const tarefa = pdfjs.getDocument({ url: l.url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 262144, withCredentials: true });
+    tarefa.onProgress = ({ loaded }) => { if (!livro.doc) $('ml-carregando').lastChild.lastChild.textContent = 'Abrindo o livro… ' + mb(loaded); };
+    const doc = await tarefa.promise;
+    livro.doc = doc;
+    $('ml-total').textContent = '/ ' + doc.numPages;
+    $('ml-pagina').max = String(doc.numPages);
+    return doc;
+  })();
+  try { return await livro.abrindo; } catch (e) { livro.url = ''; throw e; } finally { livro.abrindo = null; }
+}
+
+async function mostrarPagina() {
+  const doc = livro.doc; if (!doc) return;
+  livro.pagina = Math.min(doc.numPages, Math.max(1, livro.pagina));
+  if (document.activeElement !== $('ml-pagina')) $('ml-pagina').value = String(livro.pagina);
+  const pagina = await doc.getPage(livro.pagina);
+  const folha = $('ml-folha'), cv = $('ml-canvas'), dpr = devicePixelRatio || 1;
+  const base = pagina.getViewport({ scale: 1 });
+  const escala = Math.max(0.2, ((folha.clientWidth - 30) / base.width) * livro.zoom);
+  const vp = pagina.getViewport({ scale: escala * dpr });
+  if (livro.tarefa) livro.tarefa.cancel();
+  const temp = document.createElement('canvas'); temp.width = Math.floor(vp.width); temp.height = Math.floor(vp.height);
+  livro.tarefa = pagina.render({ canvasContext: temp.getContext('2d'), viewport: vp });
+  $('ml-carregando').hidden = false; $('ml-carregando').lastChild.lastChild.textContent = 'Virando a página…';
+  try { await livro.tarefa.promise; } catch { return; } // outra página foi pedida no meio
+  livro.tarefa = null;
+  // Troca de uma vez (sem piscar): desenha fora da tela e copia.
+  cv.width = temp.width; cv.height = temp.height; cv.style.width = Math.floor(vp.width / dpr) + 'px'; cv.style.height = Math.floor(vp.height / dpr) + 'px';
+  cv.getContext('2d').drawImage(temp, 0, 0);
+  $('ml-carregando').hidden = true;
+  for (const a of document.querySelectorAll('.achado')) a.classList.toggle('atual', Number(a.dataset.p) === livro.pagina);
+}
+
+/** Abre a janela do livro (na página pedida, se houver). */
+async function abrirLivro(pagina) {
+  if (!estado || !estado.livro) return aviso('Esta mesa ainda não tem o livro de regras.', 'erro');
+  $('modal-livro').hidden = false;
+  desenharMarcadores();
+  if (pagina) livro.pagina = Math.max(1, Math.floor(Number(pagina)));
+  if (!livro.doc || livro.url !== estado.livro.url) { $('ml-carregando').hidden = false; $('ml-carregando').lastChild.lastChild.textContent = 'Abrindo o livro…'; }
+  try { await documentoDoLivro(); } catch (e) { $('ml-carregando').lastChild.lastChild.textContent = 'Não consegui abrir o livro. Tente de novo.'; console.error(e); return; }
+  await mostrarPagina();
+  $('ml-folha').scrollTop = 0;
+}
+const irPara = (p) => { livro.pagina = p; mostrarPagina().catch(() => {}); $('ml-folha').scrollTop = 0; };
+
+// Busca: lê o texto página por página (só o texto, sem baixar as imagens) e mostra os trechos.
+const semAcento = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+async function procurarNoLivro(termo) {
+  const caixa = $('ml-resultados'), minha = ++livro.busca, q = semAcento(termo.trim());
+  if (q.length < 2) { caixa.hidden = true; return; }
+  const doc = await documentoDoLivro();
+  caixa.hidden = false; caixa.textContent = '';
+  const titulo = el('div', 'titulo'); const rot = el('span', '', '🔎 Procurando…'); const fechar = el('button', '', '✕'); fechar.title = 'Fechar a busca';
+  fechar.onclick = () => { livro.busca++; caixa.hidden = true; $('ml-busca').value = ''; };
+  titulo.append(rot, fechar); caixa.append(titulo);
+  let achados = 0;
+  for (let p = 1; p <= doc.numPages; p++) {
+    if (minha !== livro.busca) return; // outra busca começou
+    if (livro.textos[p] === undefined) {
+      try { livro.textos[p] = (await (await doc.getPage(p)).getTextContent()).items.map((i) => i.str).join(' ').replace(/\s+/g, ' '); } catch { livro.textos[p] = ''; }
+    }
+    const texto = livro.textos[p], plano = semAcento(texto);
+    let i = plano.indexOf(q);
+    if (i >= 0) {
+      achados++;
+      const ini = Math.max(0, i - 50), fim = Math.min(texto.length, i + q.length + 70);
+      const b = el('button', 'achado' + (p === livro.pagina ? ' atual' : '')); b.dataset.p = String(p);
+      b.append(el('b', '', 'p. ' + p), document.createTextNode((ini > 0 ? '…' : '') + texto.slice(ini, i)), el('mark', '', texto.slice(i, i + q.length)), document.createTextNode(texto.slice(i + q.length, fim) + (fim < texto.length ? '…' : '')));
+      b.onclick = () => irPara(p);
+      caixa.append(b);
+    }
+    if (p % 10 === 0 || p === doc.numPages) rot.textContent = p === doc.numPages ? '🔎 ' + achados + (achados === 1 ? ' página' : ' páginas') + ' com "' + termo.trim() + '"' : '🔎 Procurando… ' + p + '/' + doc.numPages + ' (' + achados + ')';
+  }
+  if (!achados) caixa.append(el('div', 'mudo', 'Nada encontrado. Tente outra palavra.'));
+}
+
+$('f-livro').onclick = () => abrirLivro();
+$('livro-abrir').onclick = () => abrirLivro();
+$('ml-ant').onclick = () => irPara(livro.pagina - 1);
+$('ml-prox').onclick = () => irPara(livro.pagina + 1);
+$('ml-mais').onclick = () => { livro.zoom = Math.min(3, livro.zoom * 1.2); mostrarPagina().catch(() => {}); };
+$('ml-menos').onclick = () => { livro.zoom = Math.max(0.4, livro.zoom / 1.2); mostrarPagina().catch(() => {}); };
+$('ml-pagina').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const p = Number($('ml-pagina').value); if (p) irPara(p); $('ml-pagina').blur(); } });
+let esperaBusca = 0;
+$('ml-busca').addEventListener('input', () => { clearTimeout(esperaBusca); esperaBusca = setTimeout(() => procurarNoLivro($('ml-busca').value).catch(() => {}), 450); });
+$('ml-busca').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(esperaBusca); procurarNoLivro($('ml-busca').value).catch(() => {}); } });
+$('ml-marcadores').onchange = () => { const p = Number($('ml-marcadores').value); $('ml-desmarcar').hidden = !p; if (p) irPara(p); };
+$('ml-marcar').onclick = () => {
+  const p = livro.pagina, ja = lerMarcadores().find((m) => m.p === p);
+  const nome = ($('ml-busca').value.trim() && !$('ml-resultados').hidden ? $('ml-busca').value.trim() : '') || (ja ? ja.nome : 'Página ' + p);
+  gravarMarcadores([...lerMarcadores().filter((m) => m.p !== p), { p, nome: nome.slice(0, 40) }].sort((a, b) => a.p - b.p));
+  desenharMarcadores(); $('ml-marcadores').value = String(p); $('ml-desmarcar').hidden = false;
+  aviso('🔖 Página ' + p + ' marcada como "' + nome.slice(0, 40) + '".', 'ok', 2500);
+};
+$('ml-desmarcar').onclick = () => { const p = Number($('ml-marcadores').value); gravarMarcadores(lerMarcadores().filter((m) => m.p !== p)); desenharMarcadores(); };
+$('ml-mesa').onclick = () => {
+  const p = livro.pagina, marcador = lerMarcadores().find((m) => m.p === p);
+  enviar('📖 Livro p. ' + p + (marcador ? ' · ' + marcador.nome : '')).then(() => aviso('📣 Página ' + p + ' enviada para a mesa.', 'ok', 2500)).catch(() => {});
+};
+$('ml-aba').onclick = () => { if (estado && estado.livro) window.open(estado.livro.url + '#page=' + livro.pagina, '_blank', 'noopener'); };
+// Setas trocam de página com o livro aberto (fora das caixas de texto).
+addEventListener('keydown', (e) => {
+  if ($('modal-livro').hidden || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); e.stopImmediatePropagation(); irPara(livro.pagina + 1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); e.stopImmediatePropagation(); irPara(livro.pagina - 1); }
+}, true);
+addEventListener('resize', () => { if (!$('modal-livro').hidden) mostrarPagina().catch(() => {}); });
+
+$('livro-arquivo').onchange = async (e) => {
+  const arq = e.target.files[0]; e.target.value = '';
+  if (!arq) return;
+  if (arq.size > 95 * 1024 * 1024) return aviso('Esse PDF tem ' + mb(arq.size) + ': pelo mapa vão até 95 MB. Livros maiores são copiados direto no servidor.', 'erro');
+  aviso('📖 Enviando o livro (' + mb(arq.size) + ')…', '', 60000);
+  try { await post('livro', undefined, { headers: { 'Content-Type': 'application/pdf' }, body: arq }); aviso('📖 Livro na mesa!', 'ok'); } catch {}
+};
+$('livro-tirar').onclick = () => {
+  const b = $('livro-tirar');
+  if (!b.dataset.armado) { b.dataset.armado = '1'; b.textContent = 'Tirar mesmo?'; setTimeout(() => { delete b.dataset.armado; b.textContent = 'Tirar'; }, 4000); return; }
+  delete b.dataset.armado; b.textContent = 'Tirar';
+  post('livro/remover', {}).catch(() => {});
+};
 
 // ---------- Janelas ----------
 for (const b of document.querySelectorAll('[data-fecha]')) b.onclick = (e) => { e.preventDefault(); $(b.dataset.fecha).hidden = true; };
@@ -1404,7 +1770,7 @@ function camadaNevoa() {
   const g = c.getContext('2d'), img = g.createImageData(n.cols, n.rows);
   for (let i = 0; i < n.cols * n.rows; i++) {
     const revelada = (bin.charCodeAt(i >> 3) & (1 << (i & 7))) !== 0;
-    img.data[i * 4] = 11; img.data[i * 4 + 1] = 6; img.data[i * 4 + 2] = 18; img.data[i * 4 + 3] = revelada ? 0 : 255;
+    img.data[i * 4] = 16; img.data[i * 4 + 1] = 10; img.data[i * 4 + 2] = 6; img.data[i * 4 + 3] = revelada ? 0 : 255;
   }
   g.putImageData(img, 0, 0);
   nevoaCache = { sig, canvas: c };
@@ -1696,7 +2062,15 @@ function desenharRolagem(r, rotulo, secreta) {
     if (r.modificador) dados.append(el('span', 'op', r.modificador > 0 ? '+' : '-'), el('span', 'dado', String(Math.abs(r.modificador))));
   }
   dados.append(el('span', 'op', '='));
+  // Os dados entram rolando um atrás do outro (só na mensagem nova, pelo CSS).
+  [...dados.querySelectorAll('.dado')].forEach((d, i) => { d.style.animationDelay = i * 70 + 'ms'; });
   const linha = el('div'); linha.append(el('span', 'total', String(r.total)));
+  if (r.tipo === 'dados') {
+    // Um d20 só (normal, vantagem ou desvantagem): 20 e 1 naturais ganham faixa.
+    const d20s = r.pedacos.filter((p) => p.t !== 'op' && p.t !== 'fixo' && p.faces === 20 && p.mantido);
+    if (d20s.length === 1 && d20s[0].v === 20) linha.append(el('span', 'faixa vinte', '⚔️ VINTE NATURAL!'));
+    else if (d20s.length === 1 && d20s[0].v === 1) linha.append(el('span', 'faixa um', '💀 FALHA CRÍTICA'));
+  }
   if (r.tipo === 'dualidade') {
     const txt = { critico: '✨ Sucesso crítico!', esperanca: 'com Esperança', medo: 'com Medo' }[r.resultado];
     linha.append(el('span', 'resultado ' + r.resultado, txt));
@@ -1705,16 +2079,17 @@ function desenharRolagem(r, rotulo, secreta) {
   return caixa;
 }
 
+let ultimoAnimado = null; // mensagens com id maior que este entram animadas (na primeira carga, nenhuma)
 function desenharChat() {
   const caixa = $('mensagens'), descer = pertoDoFim();
   caixa.textContent = '';
   if (!chat.length) {
-    const v = el('div', 'vazio-chat'); v.append(el('span', 'grande', '🎲'), document.createTextNode('Nada por aqui ainda.'), document.createElement('br'), document.createTextNode('Mande uma mensagem ou role um dado.'));
+    const v = el('div', 'vazio-chat'); v.append(el('span', 'grande', '🍺'), document.createTextNode('A taverna está em silêncio…'), document.createElement('br'), document.createTextNode('Puxe assunto ou role um dado.'));
     caixa.append(v);
   }
   for (const m of chat) {
     const minha = estado && m.userId === estado.voce.id;
-    const d = el('div', 'msg' + (minha ? ' minha' : ''));
+    const d = el('div', 'msg' + (minha ? ' minha' : '') + (ultimoAnimado !== null && m.id > ultimoAnimado ? ' nova' : ''));
     // Quando o mestre fala por um NPC, aparece a foto do NPC no lugar da dele.
     // Jogador aparece com a foto do personagem; o mestre, com a foto dele do Discord.
     const npc = m.pecaId && estado ? estado.pecas.find((p) => p.id === m.pecaId) : null;
@@ -1726,7 +2101,11 @@ function desenharChat() {
     const c = el('div', 'conteudo');
     const topo = el('div', 'topo'); topo.append(el('b', '', m.autor), el('time', '', hora(m.em)));
     c.append(topo);
-    if (m.tipo === 'msg') c.append(el('div', 'corpo', m.texto));
+    if (m.tipo === 'msg') {
+      c.append(el('div', 'corpo', m.texto));
+      const pg = /📖 Livro p\. (\d+)/.exec(m.texto);
+      if (pg && estado && estado.livro) { const b = el('button', 'btn sec link-livro', '📖 Abrir na página ' + pg[1]); b.onclick = () => abrirLivro(Number(pg[1])); c.append(b); }
+    }
     else if (m.resultado) c.append(desenharRolagem(m.resultado, m.texto, m.secreta));
     if (m.secreta) {
       c.append(el('span', 'selo', '🔒 Escondida: só você vê'));
@@ -1737,6 +2116,8 @@ function desenharChat() {
     d.append(av, c);
     caixa.append(d);
   }
+  if (chat.length) ultimoAnimado = Math.max(ultimoAnimado ?? 0, ...chat.map((m) => m.id));
+  else if (ultimoAnimado === null) ultimoAnimado = 0;
   if (descer) rolarParaFim();
 }
 

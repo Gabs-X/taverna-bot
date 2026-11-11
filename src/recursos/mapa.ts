@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, createReadStream, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { ChannelType, PermissionFlagsBits, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
@@ -160,6 +160,87 @@ function servirImagem(res: ServerResponse, arquivo: string | null | undefined) {
   } catch {
     return json(res, 404, { erro: 'Sem imagem.' });
   }
+}
+
+// ---------- Livro de regras (um PDF por servidor e sistema, consultado pelo mapa) ----------
+
+const PASTA_LIVROS = 'dados/livros';
+// O túnel da Cloudflare recusa envios acima de 100 MB; livros maiores são copiados direto para dados/livros.
+export const LIMITE_LIVRO = 95 * 1024 * 1024;
+export const arquivoLivro = (c: { guild_id: string; sistema: string }) => `${PASTA_LIVROS}/${c.guild_id}-${c.sistema}.pdf`;
+
+function infoLivro(c: Campanha) {
+  try {
+    const st = statSync(arquivoLivro(c));
+    return st.isFile() && st.size > 0 ? { tamanho: st.size, versao: Math.floor(st.mtimeMs) } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Faixa pedida no cabeçalho Range ("bytes=ini-fim", "bytes=ini-" ou "bytes=-últimos"); null = o arquivo todo; 'invalida' = 416. */
+export function faixaPedida(range: string | undefined, total: number): { ini: number; fim: number } | null | 'invalida' {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range?.trim() ?? '');
+  if (!m || (!m[1] && !m[2])) return null;
+  let ini: number, fim: number;
+  if (!m[1]) {
+    ini = Math.max(0, total - Number(m[2]));
+    fim = total - 1;
+  } else {
+    ini = Number(m[1]);
+    fim = m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
+  }
+  return ini > fim || ini >= total ? 'invalida' : { ini, fim };
+}
+
+/** Entrega o PDF em pedaços (Range): o leitor do navegador abre as páginas sem baixar o livro inteiro antes. */
+function servirLivro(req: IncomingMessage, res: ServerResponse, c: Campanha) {
+  const info = infoLivro(c);
+  if (!info) return json(res, 404, { erro: 'Esta mesa ainda não tem o livro de regras.' });
+  const total = info.tamanho;
+  const etag = `"${info.versao}-${total}"`;
+  const base = {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `inline; filename="Livro-${c.sistema === 'dh' ? 'Daggerheart' : 'DnD'}.pdf"`,
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'private, max-age=86400',
+    ETag: etag,
+    'X-Content-Type-Options': 'nosniff',
+  };
+  // If-Range com outra versão: manda o arquivo todo de novo.
+  const ifRange = req.headers['if-range'];
+  const faixa = ifRange && ifRange !== etag ? null : faixaPedida(req.headers.range, total);
+  if (faixa === 'invalida') {
+    res.writeHead(416, { 'Content-Range': `bytes */${total}` });
+    return void res.end();
+  }
+  const { ini, fim } = faixa ?? { ini: 0, fim: total - 1 };
+  res.writeHead(faixa ? 206 : 200, { ...base, 'Content-Length': fim - ini + 1, ...(faixa ? { 'Content-Range': `bytes ${ini}-${fim}/${total}` } : {}) });
+  if (req.method === 'HEAD') return void res.end();
+  const leitura = createReadStream(arquivoLivro(c), { start: ini, end: fim });
+  leitura.on('error', () => res.destroy());
+  res.on('close', () => leitura.destroy());
+  leitura.pipe(res);
+}
+
+/** Grava o corpo do pedido direto no disco (sem guardar tudo na memória), parando se passar do limite. */
+function gravarCorpo(req: IncomingMessage, destino: string, limite: number) {
+  return new Promise<number>((ok, falha) => {
+    let total = 0;
+    const saida = createWriteStream(destino);
+    req.on('data', (p: Buffer) => {
+      total += p.length;
+      if (total > limite) {
+        req.unpipe(saida);
+        saida.destroy();
+        falha(new Error('grande'));
+      }
+    });
+    req.on('error', falha);
+    saida.on('error', falha);
+    saida.on('finish', () => ok(total));
+    req.pipe(saida);
+  });
 }
 
 // ---------- Tempo real (SSE): quem está com a página aberta recebe o aviso quando alguém mexe ----------
@@ -337,6 +418,10 @@ async function montarEstado(c: Campanha, userId: string) {
       cena: cenaAtiva?.nome ?? null,
     },
     handout: handoutDe(c, m.handout_id),
+    livro: (() => {
+      const l = infoLivro(c);
+      return l ? { tamanho: l.tamanho, url: `/api/m/${c.id}/livro?v=${l.versao}` } : null;
+    })(),
     handouts: (db.prepare('SELECT id FROM mapa_handouts WHERE campanha_id = ? ORDER BY id DESC').all(c.id) as { id: number }[]).map((h) => handoutDe(c, h.id)),
     musica: souMestre ? musicaDaMesa(c) : null,
     diario: (db.prepare('SELECT id, inicio, fim, mensagens, rolagens, notas FROM campanha_sessoes WHERE campanha_id = ? ORDER BY inicio DESC LIMIT 100').all(c.id) as Record<string, unknown>[]).map((s) => ({ ...s })),
@@ -733,6 +818,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (origem && origem !== new URL(ENDERECO).origin && origem !== `http://${req.headers.host}`) return json(res, 403, { erro: 'Origem não permitida.' });
   }
 
+  if ((req.method === 'GET' || req.method === 'HEAD') && acao === 'livro') return servirLivro(req, res, c);
+
   if (req.method === 'GET') {
     if (acao === 'estado') return json(res, 200, await montarEstado(c, userId));
     if (acao === 'chat') return json(res, 200, lerChat(c, userId));
@@ -1018,6 +1105,34 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
   // Daqui para baixo, só o mestre da campanha.
   if (!souMestre) return json(res, 403, { erro: 'Só o mestre faz isso.' });
+
+  if (acao === 'livro') {
+    mkdirSync(PASTA_LIVROS, { recursive: true });
+    const destino = arquivoLivro(c), parcial = `${destino}.${process.pid}.parcial`;
+    try {
+      await gravarCorpo(req, parcial, LIMITE_LIVRO);
+      const cabeca = Buffer.alloc(5), fd = openSync(parcial, 'r');
+      readSync(fd, cabeca, 0, 5, 0);
+      closeSync(fd);
+      const inicio = cabeca.toString('latin1');
+      if (inicio !== '%PDF-') throw new Error('não é pdf');
+      renameSync(parcial, destino);
+    } catch (e) {
+      rmSync(parcial, { force: true });
+      return (e as Error).message === 'grande'
+        ? json(res, 413, { erro: `Livro grande demais para enviar pelo mapa (máximo ${LIMITE_LIVRO / 1024 / 1024} MB).` })
+        : json(res, 415, { erro: 'Envie o livro em PDF.' });
+    }
+    gravarChat(c, userId, await autorDe(c, userId), 'msg', '📖 O livro de regras chegou à mesa: abra pelo botão 📖 do mapa.', null, false, false);
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
+
+  if (acao === 'livro/remover') {
+    rmSync(arquivoLivro(c), { force: true });
+    avisar(c.id, 'estado');
+    return json(res, 200, { ok: true });
+  }
 
   if (acao === 'combate/iniciar') {
     const pecas = pecasDaCena(c, mapaDe(c.id));
