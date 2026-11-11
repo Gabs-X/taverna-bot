@@ -1,5 +1,23 @@
 # Novidades do Taverneiro
 
+## v1.13.0 (11/11/2026)
+
+- 📅 /sessao agora é o comando da sessão: mapa, proximas, marcar, desmarcar, iniciar e finalizar. Se você está numa campanha só, nem precisa escolher.
+- 🗓️ Sessão marcada vira evento do Discord da campanha, chama os jogadores nos avisos e fica ao vivo quando o mestre inicia.
+- ⚔️ Quem entra na mesa com a sessão já aberta ganha acesso ao canal e à call e recebe o link do mapa na hora.
+- 📚 /ajuda tem um tópico novo, Campanha e mapa, com o passo a passo.
+- 🎲 Os dados agora rolam animados na tela de todo mundo (o 🎲 da barra liga e desliga).
+- 🔦 Holofote: aparece no topo de quem é a vez, e avisa quando é a sua.
+- 📐 Áreas de efeito (círculo, cone e linha) e a régua agora aparecem para todos, com o alcance do Daggerheart (Corpo a corpo, Muito Próximo, Próximo, Longe).
+- ⏳ Relógios de progresso que o mestre avança e a mesa vê.
+- 👁️ Com a névoa ligada, o personagem revela o mapa em volta ao andar.
+- 🏕️ Descanso curto e longo guiado, com os movimentos do livro.
+- 📜 Histórico do personagem e 🖨️ ficha para imprimir ou salvar em PDF.
+- 🎨 As peças dos jogadores ganham a cor da classe.
+- 🎶 Peça uma música ao mestre pelo mapa: ele aceita e os bardos tocam.
+- 📍 Pings, desenhos e "olhem aqui" agora chegam para todos, mesmo quando a conexão em tempo real falha.
+- 🃏 A lupa das cartas virou um botão Ampliar, e clicar fora da carta ampliada volta ao tamanho normal.
+
 ## v1.12.0 (11/11/2026)
 
 - 🧭 Mapa reorganizado: as funções ficam numa barra de ícones à esquerda e abrem num painel maior; o lado direito fica só com o chat
