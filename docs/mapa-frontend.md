@@ -46,7 +46,7 @@ npm run mapa:demo
   - só para o mestre: `cenas`, `biblioteca`, `musica`, `vidaInimigos`
 - **Chat** (`GET chat`): a lista de linhas (msg, rolagem de dados ou dualidade).
 - **Tempo real** (`GET eventos`, SSE): chegam `chat`, `estado` ou `ping:{json}`. A página recarrega o que mudou. Também confere tudo a cada 3 s, porque o túnel às vezes não entrega o SSE.
-- **Imagens**: `imagem` (mapa da cena), `peca-imagem/<id>`, `foto/<userId>`, `criatura-imagem/<id>`, `handout-imagem/<id>`. Os uploads vão em POST com o arquivo bruto no corpo (`application/octet-stream`), em PNG, JPG, WEBP ou GIF: até 12 MB para o mapa da cena e até 3 MB para foto, peça, criatura e handout. A página já reduz a imagem antes de mandar (`reduzirImagem`).
+- **Imagens**: `imagem` (mapa da cena), `peca-imagem/<id>`, `foto/<userId>`, `criatura-imagem/<id>`, `handout-imagem/<id>`. Os uploads vão em POST com o arquivo bruto no corpo (`application/octet-stream`), em PNG, JPG, WEBP ou GIF: até 12 MB para o mapa da cena e os handouts, e até 3 MB para foto, peça e criatura. A página já reduz a imagem antes de mandar (`reduzirImagem`).
 - **Ações (POST)**:
   - de todos: `mover`, `chat`, `ficha`, `ficha/foto`, `ficha/foto/remover`, `ficha/recurso`, `ataque`, `peca/condicao`, `combate/agiu`, `ping` e `grupo/*`
   - só do mestre: `mapa`, `grade`, `npc/*`, `criatura*`, `peca/pv`, `peca/tamanho`, `peca/esconder`, `combate/*`, `medo`, `vida-inimigos`, `nevoa/*`, `cena/*`, `musica`, `handout*`, `diario/notas`, `chat/revelar` e `chat/limpar`
