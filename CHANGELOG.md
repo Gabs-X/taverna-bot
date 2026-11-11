@@ -1,5 +1,15 @@
 # Novidades do Taverneiro
 
+## v1.12.0 (11/11/2026)
+
+- 🧭 Mapa reorganizado: as funções ficam numa barra de ícones à esquerda e abrem num painel maior; o lado direito fica só com o chat
+- 📍 Apontar: clique no mapa e todo mundo vê o ponto, com o nome de quem apontou
+- ✏️ Desenhar: arraste no mapa e o traço aparece para todos (e some sozinho)
+- 😀 Reagir: solte um emoji em cima do seu personagem
+- 📢 Olhem aqui! (mestre): leva a câmera de todo mundo para um ponto do mapa
+- 📖 Livro com zoom pela rodinha do mouse, arrastar para mover a página e tela cheia (botão ⛶ ou tecla F)
+- 🎵 Música por link no mapa: links do YouTube e playlists funcionam, e link de música do Spotify toca a mesma música pelo YouTube (também no /tocar)
+
 ## v1.11.2 (11/11/2026)
 
 - 🔍 Cartas com zoom: toque na lupa para ler a carta grande (e clique nela para ampliar ainda mais)
