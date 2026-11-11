@@ -300,7 +300,21 @@ function avisar(campanhaId: number, oQue: 'estado' | 'chat', soMestre = false) {
 }
 
 /** Para o bot avisar as telas abertas quando a campanha muda pelo Discord (jogador entrou/saiu, mestre trocou). */
-export const avisarMapa = (campanhaId: number) => avisar(campanhaId, 'estado');
+// Pings e efeitos ficam guardados por alguns segundos com um número: quem não recebe o tempo real
+// (o túnel às vezes segura o SSE) busca pelo efeitos/<n> e a página ignora os repetidos.
+const recentes = new Map<number, { seq: number; tipo: string; dados: string; em: number }[]>();
+let seqEfeito = 0;
+function transmitir(campanhaId: number, tipo: 'ping' | 'efeito', json: string) {
+  const seq = ++seqEfeito, dados = json.replace(/^\{/, `{"seq":${seq},`), agora = Date.now();
+  const lista = (recentes.get(campanhaId) ?? []).filter((e) => agora - e.em < 15_000).slice(-150);
+  lista.push({ seq, tipo, dados, em: agora });
+  recentes.set(campanhaId, lista);
+  for (const o of ouvintes.get(campanhaId) ?? []) o.res.write(`data: ${tipo}:${dados}\n\n`);
+}
+const efeitosDesde = (campanhaId: number, desde: number) =>
+  (recentes.get(campanhaId) ?? []).filter((e) => e.seq > desde && Date.now() - e.em < 15_000).map((e) => ({ tipo: e.tipo, dados: e.dados }));
+
+export const avisarMapa =(campanhaId: number) => avisar(campanhaId, 'estado');
 
 // ---------- Ponte com os bardos (música da mesa) ----------
 // Os bardos rodam no PC de casa e entram por um túnel SSH (ponteNuvem.ts): só aceitamos conexão local, sem cabeçalho
@@ -1012,6 +1026,8 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
+    const desde = acao.match(/^efeitos\/(\d+)$/);
+    if (desde) return json(res, 200, { seq: seqEfeito, lista: efeitosDesde(c.id, Number(desde[1])) });
     if (acao === 'imagem') return servirImagem(res, mapaDe(c.id).imagem);
     if (acao === 'cartas/catalogo') {
       res.setHeader('Cache-Control', 'private, max-age=3600');
@@ -1300,7 +1316,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     ultimoPing.set(userId, agora);
     const m = mapaDe(c.id);
     const dados = JSON.stringify({ x: limitar(b.x, 0, m.largura, 0), y: limitar(b.y, 0, m.altura, 0), quem: userId });
-    for (const o of ouvintes.get(c.id) ?? []) o.res.write(`data: ping:${dados}\n\n`);
+    transmitir(c.id, 'ping', dados);
     return json(res, 200, { ok: true });
   }
 
@@ -1334,7 +1350,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     } else return json(res, 400, { erro: 'Efeito desconhecido.' });
     ultimoEfeito.set(chave, agora); // só os aceitos contam no limite
     const dados = JSON.stringify({ ...ef, quem: userId });
-    for (const o of ouvintes.get(c.id) ?? []) o.res.write(`data: efeito:${dados}\n\n`);
+    transmitir(c.id, 'efeito', dados);
     return json(res, 200, { ok: true });
   }
 

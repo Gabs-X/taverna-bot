@@ -249,7 +249,12 @@ test('ping chega na tela de todos pelo tempo real', async () => {
   while (!texto.includes('ping:')) texto += new TextDecoder().decode((await leitor.read()).value);
   controle.abort();
   const dados = JSON.parse(texto.slice(texto.indexOf('ping:') + 5).split('\n')[0]);
-  assert.deepEqual(dados, { x: 100, y: 200, quem: J });
+  assert.deepEqual({ ...dados, seq: undefined }, { x: 100, y: 200, quem: J, seq: undefined });
+  // Quem não recebe o tempo real (túnel) busca os efeitos recentes pelo número.
+  const r2 = await fetch(`${base}/api/m/${campanha}/efeitos/${dados.seq - 1}`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, J)}` } });
+  const busca = (await r2.json()) as { seq: number; lista: { tipo: string; dados: string }[] };
+  assert.equal(busca.lista[0].tipo, 'ping');
+  assert.equal(JSON.parse(busca.lista[0].dados).seq, dados.seq);
 });
 
 test('ponte com os bardos: só entra com a chave, recebe o pedido do mestre e devolve a resposta', async () => {
