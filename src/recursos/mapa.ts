@@ -8,9 +8,10 @@ import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeV
 import { rolar } from '../lib/dados.ts';
 import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
-import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa } from '../lib/nevoa.ts';
+import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa, revelarRaio } from '../lib/nevoa.ts';
+import { esquecerMesa, estadoDaMesa, lerMesa, registrarHistorico, tratarMesa, type Mesa } from './mapaMesa.ts';
 import { CARTA, CARTAS, CLASSES, DOMINIOS, ESTAGIOS, dominiosTocados, limites, lugarAoEscolher, motivoParaNaoEscolher, moverCarta, type CartaDoPersonagem } from '../lib/cartasDH.ts';
-import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
+import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type Criatura, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
   assinarLink,
   chatVisivel,
@@ -51,7 +52,7 @@ type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'd
 type Mapa = {
   campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number;
   combate: number; rodada: number; vez: number | null; vida_inimigos: 'escondida' | 'estado' | 'exata';
-  nevoa_ligada: number; nevoa: string | null; cena_id: number | null; handout_id: number | null;
+  nevoa_ligada: number; nevoa: string | null; cena_id: number | null; handout_id: number | null; visao: number;
 };
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
@@ -60,7 +61,7 @@ type Peca = {
 };
 type Cena = {
   id: number; campanha_id: number; nome: string; imagem: string | null; largura: number; altura: number; grade: number;
-  nevoa_ligada: number; nevoa: string | null; ambiente: string | null;
+  nevoa_ligada: number; nevoa: string | null; ambiente: string | null; notas: string;
 };
 
 /** Peças da cena aberta: os jogadores (que andam junto entre as cenas) e as peças do mestre desta cena. */
@@ -491,6 +492,7 @@ async function montarEstado(c: Campanha, userId: string) {
       versao: m.versao, temImagem: !!m.imagem, largura: m.largura, altura: m.altura, grade: m.grade,
       nevoa: nevoa ? { cols: nevoa.cols, rows: nevoa.rows, bits: gravarNevoa(nevoa.bits) } : null,
       cena: cenaAtiva?.nome ?? null,
+      visao: m.visao,
     },
     handout: handoutDe(c, m.handout_id),
     livro: (() => {
@@ -504,7 +506,8 @@ async function montarEstado(c: Campanha, userId: string) {
       ouro: (db.prepare('SELECT ouro FROM campanhas WHERE id = ?').get(c.id) as { ouro: number }).ouro,
       itens: (db.prepare('SELECT id, item, qtd FROM campanha_inventario WHERE campanha_id = ? ORDER BY item COLLATE NOCASE').all(c.id) as Record<string, unknown>[]).map((i) => ({ ...i })),
     },
-    cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente })) : [],
+    cenas: souMestre ? cenasDe(c.id).map((cn) => ({ id: cn.id, nome: cn.nome, ativa: cn.id === m.cena_id, ambiente: cn.ambiente, notas: cn.notas })) : [],
+    ...estadoDaMesa({ c, userId, souMestre }),
     pecas: pecas.map((p) => {
       const meu = p.user_id === userId;
       const cr = p.criatura_id ? porCriatura.get(p.criatura_id) : undefined;
@@ -784,14 +787,96 @@ function aplicarDano(c: Campanha, alvo: Peca, cr: CriaturaSalva | undefined, fic
       const perda = perdaDeVida('dh', dano, { maior: Number(ficha.limiar_maior), grave: Number(ficha.limiar_grave) });
       const marcados = Math.min(Number(ficha.pv_max), Number(ficha.pv) + perda);
       db.prepare('UPDATE fichas_dh SET pv = ? WHERE guild_id = ? AND user_id = ?').run(marcados, c.guild_id, alvo.user_id);
+      if (marcados >= Number(ficha.pv_max) && Number(ficha.pv) < Number(ficha.pv_max)) registrarHistorico(c.guild_id, alvo.user_id, '💀 Marcou o último PV: hora do Movimento de Morte.');
       return `${perda} PV marcado${perda === 1 ? '' : 's'} · ${Number(ficha.pv_max) - marcados}/${ficha.pv_max} livres`;
     }
     const pv = Math.max(-10, Number(ficha.pv_atual) - dano);
     db.prepare('UPDATE fichas SET pv_atual = ? WHERE guild_id = ? AND user_id = ?').run(pv, c.guild_id, alvo.user_id);
+    if (pv <= 0 && Number(ficha.pv_atual) > 0) registrarHistorico(c.guild_id, alvo.user_id, `💀 Caiu com ${pv} PV.`);
     return `${pv}/${ficha.pv_max} PV`;
   }
   return null;
 }
+
+// ---------- Biblioteca: criar e pôr no mapa (usado pela rota e pelo bestiário) ----------
+
+function criarCriatura(c: Campanha, v: Criatura) {
+  const novo = db.prepare(
+    `INSERT INTO campanha_criaturas (campanha_id, tipo, nome, tamanho, pv_max, defesa, ataque, dano, limiar_maior, limiar_grave, notas, iniciativa, criada_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(c.id, v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, v.iniciativa, Date.now());
+  return Number(novo.lastInsertRowid);
+}
+
+/** Põe uma cópia da biblioteca no mapa: Goblin, Goblin 2... cada uma com a sua vida. Devolve o erro em texto. */
+function colocarCriatura(c: Campanha, crId: number, bx?: unknown, by?: unknown): { peca: number; nome: string } | string {
+  const cr = criaturaPorId(c, crId);
+  if (!cr) return 'Personagem da biblioteca não encontrado.';
+  const m = mapaDe(c.id);
+  const pecas = db.prepare('SELECT nome FROM mapa_pecas WHERE campanha_id = ?').all(c.id) as { nome: string }[];
+  if (pecas.length >= 200) return 'O mapa já tem 200 peças. Tire algumas antes.';
+  const padrao = posicaoInicial(pecas.length, m.grade);
+  const x = limitar(bx, 0, m.largura, padrao.x);
+  const y = limitar(by, 0, m.altura, padrao.y);
+  const nome = nomeDaCopia(cr.nome, pecas.map((p) => p.nome));
+  // Entrou no meio de um combate de D&D: já rola a iniciativa e entra na ordem.
+  const iniciativa = m.combate && c.sistema === 'dnd' ? rolar('1d20').total + (cr.iniciativa ?? 0) : null;
+  const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv, iniciativa, cena_id) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max, iniciativa, m.cena_id,
+  );
+  return { peca: Number(nova.lastInsertRowid), nome };
+}
+
+/** Com a névoa ligada e a visão dos personagens ativa, o personagem revela as casas em volta ao andar. */
+function revelarVisao(c: Campanha, p: { user_id: string | null; x: number; y: number }) {
+  if (!p.user_id) return false;
+  const m = mapaDe(c.id);
+  if (!m.nevoa_ligada || !m.visao) return false;
+  const { cols, rows, bits } = nevoaDe(m);
+  if (!revelarRaio(bits, cols, rows, Math.floor(p.x / m.grade), Math.floor(p.y / m.grade), m.visao)) return false;
+  db.prepare('UPDATE mapas SET nevoa = ? WHERE campanha_id = ?').run(gravarNevoa(bits), c.id);
+  return true;
+}
+
+/** O que as rotas do mapaMesa.ts usam do mapa. */
+function mesaDe(c: Campanha, userId: string, souMestre: boolean): Mesa {
+  return {
+    c, userId, souMestre,
+    avisar: (soMestre = false) => avisar(c.id, 'estado', soMestre),
+    falar: async (texto, opcoes = {}) => {
+      const quemFala = opcoes.como ?? userId;
+      gravarChat(c, quemFala, await autorDe(c, quemFala), 'msg', texto.slice(0, LIMITE_TEXTO), null, false, opcoes.discord ?? true);
+    },
+    ficha: (u) => fichaDe(c, u),
+    jogadores: () => idsJogadores(c.id),
+    mapa: () => mapaDe(c.id),
+    tocar: async (comando) => {
+      if (!c.canal_voz_id) return { ok: false, msg: 'A mesa ainda não tem call: abra a sessão com /sessao iniciar.' };
+      await liberarBardos({ voz: c.canal_voz_id, texto: c.canal_id });
+      return pedirAosBardos({ ...comando, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
+    },
+    abrirCena: async (id) => {
+      const cena = db.prepare('SELECT * FROM mapa_cenas WHERE id = ? AND campanha_id = ?').get(id, c.id) as Cena | undefined;
+      if (!cena) return false;
+      const m = mapaDe(c.id);
+      if (m.cena_id !== cena.id) {
+        abrirCena(c, m, cena);
+        gravarChat(c, userId, await autorDe(c, userId), 'msg', `🎬 Nova cena: ${cena.nome}`, null, false);
+      }
+      return true;
+    },
+    mostrarHandout: (id) => {
+      if (id && !db.prepare('SELECT 1 FROM mapa_handouts WHERE id = ? AND campanha_id = ?').get(id, c.id)) return false;
+      mapaDe(c.id);
+      db.prepare('UPDATE mapas SET handout_id = ? WHERE campanha_id = ?').run(id, c.id);
+      return true;
+    },
+    criarCriatura: (v) => criarCriatura(c, v),
+    colocarCriatura: (id, x, y) => colocarCriatura(c, id, x, y),
+    nomeDe: async (u) => (await quem(c.guild_id, u)).nome,
+  };
+}
+const ROTAS_MESA = /^(area(\/|$)|descanso(\/|$)|musica\/(pedir|cancelar|pedido)$|relogio\/|visao$|cena\/notas$|roteiro\/|bestiario\/)/;
 
 // ---------- Servidor HTTP ----------
 
@@ -969,10 +1054,17 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const imgCriatura = acao.match(/^criatura-imagem\/(\d+)$/);
     if (imgCriatura) return servirImagem(res, criaturaPorId(c, imgCriatura[1])?.imagem);
+    const daMesa = lerMesa(mesaDe(c, userId, souMestre), acao);
+    if (daMesa) return json(res, daMesa.status, daMesa.corpo);
     return json(res, 404, { erro: 'Não achei.' });
   }
 
   if (req.method !== 'POST') return json(res, 405, { erro: 'Método não permitido.' });
+
+  if (ROTAS_MESA.test(acao)) {
+    const r = await tratarMesa(mesaDe(c, userId, souMestre), acao, await lerJson<Record<string, unknown>>(req, 8_000));
+    return r ? json(res, r.status, r.corpo) : json(res, souMestre ? 404 : 403, { erro: souMestre ? 'Ação desconhecida.' : 'Só o mestre faz isso.' });
+  }
 
   if (acao === 'mover') {
     const b = await lerJson<{ peca: number; x: number; y: number }>(req);
@@ -980,7 +1072,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
     if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só move o seu personagem.' });
     const m = mapaDe(c.id);
-    db.prepare('UPDATE mapa_pecas SET x = ?, y = ? WHERE id = ?').run(limitar(b.x, 0, m.largura, p.x), limitar(b.y, 0, m.altura, p.y), p.id);
+    const x = limitar(b.x, 0, m.largura, p.x), y = limitar(b.y, 0, m.altura, p.y);
+    db.prepare('UPDATE mapa_pecas SET x = ?, y = ? WHERE id = ?').run(x, y, p.id);
+    revelarVisao(c, { user_id: p.user_id, x, y });
     avisar(c.id, 'estado');
     return json(res, 200, { ok: true });
   }
@@ -1018,6 +1112,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const b = await lerJson<Record<string, unknown>>(req, 8_000);
     const r = validarFicha(c.sistema, b);
     if (!r.ok) return json(res, 400, { erro: r.erro });
+    const antes = fichaDe(c, userId);
+    const nova = r.valores as { nome: string; classe: string; nivel: number };
+    if (!antes) registrarHistorico(c.guild_id, userId, `✨ ${nova.nome} nasceu: ${nova.classe}, nível ${nova.nivel}.`);
+    else if (Number(antes.nivel) < nova.nivel) registrarHistorico(c.guild_id, userId, `⬆️ Subiu para o nível ${nova.nivel}.`);
     if (c.sistema === 'dh') salvarFichaDH(c, userId, r.valores as FichaDH);
     else salvarFichaDnd(c, userId, r.valores as FichaDnd);
     avisar(c.id, 'estado');
@@ -1208,9 +1306,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
   // Efeitos ao vivo para a mesa toda: traço de desenho, reação em cima da peça e "olhem aqui" do mestre.
   if (acao === 'efeito') {
-    const b = await lerJson<{ tipo: string; id: string; pontos: unknown; fim: boolean; emoji: string; peca: number; x: number; y: number }>(req, 16_000);
+    const b = await lerJson<{ tipo: string; id: string; pontos: unknown; fim: boolean; emoji: string; peca: number; x: number; y: number; a: unknown; b: unknown }>(req, 16_000);
     const agora = Date.now(), chave = `${userId}:${b.tipo}`;
-    if (agora - (ultimoEfeito.get(chave) ?? 0) < (b.tipo === 'laser' ? 60 : 500)) return json(res, 200, { ok: false });
+    if (agora - (ultimoEfeito.get(chave) ?? 0) < (b.tipo === 'laser' || b.tipo === 'regua' ? (b.fim ? 0 : 60) : 500)) return json(res, 200, { ok: false });
     const m = mapaDe(c.id);
     let ef: Record<string, unknown>;
     if (b.tipo === 'laser') {
@@ -1225,6 +1323,11 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       if (!p) return json(res, 404, { erro: 'Peça não encontrada.' });
       if (!souMestre && p.user_id !== userId) return json(res, 403, { erro: 'Você só reage com o seu personagem.' });
       ef = { tipo: 'reacao', emoji: b.emoji, peca: p.id };
+    } else if (b.tipo === 'regua') {
+      const ponto = (v: unknown) => (Array.isArray(v) && v.length === 2 ? [Math.round(limitar(v[0], 0, m.largura, 0)), Math.round(limitar(v[1], 0, m.altura, 0))] : null);
+      const a = ponto(b.a), z = ponto(b.b);
+      if (!a || !z) return json(res, 400, { erro: 'Régua inválida.' });
+      ef = { tipo: 'regua', a, b: z, fim: !!b.fim };
     } else if (b.tipo === 'foco') {
       if (!souMestre) return json(res, 403, { erro: 'Só o mestre chama a atenção de todos.' });
       ef = { tipo: 'foco', x: Math.round(limitar(b.x, 0, m.largura, 0)), y: Math.round(limitar(b.y, 0, m.altura, 0)) };
@@ -1254,6 +1357,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
       if (motivo) return json(res, 400, { erro: motivo });
       const lugar = lugarAoEscolher(carta!.id, minhas);
       db.prepare('INSERT INTO personagem_cartas (guild_id, user_id, carta, lugar, criada_em) VALUES (?, ?, ?, ?, ?)').run(c.guild_id, alvo, carta!.id, lugar, Date.now());
+      registrarHistorico(c.guild_id, alvo, `🃏 Pegou a carta ${carta!.nome}.`);
       avisar(c.id, 'estado');
       return json(res, 200, { ok: true, lugar });
     }
@@ -1529,12 +1633,9 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     }
     const total = (db.prepare('SELECT COUNT(*) AS n FROM campanha_criaturas WHERE campanha_id = ?').get(c.id) as { n: number }).n;
     if (total >= 300) return json(res, 400, { erro: 'A biblioteca chegou a 300 personagens. Apague alguns antes.' });
-    const novo = db.prepare(
-      `INSERT INTO campanha_criaturas (campanha_id, tipo, nome, tamanho, pv_max, defesa, ataque, dano, limiar_maior, limiar_grave, notas, iniciativa, criada_em)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(c.id, v.tipo, v.nome, v.tamanho, v.pv_max, v.defesa, v.ataque, v.dano, v.limiar_maior, v.limiar_grave, v.notas, v.iniciativa, Date.now());
+    const id = criarCriatura(c, v);
     avisar(c.id, 'estado');
-    return json(res, 200, { ok: true, id: Number(novo.lastInsertRowid) });
+    return json(res, 200, { ok: true, id });
   }
 
   // Apagar da biblioteca tira também as cópias dele do mapa.
@@ -1560,22 +1661,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
 
   // Põe uma cópia no mapa (arrastada da biblioteca ou pelo botão): Goblin, Goblin 2... cada uma com a sua vida.
   if (acao === 'criatura/colocar') {
-    const cr = criaturaPorId(c, b.id);
-    if (!cr) return json(res, 404, { erro: 'Personagem da biblioteca não encontrado.' });
-    const m = mapaDe(c.id);
-    const pecas = db.prepare('SELECT nome FROM mapa_pecas WHERE campanha_id = ?').all(c.id) as { nome: string }[];
-    if (pecas.length >= 200) return json(res, 400, { erro: 'O mapa já tem 200 peças. Tire algumas antes.' });
-    const padrao = posicaoInicial(pecas.length, m.grade);
-    const x = limitar(b.x, 0, m.largura, padrao.x);
-    const y = limitar(b.y, 0, m.altura, padrao.y);
-    const nome = nomeDaCopia(cr.nome, pecas.map((p) => p.nome));
-    // Entrou no meio de um combate de D&D: já rola a iniciativa e entra na ordem.
-    const iniciativa = m.combate && c.sistema === 'dnd' ? rolar('1d20').total + (cr.iniciativa ?? 0) : null;
-    const nova = db.prepare('INSERT INTO mapa_pecas (campanha_id, user_id, nome, x, y, tamanho, criatura_id, tipo, pv, iniciativa, cena_id) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      c.id, nome, x, y, cr.tamanho, cr.id, cr.tipo, cr.pv_max, iniciativa, m.cena_id,
-    );
+    const r = colocarCriatura(c, Number(b.id), b.x, b.y);
+    if (typeof r === 'string') return json(res, r.startsWith('O mapa') ? 400 : 404, { erro: r });
     avisar(c.id, 'estado');
-    return json(res, 200, { ok: true, peca: Number(nova.lastInsertRowid), nome });
+    return json(res, 200, { ok: true, ...r });
   }
 
   // Vida de uma cópia da biblioteca: delta (-7 tira, +5 cura) ou valor exato.
@@ -1769,6 +1858,9 @@ export function apagarMapa(campanhaId: number) {
   db.prepare('DELETE FROM campanha_criaturas WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapa_chat WHERE campanha_id = ?').run(campanhaId);
   db.prepare('DELETE FROM mapas WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM campanha_relogios WHERE campanha_id = ?').run(campanhaId);
+  db.prepare('DELETE FROM campanha_roteiro WHERE campanha_id = ?').run(campanhaId);
+  esquecerMesa(campanhaId);
   for (const o of ouvintes.get(campanhaId) ?? []) o.res.end();
   ouvintes.delete(campanhaId);
 }

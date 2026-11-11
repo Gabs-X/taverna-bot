@@ -630,6 +630,45 @@ const MIGRACOES: (() => void)[] = [
       ALTER TABLE campanhas ADD COLUMN evento_inicio INTEGER;
     `);
   },
+  // 27: mais ferramentas da mesa. Visão dos personagens na névoa (raio em casas, 0 = desligada), notas secretas
+  // da cena, relógios de progresso, histórico de cada personagem e o roteiro da próxima sessão.
+  () => {
+    db.exec(`
+      ALTER TABLE mapas ADD COLUMN visao INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE mapa_cenas ADD COLUMN notas TEXT NOT NULL DEFAULT '';
+      CREATE TABLE IF NOT EXISTS campanha_relogios (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        nome        TEXT NOT NULL,
+        total       INTEGER NOT NULL,
+        marcados    INTEGER NOT NULL DEFAULT 0,
+        secreto     INTEGER NOT NULL DEFAULT 0,
+        criado_em   INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS campanha_relogios_campanha ON campanha_relogios (campanha_id);
+      CREATE TABLE IF NOT EXISTS personagem_historico (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id  TEXT NOT NULL,
+        em       INTEGER NOT NULL,
+        texto    TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS personagem_historico_quem ON personagem_historico (guild_id, user_id, id);
+      CREATE TABLE IF NOT EXISTS campanha_roteiro (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        campanha_id INTEGER NOT NULL,
+        ordem       INTEGER NOT NULL,
+        titulo      TEXT NOT NULL,
+        cena_id     INTEGER,
+        ambiente    TEXT,
+        musica      TEXT,
+        handout_id  INTEGER,
+        notas       TEXT NOT NULL DEFAULT '',
+        feito       INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS campanha_roteiro_campanha ON campanha_roteiro (campanha_id, ordem);
+    `);
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

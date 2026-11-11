@@ -49,3 +49,18 @@ export function pecaNaNevoa(bits: Uint8Array, cols: number, rows: number, grade:
   const row = Math.max(0, Math.min(rows - 1, Math.floor(y / grade)));
   return !casaRevelada(bits, cols, col, row);
 }
+
+/** Revela as casas num raio (em casas) em volta de uma casa: a visão do personagem andando com a névoa ligada. */
+export function revelarRaio(bits: Uint8Array, cols: number, rows: number, col: number, row: number, raio: number) {
+  let mudou = false;
+  const r = Math.ceil(raio);
+  for (let dr = -r; dr <= r; dr++) {
+    for (let dc = -r; dc <= r; dc++) {
+      const c = col + dc, l = row + dr;
+      if (c < 0 || l < 0 || c >= cols || l >= rows || Math.hypot(dc, dr) > raio + 0.35) continue;
+      const i = l * cols + c;
+      if (!(bits[i >> 3] & (1 << (i & 7)))) { bits[i >> 3] |= 1 << (i & 7); mudou = true; }
+    }
+  }
+  return mudou;
+}
