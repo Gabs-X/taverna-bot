@@ -599,6 +599,12 @@
     #dica-mapa { display: none; }
     #topo::before, #topo::after { display: none; }
   }
+  /* ---------- Seleção de várias peças (mestre) ---------- */
+  #barra-grupo { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 3px; padding: 5px 7px; border-radius: 12px; z-index: 4 !important; animation: entra .15s ease-out; }
+  #barra-grupo b { font-family: var(--fonte-titulo); font-size: 12.5px; color: var(--ouro); padding: 0 6px; white-space: nowrap; }
+  #barra-grupo button { height: 32px; padding: 0 9px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--texto); cursor: pointer; font-size: 13px; white-space: nowrap; }
+  #barra-grupo button:hover { background: #3e2a19; border-color: #7a5532; }
+  canvas.selecionando { cursor: cell; }
   /* ---------- Efeitos de tela ---------- */
   #fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
   .treme-tela { animation: treme-tela 1.2s linear; }
@@ -792,6 +798,7 @@
     <div id="gaveta-corpo"></div>
   </div>
   <div id="acoes-mapa" class="vidro">
+    <button id="a-selecionar" title="Mestre: volta ao modo de seleção (solta qualquer ferramenta; Esc também). Ligado, arrastar no mapa vazio seleciona várias peças. Shift + clique soma ou tira uma peça." hidden><span class="ico">🖱️</span><span class="rot">Selecionar</span></button>
     <button id="a-apontar" title="Clique no mapa para marcar um ponto para todos (ou botão do meio / Alt + clique)"><span class="ico">📍</span><span class="rot">Apontar</span></button>
     <button id="a-desenhar" title="Arraste no mapa para desenhar um traço que todos veem (some sozinho)"><span class="ico">✏️</span><span class="rot">Desenhar</span></button>
     <button id="a-reagir" title="Uma reação em cima do seu personagem"><span class="ico">😀</span><span class="rot">Reagir</span></button>
@@ -801,6 +808,11 @@
   </div>
   <div id="reacoes" class="vidro" hidden></div>
   <div id="formas" class="vidro" hidden></div>
+  <div id="barra-grupo" class="vidro" hidden>
+    <b id="grupo-conta"></b>
+    <button data-g="esconder" title="Esconder todas dos jogadores">🙈 Esconder</button><button data-g="mostrar" title="Mostrar todas para os jogadores">👁️ Mostrar</button>
+    <button data-g="tirar" title="Tirar do mapa as peças do mestre e os elementos selecionados (Delete)">🗑 Tirar</button><button data-g="limpar" title="Desfazer a seleção (Esc)">✕</button>
+  </div>
   <div id="barra-elemento" class="vidro" hidden>
     <button data-el="girar-" title="Girar 15° para a esquerda">⟲</button><button data-el="girar+" title="Girar 15° para a direita">⟳</button><div class="sep"></div>
     <button data-el="menor" title="Diminuir">－</button><button data-el="maior" title="Aumentar">＋</button><div class="sep"></div>
@@ -1465,7 +1477,7 @@ function pintar() {
   // As maiores primeiro, para as pequenas ficarem por cima.
   for (const p of [...estado.pecas].sort((a, b) => (b.tamanho || 1) - (a.tamanho || 1))) {
     const r = grade * 0.42 * (p.tamanho || 1);
-    const cor = corDe(p), sel = p.id === selecionada;
+    const cor = corDe(p), sel = p.id === selecionada || selecao.has('p' + p.id);
     ctx.globalAlpha = p.escondida ? 0.45 : 1; // escondida: o mestre vê meio apagada
     // sombra e halo
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10 * px; ctx.shadowOffsetY = 3 * px;
@@ -1636,6 +1648,19 @@ cv.addEventListener('pointerdown', (e) => {
   if (pincel) { arrasto = { nevoa: true, revelar: pincel === 'revelar', a: pt, b: pt }; desenhar(); return; }
   if (e.button === 0 && ferrDesenho) { comecarDesenho(pt); return; }
   const p = pecaEm(pt);
+  if (estado.voce.mestre && e.button === 0) {
+    const elAqui = p ? null : elementoEm(pt), chave = p ? 'p' + p.id : elAqui ? 'e' + elAqui.id : null;
+    // Shift + clique: soma ou tira da seleção. Shift (ou o modo Selecionar) no vazio: caixa de seleção.
+    if (e.shiftKey && chave) { if (selecao.has(chave)) selecao.delete(chave); else selecao.add(chave); painelSelecao(); desenhar(); return; }
+    if (!chave && (e.shiftKey || modoMapa === 'selecionar')) { caixaSel = { a: pt, b: pt, somar: e.shiftKey }; arrasto = { caixa: true }; return; }
+    // Arrastar uma peça que faz parte do grupo: o grupo todo vai junto.
+    if (chave && selecao.has(chave) && selecao.size > 1) {
+      const orig = new Map();
+      for (const k of selecao) { const o = itemDaSelecao(k); if (o) orig.set(k, { x: o.x, y: o.y }); }
+      arrasto = { grupo: true, inicio: pt, orig }; cv.classList.add('arrastando'); return;
+    }
+    if (chave && !e.shiftKey && selecao.size) { selecao.clear(); painelSelecao(); }
+  }
   // Mestre: sem peça no clique, pega um elemento (imagem solta) para arrastar.
   if (!p && e.button === 0 && estado.voce.mestre) {
     const el2 = elementoEm(pt);
@@ -1657,6 +1682,12 @@ cv.addEventListener('pointermove', (e) => {
   }
   if (arrasto.area) { const q = mundo(e); areaNova.x2 = q.x; areaNova.y2 = q.y; desenhar(); return; }
   if (arrasto.desenho) { continuarDesenho(mundo(e)); return; }
+  if (arrasto.caixa) { caixaSel.b = mundo(e); desenhar(); return; }
+  if (arrasto.grupo) {
+    const q = mundo(e), dx = q.x - arrasto.inicio.x, dy = q.y - arrasto.inicio.y;
+    for (const [k, o] of arrasto.orig) { const it = itemDaSelecao(k); if (it) { it.x = Math.min(estado.mapa.largura, Math.max(0, o.x + dx)); it.y = Math.min(estado.mapa.altura, Math.max(0, o.y + dy)); } }
+    arrasto.moveu = true; desenhar(); return;
+  }
   if (arrasto.elemento) { const q = mundo(e); arrasto.elemento.x = q.x + arrasto.dx; arrasto.elemento.y = q.y + arrasto.dy; arrasto.moveu = true; desenhar(); return; }
   if (arrasto.regua) { regua.b = mundo(e); enviarRegua(false); desenhar(); return; }
   if (arrasto.nevoa) { arrasto.b = mundo(e); desenhar(); return; }
@@ -1665,6 +1696,8 @@ cv.addEventListener('pointermove', (e) => {
   desenhar();
 });
 function soltar() {
+  if (arrasto && arrasto.caixa) { arrasto = null; fecharCaixa(); return; }
+  if (arrasto && arrasto.grupo) { const g = arrasto; arrasto = null; cv.classList.remove('arrastando'); if (g.moveu) soltarGrupo(g); return; }
   if (arrasto && arrasto.desenho) { arrasto = null; terminarDesenho(); return; }
   if (arrasto && arrasto.elemento) { const el2 = arrasto.elemento, moveu = arrasto.moveu; arrasto = null; if (moveu) post('elemento/mudar', { id: el2.id, x: el2.x, y: el2.y }).catch(() => {}); return; }
   if (arrasto && arrasto.area) { arrasto = null; soltarArea(); return; }
@@ -1757,7 +1790,9 @@ function escolherModo(m) {
   modoMapa = modoMapa === m ? null : m;
   if (modoMapa && usandoRegua) $('f-regua').onclick();
   if (modoMapa && pincel) escolherPincel(pincel);
-  for (const [id, k] of [['a-apontar', 'apontar'], ['a-desenhar', 'desenhar'], ['a-foco', 'foco'], ['a-area', 'area']]) $(id).classList.toggle('on', modoMapa === k);
+  if (modoMapa && ferrDesenho) escolherFerrDesenho(ferrDesenho);
+  cv.classList.toggle('selecionando', modoMapa === 'selecionar');
+  for (const [id, k] of [['a-selecionar', 'selecionar'], ['a-apontar', 'apontar'], ['a-desenhar', 'desenhar'], ['a-foco', 'foco'], ['a-area', 'area']]) $(id).classList.toggle('on', modoMapa === k);
   if (modoMapa !== 'area') $('formas').hidden = true;
   cv.classList.toggle('mira', modoMapa === 'apontar' || modoMapa === 'foco' || modoMapa === 'area' || modoMapa === 'explodir');
   if (modoMapa === 'explodir') aviso('💥 Clique no ponto do mapa onde vai explodir.', '', 3000);
@@ -4038,6 +4073,16 @@ function pintarArea(a, px, grade, previa) {
 }
 /** Chamado pelo pintar(): áreas, réguas dos outros e a área sendo desenhada. */
 function pintarExtras(px, grade) {
+  if (caixaSel) {
+    const { a, b } = caixaSel, x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
+    ctx.save(); ctx.fillStyle = 'rgba(245,196,81,.12)'; ctx.fillRect(x, y, w, h); ctx.setLineDash([8 * px, 5 * px]); ctx.lineWidth = 1.6 * px; ctx.strokeStyle = '#f5c451'; ctx.strokeRect(x, y, w, h); ctx.restore();
+  }
+  // Elementos do grupo: contorno tracejado (as peças usam o destaque normal).
+  for (const k of selecao) {
+    if (k[0] !== 'e') continue;
+    const e = itemDaSelecao(k); if (!e) continue;
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((e.rotacao * Math.PI) / 180); ctx.setLineDash([7 * px, 5 * px]); ctx.lineWidth = 2 * px; ctx.strokeStyle = '#f5c451'; ctx.strokeRect(-e.largura / 2, -e.altura / 2, e.largura, e.altura); ctx.restore();
+  }
   for (const a of estado.areas || []) pintarArea(a, px, grade, false);
   if (areaNova) pintarArea(areaNova, px, grade, true);
   const agora = performance.now();
@@ -4558,6 +4603,8 @@ for (const b of $('barra-elemento').querySelectorAll('[data-el]')) b.onclick = (
 };
 addEventListener('keydown', (e) => {
   if (!estado || !estado.voce.mestre || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  if (e.key === 'Escape' && selecao.size) { e.stopImmediatePropagation(); selecao.clear(); painelSelecao(); desenhar(); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selecao.size) { e.preventDefault(); acaoGrupo('tirar'); return; }
   if (e.key === 'Escape' && (ferrDesenho || elementoSel)) { e.stopImmediatePropagation(); if (ferrDesenho) escolherFerrDesenho(ferrDesenho); else { elementoSel = null; painelElemento(); desenhar(); } return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && elementoSel) { e.preventDefault(); post('elemento/apagar', { id: elementoSel }).catch(() => {}); elementoSel = null; painelElemento(); }
 }, true);
@@ -4787,6 +4834,80 @@ $('f-som').onclick = () => {
 };
 addEventListener('resize', () => { if (fxRodando) fxTamanho(); });
 
+// ---------- Seleção de várias peças e elementos (mestre) ----------
+const selecao = new Set(); // 'p12' = peça 12, 'e3' = elemento 3
+let caixaSel = null;
+function itemDaSelecao(k) {
+  const id = Number(k.slice(1));
+  return k[0] === 'p' ? estado.pecas.find((p) => p.id === id) : (estado.elementos || []).find((e) => e.id === id);
+}
+function fecharCaixa() {
+  const c = caixaSel; caixaSel = null; if (!c) return desenhar();
+  const x0 = Math.min(c.a.x, c.b.x), x1 = Math.max(c.a.x, c.b.x), y0 = Math.min(c.a.y, c.b.y), y1 = Math.max(c.a.y, c.b.y);
+  if (!c.somar) selecao.clear();
+  if (x1 - x0 > 2 || y1 - y0 > 2) {
+    const dentro = (o) => o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1;
+    for (const p of estado.pecas) if (dentro(p)) selecao.add('p' + p.id);
+    for (const e of estado.elementos || []) if (dentro(e)) selecao.add('e' + e.id);
+  }
+  if (selecao.size) { selecionada = null; elementoSel = null; painel(); }
+  painelSelecao(); desenhar();
+}
+function soltarGrupo(g) {
+  const grade = estado.mapa.grade;
+  for (const k of g.orig.keys()) {
+    const it = itemDaSelecao(k); if (!it) continue;
+    if (k[0] === 'p') {
+      if (prefs.encaixar) { it.x = encaixe(it.x, grade, it.tamanho || 1, estado.mapa.largura); it.y = encaixe(it.y, grade, it.tamanho || 1, estado.mapa.altura); }
+      post('mover', { peca: it.id, x: it.x, y: it.y }).catch(() => {});
+    } else post('elemento/mudar', { id: it.id, x: it.x, y: it.y }).catch(() => {});
+  }
+  desenhar();
+}
+function painelSelecao() {
+  const mestre = estado && estado.voce.mestre;
+  $('a-selecionar').hidden = !mestre;
+  if (!mestre) { selecao.clear(); $('barra-grupo').hidden = true; return; }
+  for (const k of [...selecao]) if (!itemDaSelecao(k)) selecao.delete(k); // apagadas por outra tela
+  const barra = $('barra-grupo');
+  barra.hidden = selecao.size < 2;
+  if (barra.hidden) return;
+  const pecas = [...selecao].filter((k) => k[0] === 'p').length, elems = selecao.size - pecas;
+  $('grupo-conta').textContent = [pecas ? pecas + (pecas === 1 ? ' peça' : ' peças') : '', elems ? elems + (elems === 1 ? ' elemento' : ' elementos') : ''].filter(Boolean).join(' + ');
+  // A barra flutua acima do grupo.
+  let topo = Infinity, soma = 0, n = 0;
+  for (const k of selecao) { const it = itemDaSelecao(k); if (!it) continue; topo = Math.min(topo, it.y); soma += it.x; n++; }
+  const dpr = devicePixelRatio || 1, area = barra.parentElement.getBoundingClientRect(), w = barra.offsetWidth || 360;
+  barra.style.left = Math.min(area.width - w / 2 - 8, Math.max(w / 2 + 8, (cam.x + (soma / n) * cam.z) / dpr)) + 'px';
+  barra.style.top = Math.max(barra.offsetHeight + 8, (cam.y + topo * cam.z) / dpr - 34) + 'px';
+}
+function acaoGrupo(acao) {
+  const itens = [...selecao].map((k) => [k, itemDaSelecao(k)]).filter(([, it]) => it);
+  if (acao === 'limpar') { selecao.clear(); painelSelecao(); desenhar(); return; }
+  for (const [k, it] of itens) {
+    if (k[0] === 'p') {
+      if (it.tipo === 'jogador') continue; // personagens dos jogadores não somem nem saem do mapa
+      if (acao === 'tirar') post('npc/remover', { peca: it.id }).catch(() => {});
+      else post('peca/esconder', { peca: it.id, escondida: acao === 'esconder' }).catch(() => {});
+    } else {
+      if (acao === 'tirar') post('elemento/apagar', { id: it.id }).catch(() => {});
+      else post('elemento/mudar', { id: it.id, oculto: acao === 'esconder' }).catch(() => {});
+    }
+  }
+  if (acao === 'tirar') { selecao.clear(); painelSelecao(); }
+  aviso({ esconder: '🙈 Grupo escondido dos jogadores.', mostrar: '👁️ Grupo visível para a mesa.', tirar: '🗑 Peças do mestre e elementos tirados do mapa (os personagens dos jogadores ficam).' }[acao], 'ok', 2500);
+}
+for (const b of $('barra-grupo').querySelectorAll('[data-g]')) b.onclick = () => acaoGrupo(b.dataset.g);
+// Selecionar: solta qualquer ferramenta e liga a seleção em caixa (clicar de novo desliga).
+$('a-selecionar').onclick = () => {
+  if (ferrDesenho) escolherFerrDesenho(ferrDesenho);
+  if (usandoRegua) $('f-regua').onclick();
+  if (pincel) escolherPincel(pincel);
+  if (!$('formas').hidden) $('formas').hidden = true;
+  escolherModo('selecionar');
+  if (modoMapa === 'selecionar') aviso('🖱️ Arraste no mapa vazio para selecionar várias peças. Shift + clique soma ou tira.', '', 3000);
+};
+
 // ---------- Cortina do mestre ----------
 let cortinaAntes = null;
 function painelCortina() {
@@ -4808,6 +4929,7 @@ $('a-cortina').onclick = () => post('cortina', { fechada: !estado.mapa.cortina }
 function painelMesaExtra() {
   painelHolofote();
   painelCortina();
+  painelSelecao();
   painelEfeitos();
   painelElemento();
   ajustarAcoes();
