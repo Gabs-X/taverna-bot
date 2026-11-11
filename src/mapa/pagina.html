@@ -434,6 +434,11 @@
   .avancos { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 8px; }
   .avancos .contador { justify-content: space-between; border: 1px solid #d8c393; border-radius: 8px; padding: 6px 9px; background: rgba(255, 252, 240, .6); }
   .guia-nav { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  .opcao.bloqueada { opacity: .55; cursor: not-allowed; filter: grayscale(.6); }
+  .opcao.bloqueada:hover { transform: none; box-shadow: none; border-color: #d8c393; }
+  .opcao .motivo-op { color: #a3291f; font-weight: 700; }
+  .arma-resumo { margin-top: 6px; font-size: 12.5px; padding: 4px 7px; border: 1px solid #d8c393; border-radius: 6px; background: #fffaf0; }
+  .arma-resumo b { font-family: var(--fonte-titulo); color: #5a300a; }
   .guia-nav .esp { flex: 1; }
   /* Resumo ao lado: a ficha se preenchendo sozinha */
   .resumo { position: sticky; top: 0; border: 1px solid #b08c55; border-radius: 8px; padding: 12px; background: rgba(255, 250, 235, .7); box-shadow: inset 0 0 20px rgba(140, 90, 30, .12); }
@@ -565,6 +570,7 @@
     <div id="ataque" hidden>
       <div class="rotulo-sec">⚔️ Atacar este alvo</div>
       <div class="linha" id="ataque-como-linha"><span class="mudo" style="white-space:nowrap">Quem ataca</span><select id="ataque-como"></select></div>
+      <div class="linha" id="linha-arma"><select id="ataque-arma" title="Arma da ficha" hidden></select></div>
       <div class="linha"><select id="ataque-traco" title="Traço do ataque"></select><input id="ataque-bonus" type="number" placeholder="bônus" title="Bônus do ataque" style="width:82px;flex:none"><input id="ataque-dano" type="text" maxlength="30" placeholder="dano: 1d8+2"></div>
       <div class="linha"><button id="atacar" class="btn">⚔️ Atacar</button><small class="mudo">usa a vantagem marcada no chat</small></div>
     </div>
@@ -1862,10 +1868,52 @@ const ARMADURAS_T1 = {
   placa: { nome: 'Placa Completa', maior: 8, grave: 17, pontos: 4, ev: -2, ag: -1, efeito: 'Muito pesada: −2 de Evasão e −1 de Agilidade' },
 };
 const VALORES_TRACOS = [2, 1, 1, 0, 0, -1];
+// Armas do Nível 1 (livro p. 116 e p. 125). maos: 1 ou 2; magica: precisa de traço de conjuração;
+// ev/ac/arm: o que a arma muda na Evasão, na Acuidade e na Armadura; ataque: bônus nas rolagens de ataque.
+const arma = (id, nome, traco, alcance, dano, maos, extra = {}) => ({ id, nome, traco, alcance, dano, maos, ...extra });
+const ARMAS_PRIMARIAS = [
+  arma('espada-larga', 'Espada Larga', 'agilidade', 'Corpo a corpo', 'd8', 1, { efeito: 'Confiável: +1 nas rolagens de ataque', ataque: 1 }),
+  arma('espada-longa', 'Espada Longa', 'agilidade', 'Corpo a corpo', 'd8+3', 2),
+  arma('machado-de-batalha', 'Machado de Batalha', 'forca', 'Corpo a corpo', 'd10+3', 2),
+  arma('montante', 'Montante', 'forca', 'Corpo a corpo', 'd10+3', 2, { efeito: 'Enorme: −1 de Evasão; no acerto, role um dado de dano a mais e descarte o menor', ev: -1 }),
+  arma('maca', 'Maça', 'forca', 'Corpo a corpo', 'd8+1', 1),
+  arma('martelo-de-guerra', 'Martelo de Guerra', 'forca', 'Corpo a corpo', 'd12+3', 2, { efeito: 'Pesado: −1 de Evasão', ev: -1 }),
+  arma('adaga', 'Adaga', 'acuidade', 'Corpo a corpo', 'd8+1', 1),
+  arma('bastao', 'Bastão', 'instinto', 'Corpo a corpo', 'd10+3', 2),
+  arma('cutelo', 'Cutelo', 'presenca', 'Corpo a corpo', 'd8+1', 1),
+  arma('rapieira', 'Rapieira', 'presenca', 'Corpo a corpo', 'd8', 1, { efeito: 'Rápida: ao atacar, marque 1 Estresse para atingir outro alvo no alcance' }),
+  arma('alabarda', 'Alabarda', 'forca', 'Muito próximo', 'd10+2', 2, { efeito: 'Incômoda: −1 de Acuidade', ac: -1 }),
+  arma('lanca', 'Lança', 'acuidade', 'Muito próximo', 'd10+2', 2, { efeito: 'Incômoda: −1 de Acuidade', ac: -1 }),
+  arma('arco-curto', 'Arco Curto', 'agilidade', 'Distante', 'd6+3', 2),
+  arma('besta', 'Besta', 'acuidade', 'Distante', 'd6+1', 1),
+  arma('arco-longo', 'Arco Longo', 'agilidade', 'Muito longe', 'd8+3', 2, { efeito: 'Incômodo: −1 de Acuidade', ac: -1 }),
+  arma('manoplas-arcanas', 'Manoplas Arcanas', 'forca', 'Corpo a corpo', 'd10+3', 2, { magica: true }),
+  arma('machado-sagrado', 'Machado Sagrado', 'forca', 'Corpo a corpo', 'd8+1', 1, { magica: true }),
+  arma('aneis-brilhantes', 'Anéis Brilhantes', 'agilidade', 'Muito próximo', 'd10+1', 2, { magica: true }),
+  arma('runas-de-mao', 'Runas de Mão', 'instinto', 'Muito próximo', 'd10', 1, { magica: true }),
+  arma('lamina-de-retorno', 'Lâmina de Retorno', 'acuidade', 'Próximo', 'd8', 1, { magica: true, efeito: 'Retorno: arremessada no alcance, volta para a sua mão logo depois do ataque' }),
+  arma('cajado-curto', 'Cajado Curto', 'instinto', 'Próximo', 'd8+1', 1, { magica: true }),
+  arma('cajado-duplo', 'Cajado Duplo', 'instinto', 'Distante', 'd6+3', 2, { magica: true }),
+  arma('cetro', 'Cetro', 'presenca', 'Longe', 'd6', 2, { magica: true, efeito: 'Versátil: também serve como Presença, Corpo a corpo, d8' }),
+  arma('varinha', 'Varinha', 'conhecimento', 'Distante', 'd6+1', 1, { magica: true }),
+  arma('grande-cajado', 'Grande Cajado', 'conhecimento', 'Muito longe', 'd6', 2, { magica: true, efeito: 'Poderoso: no acerto, role um dado de dano a mais e descarte o menor' }),
+];
+const ARMAS_SECUNDARIAS = [
+  arma('espada-curta', 'Espada Curta', 'agilidade', 'Corpo a corpo', 'd8', 1, { efeito: 'Emparelhada: +2 no dano da arma principal contra alvos em Corpo a corpo' }),
+  arma('escudo-redondo', 'Escudo Redondo', 'forca', 'Corpo a corpo', 'd4', 1, { efeito: 'Proteção: +1 de Armadura', arm: 1 }),
+  arma('escudo-de-torre', 'Escudo de Torre', 'forca', 'Corpo a corpo', 'd6', 1, { efeito: 'Barreira: +2 de Armadura e −1 de Evasão', arm: 2, ev: -1 }),
+  arma('punhal', 'Punhal', 'acuidade', 'Corpo a corpo', 'd8', 1, { efeito: 'Emparelhado: +2 no dano da arma principal contra alvos em Corpo a corpo' }),
+  arma('chicote', 'Chicote', 'presenca', 'Muito próximo', 'd6', 1, { efeito: 'Surpreendente: marque 1 Estresse para afastar quem está em Corpo a corpo de você' }),
+  arma('gancho', 'Gancho', 'acuidade', 'Próximo', 'd6', 1, { efeito: 'Enganchado: no acerto, pode puxar o alvo para Corpo a corpo' }),
+  arma('besta-de-mao', 'Besta de Mão', 'acuidade', 'Distante', 'd6+1', 1),
+];
+const ARMA = new Map([...ARMAS_PRIMARIAS, ...ARMAS_SECUNDARIAS].map((a) => [a.id, a]));
+/** Dano com a Proficiência: d8+3 com Proficiência 2 vira 2d8+3. */
+const danoDaArma = (a, prof) => (a ? Math.max(1, prof) + a.dano : '');
 const EXEMPLOS_EXP = ['Ladrão de Cofres', 'Criado nas Ruas', 'Erudito de Bibliotecas', 'Caçador da Floresta', 'Veterano de Guerra', 'Navegador', 'Mentiroso Nato', 'Curandeiro de Aldeia', 'Ferreiro', 'Diplomata da Corte'];
 const PASSOS_GUIA = [
   { k: 'classe', nome: 'Classe' }, { k: 'subclasse', nome: 'Subclasse' }, { k: 'heranca', nome: 'Herança' }, { k: 'tracos', nome: 'Traços' },
-  { k: 'armadura', nome: 'Armadura' }, { k: 'experiencias', nome: 'Experiências' }, { k: 'nome', nome: 'Nome e nível' },
+  { k: 'armadura', nome: 'Armadura' }, { k: 'armas', nome: 'Armas' }, { k: 'experiencias', nome: 'Experiências' }, { k: 'nome', nome: 'Nome e nível' },
 ];
 const tiers = (n) => (n >= 2) + (n >= 5) + (n >= 8);
 let catalogoCartas = null;
@@ -1901,6 +1949,7 @@ function novoGuia(p) {
     tracos: salvo.tracos || {},
     avancoTracos: salvo.avancoTracos || {},
     armadura: salvo.armadura || null,
+    armas: Object.assign({ primaria: null, secundaria: null }, salvo.armas || {}),
     extras: Object.assign({ pv: 0, estresse: 0, evasao: 0 }, salvo.extras || {}),
     experiencias: salvo.experiencias || (f && f.experiencias ? String(f.experiencias).split(',').filter(Boolean).map((i) => { const [nome, b] = i.split('|'); return { nome, bonus: Number(b) || 2 }; }) : []),
     nome: (f && f.nome) || '',
@@ -1910,14 +1959,16 @@ function novoGuia(p) {
 /** Tudo o que a ficha calcula sozinha a partir das escolhas. */
 function calcularGuia(g) {
   const cl = g.classe && CLASSES_DH[g.classe], arm = ARMADURAS_T1[g.armadura || 'nenhuma'], n = Math.max(1, Math.min(10, Number(g.nivel) || 1));
+  const armas = [ARMA.get(g.armas && g.armas.primaria), ARMA.get(g.armas && g.armas.secundaria)].filter(Boolean);
+  const somaArmas = (k) => armas.reduce((t, a) => t + (a[k] || 0), 0);
   const tracos = {};
-  for (const t of TRACOS_DH) tracos[t] = (Number(g.tracos[t]) || 0) + (Number(g.avancoTracos[t]) || 0) + (t === 'agilidade' ? arm.ag : 0);
+  for (const t of TRACOS_DH) tracos[t] = (Number(g.tracos[t]) || 0) + (Number(g.avancoTracos[t]) || 0) + (t === 'agilidade' ? arm.ag : 0) + (t === 'acuidade' ? somaArmas('ac') : 0);
   return {
     nivel: n, tracos,
-    evasao: cl ? cl.ev + arm.ev + (Number(g.extras.evasao) || 0) : null,
+    evasao: cl ? cl.ev + arm.ev + somaArmas('ev') + (Number(g.extras.evasao) || 0) : null,
     pv_max: cl ? cl.pv + (Number(g.extras.pv) || 0) : null,
     estresse_max: 6 + (Number(g.extras.estresse) || 0),
-    armadura_max: arm.pontos,
+    armadura_max: arm.pontos + somaArmas('arm'),
     limiar_maior: arm.maior === null ? n : arm.maior + n,
     limiar_grave: arm.grave === null ? 2 * n : arm.grave + n,
     proficiencia: 1 + tiers(n),
@@ -1932,7 +1983,7 @@ function pendenciasGuia(g) {
   const calc = calcularGuia(g);
   return [
     ['Classe', !!g.classe], ['Subclasse', !!g.subclasse], ['Ancestralidade', g.ancestralidades.length >= (g.mista ? 2 : 1)], ['Comunidade', !!g.comunidade],
-    ['Traços (+2, +1, +1, 0, 0, −1)', tracosOk], ['Armadura', !!g.armadura],
+    ['Traços (+2, +1, +1, 0, 0, −1)', tracosOk], ['Armadura', !!g.armadura], ['Arma principal', !!(g.armas && g.armas.primaria)],
     [`${calc.experiencias} Experiências`, g.experiencias.filter((e) => e && String(e.nome || '').trim()).length >= calc.experiencias], ['Nome', !!String(g.nome).trim()],
   ];
 }
@@ -1943,7 +1994,7 @@ async function abrirFichaGuiada() {
   guia = novoGuia(p);
   passoGuia = 0;
   const pend = pendenciasGuia(guia); const primeiro = pend.findIndex(([, ok]) => !ok);
-  passoGuia = p.ficha ? 0 : Math.max(0, Math.min(PASSOS_GUIA.length - 1, primeiro < 0 ? 0 : [0, 1, 2, 2, 3, 4, 5, 6][primeiro]));
+  passoGuia = p.ficha ? 0 : Math.max(0, Math.min(PASSOS_GUIA.length - 1, primeiro < 0 ? 0 : [0, 1, 2, 2, 3, 4, 5, 6, 7][primeiro]));
   $('mf-titulo').textContent = p.ficha ? '✏️ ' + p.nome : '✨ Crie o seu personagem';
   $('mf-sub').textContent = 'Daggerheart · ' + estado.campanha.nome + ' · a ficha se preenche sozinha conforme você escolhe';
   $('modal-ficha').querySelector('.caixa').classList.add('guia');
@@ -1966,7 +2017,7 @@ function desenharGuia() {
   topo.append(livre); caixa.append(topo);
   // Trilha de passos
   const passos = el('div', 'passos');
-  const feitoPasso = { classe: pend[0][1], subclasse: pend[1][1], heranca: pend[2][1] && pend[3][1], tracos: pend[4][1], armadura: pend[5][1], experiencias: pend[6][1], nome: pend[7][1] };
+  const feitoPasso = { classe: pend[0][1], subclasse: pend[1][1], heranca: pend[2][1] && pend[3][1], tracos: pend[4][1], armadura: pend[5][1], armas: pend[6][1], experiencias: pend[7][1], nome: pend[8][1] };
   PASSOS_GUIA.forEach((ps, i) => {
     const b = el('button', (i === passoGuia ? 'atual ' : '') + (feitoPasso[ps.k] ? 'feito' : '')); b.type = 'button';
     const nn = el('span', 'n'); nn.append(el('span', '', String(i + 1)));
@@ -1976,7 +2027,7 @@ function desenharGuia() {
   caixa.append(passos);
   const corpo = el('div', 'guia-corpo'), passo = el('div', 'guia-passo');
   corpo.append(passo, resumoGuia(calc, pend)); caixa.append(corpo);
-  [passoClasse, passoSubclasse, passoHeranca, passoTracos, passoArmadura, passoExperiencias, passoNome][passoGuia](passo, calc);
+  [passoClasse, passoSubclasse, passoHeranca, passoTracos, passoArmadura, passoArmas, passoExperiencias, passoNome][passoGuia](passo, calc);
   // Navegação
   const nav = el('div', 'guia-nav');
   if (passoGuia > 0) { const v = el('button', 'btn sec', '◀ Voltar'); v.type = 'button'; v.onclick = () => { passoGuia--; desenharGuia(); }; nav.append(v); }
@@ -2001,6 +2052,10 @@ function resumoGuia(calc, pend) {
   const tr = el('div', 'grade-r'); tr.style.marginTop = '6px';
   for (const t of TRACOS_DH) { const c = el('div', 'cx'); c.append(el('b', '', g.tracos[t] === undefined || g.tracos[t] === '' ? '—' : sinal(calc.tracos[t])), el('small', '', NOMES[t])); tr.append(c); }
   r.append(tr);
+  for (const [rot, id] of [['Arma', g.armas && g.armas.primaria], ['Secundária', g.armas && g.armas.secundaria]]) {
+    const a = ARMA.get(id); if (!a) continue;
+    const l = el('div', 'arma-resumo'); l.append(el('b', '', a.nome), document.createTextNode(` · ${NOMES[a.traco]} · ${danoDaArma(a, calc.proficiencia)}${a.magica ? ' mag' : ' fís'}`)); r.append(l);
+  }
   const falta = el('ul', 'falta');
   for (const [n, ok] of pend) falta.append(el('li', ok ? 'ok' : 'nao', n));
   r.append(falta);
@@ -2126,6 +2181,44 @@ function passoArmadura(p, calc) {
   p.append(op);
   if (estado.livro) { const lv = el('button', 'btn sec', '📖 Tabela de armaduras (p. 127)'); lv.type = 'button'; lv.style.marginTop = '10px'; lv.onclick = () => abrirLivro(127); p.append(lv); }
 }
+function passoArmas(p, calc) {
+  const conjura = !!CONJURACAO[guia.classe];
+  tituloPasso(p, 'Escolha as armas', `O dano já leva a sua Proficiência (${calc.proficiencia}): cada ponto rola um dado. Arma de duas mãos não deixa usar arma secundária.`);
+  const principal = ARMA.get(guia.armas.primaria);
+  const cartao = (a, sel, bloqueio, aoEscolher) => {
+    const b = el('button', 'opcao' + (sel ? ' sel' : '') + (bloqueio ? ' bloqueada' : '')); b.type = 'button';
+    b.append(el('b', '', a.nome));
+    const st = el('div'); st.style.marginTop = '5px';
+    for (const [n, v] of [['Traço', NOMES[a.traco] + ' ' + sinal(calc.tracos[a.traco] ?? 0)], ['Dano', danoDaArma(a, calc.proficiencia) + (a.magica ? ' mág.' : ' fís.')], ['Alcance', a.alcance], ['Mãos', a.maos === 2 ? 'duas' : 'uma']]) {
+      const sp = el('span', 'stat'); sp.append(document.createTextNode(n + ' '), el('b', '', String(v))); st.append(sp);
+    }
+    b.append(st);
+    if (a.efeito) b.append(el('small', '', a.efeito));
+    if (bloqueio) { b.append(el('small', 'motivo-op', bloqueio)); b.disabled = true; }
+    else b.onclick = aoEscolher;
+    return b;
+  };
+  for (const [titulo, lista] of [['Armas físicas', ARMAS_PRIMARIAS.filter((a) => !a.magica)], ['Armas mágicas', ARMAS_PRIMARIAS.filter((a) => a.magica)]]) {
+    p.append(el('div', 'rotulo-sec', titulo + (titulo === 'Armas mágicas' && !conjura ? ' (só para quem conjura)' : '')));
+    const op = el('div', 'opcoes');
+    for (const a of lista) op.append(cartao(a, guia.armas.primaria === a.id, a.magica && !conjura ? (guia.classe ? CLASSES_DH[guia.classe].nome + ' não tem traço de conjuração.' : 'Escolha a classe antes.') : null, () => {
+      guia.armas.primaria = a.id; if (a.maos === 2) guia.armas.secundaria = null; desenharGuia();
+    }));
+    p.append(op);
+  }
+  p.append(el('div', 'rotulo-sec', 'Arma secundária (opcional)'));
+  const op2 = el('div', 'opcoes');
+  const nenhuma = el('button', 'opcao' + (!guia.armas.secundaria ? ' sel' : '')); nenhuma.type = 'button';
+  nenhuma.append(el('b', '', 'Nenhuma'), el('small', '', 'Mão livre.')); nenhuma.onclick = () => { guia.armas.secundaria = null; desenharGuia(); };
+  op2.append(nenhuma);
+  for (const a of ARMAS_SECUNDARIAS) op2.append(cartao(a, guia.armas.secundaria === a.id, principal && principal.maos === 2 ? principal.nome + ' usa as duas mãos.' : null, () => { guia.armas.secundaria = a.id; desenharGuia(); }));
+  p.append(op2);
+  if (estado.livro) {
+    const linha = el('div', 'linha');
+    for (const [t, pg] of [['📖 Armas principais (p. 116)', 116], ['📖 Armas secundárias (p. 125)', 125]]) { const lv = el('button', 'btn sec', t); lv.type = 'button'; lv.onclick = () => abrirLivro(pg); linha.append(lv); }
+    p.append(linha);
+  }
+}
 function passoExperiencias(p, calc) {
   tituloPasso(p, 'Experiências', `O que o seu personagem viveu e sabe fazer. No nível ${calc.nivel} são ${calc.experiencias}, cada uma com +2 (avanços podem subir para +3).`);
   while (guia.experiencias.length < calc.experiencias) guia.experiencias.push({ nome: '', bonus: 2 });
@@ -2180,7 +2273,7 @@ function passoNome(p, calc) {
 
 async function salvarFichaGuiada() {
   const g = guia, calc = calcularGuia(g), pend = pendenciasGuia(g), faltando = pend.filter(([, ok]) => !ok).map(([n]) => n);
-  if (!g.classe || !String(g.nome).trim()) { aviso('Falta ' + (!g.classe ? 'escolher a classe' : 'o nome do personagem') + '.', 'erro'); passoGuia = !g.classe ? 0 : 6; return desenharGuia(); }
+  if (!g.classe || !String(g.nome).trim()) { aviso('Falta ' + (!g.classe ? 'escolher a classe' : 'o nome do personagem') + '.', 'erro'); passoGuia = !g.classe ? 0 : 7; return desenharGuia(); }
   const nomeDe = (id) => (catalogoCartas.mapa.get(id) || {}).nome || '';
   const sub = g.subclasse ? catalogoCartas.mapa.get(g.subclasse) : null;
   const dados = {
@@ -2190,7 +2283,7 @@ async function salvarFichaGuiada() {
     evasao: calc.evasao, proficiencia: calc.proficiencia, pv_max: calc.pv_max, estresse_max: calc.estresse_max, armadura_max: calc.armadura_max,
     limiar_maior: calc.limiar_maior, limiar_grave: calc.limiar_grave,
     experiencias: g.experiencias.filter((e) => String(e.nome || '').trim()).map((e) => `${e.nome.trim().replace(/[,|+]/g, ' ')} +${e.bonus || 2}`).join(', '),
-    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, extras: g.extras, experiencias: g.experiencias }),
+    guia: JSON.stringify({ classe: g.classe, subclasse: g.subclasse, ancestralidades: g.ancestralidades, comunidade: g.comunidade, mista: g.mista, tracos: g.tracos, avancoTracos: g.avancoTracos, armadura: g.armadura, armas: g.armas, extras: g.extras, experiencias: g.experiencias }),
   };
   await post('ficha', dados);
   // Cartas de base na prancheta: tira as que mudaram e põe as escolhidas.
@@ -2596,6 +2689,15 @@ function montarAtaque(p) {
     const preferida = [atual, String(estado.combate.vez), $('como').value].find((v) => [...sel.options].some((o) => o.value === v));
     if (preferida) sel.value = preferida;
   }
+  // Jogador do Daggerheart com armas na ficha guiada: escolher a arma preenche traço, dano e bônus.
+  const armas = armasDaFicha(eu), selArma = $('ataque-arma');
+  selArma.hidden = mestre || !dh || !armas.length;
+  if (!selArma.hidden) {
+    const atual = selArma.dataset.escolha; selArma.textContent = ''; // a escolha do jogador; sem ela, a arma principal
+    for (const a of armas) selArma.append(new Option(`⚔️ ${a.nome} (${danoDaArma(a, eu.ficha.proficiencia || 1)})`, a.id));
+    selArma.append(new Option('✍️ Outra (digitar)', ''));
+    selArma.value = atual !== undefined && [...selArma.options].some((o) => o.value === atual) ? atual : armas[0].id;
+  }
   // Jogador do Daggerheart escolhe o traço; no D&D o bônus já vem (ataque base + Força) e pode ser trocado.
   const tr = $('ataque-traco');
   tr.hidden = mestre || !dh;
@@ -2608,7 +2710,20 @@ function montarAtaque(p) {
   const dano = $('ataque-dano');
   dano.placeholder = mestre ? 'da biblioteca' : 'dano: 1d8+2';
   if (!mestre && document.activeElement !== dano && !dano.value) { try { dano.value = localStorage.getItem(chaveDano()) || ''; } catch {} }
+  if (!selArma.hidden && selArma.value) aplicarArma();
 }
+/** Armas escolhidas na ficha guiada (principal e secundária). */
+function armasDaFicha(p) {
+  try { const g = p && p.ficha && p.ficha.guia ? JSON.parse(p.ficha.guia) : null; return g && g.armas ? [g.armas.primaria, g.armas.secundaria].map((id) => ARMA.get(id)).filter(Boolean) : []; } catch { return []; }
+}
+function aplicarArma() {
+  const a = ARMA.get($('ataque-arma').value), eu = minhaPeca();
+  $('ataque-traco').disabled = !!a; $('ataque-dano').readOnly = !!a;
+  if (!a || !eu || !eu.ficha) return;
+  $('ataque-traco').value = a.traco;
+  $('ataque-dano').value = danoDaArma(a, eu.ficha.proficiencia || 1);
+}
+$('ataque-arma').onchange = () => { $('ataque-arma').dataset.escolha = $('ataque-arma').value; if (!$('ataque-arma').value) { $('ataque-dano').value = ''; } aplicarArma(); };
 $('atacar').onclick = () => {
   const alvo = selecionada; if (!alvo) return;
   const mestre = estado.voce.mestre, dano = $('ataque-dano').value.trim();
@@ -2616,7 +2731,12 @@ $('atacar').onclick = () => {
   if (!mestre) { try { localStorage.setItem(chaveDano(), dano); } catch {} }
   const corpo = { alvo, dano, vantagem: vantagem(), bonus: $('ataque-bonus').value === '' ? null : Number($('ataque-bonus').value) };
   if (mestre) corpo.como = Number($('ataque-como').value);
-  else if (ehDH()) corpo.traco = $('ataque-traco').value;
+  else if (ehDH()) {
+    corpo.traco = $('ataque-traco').value;
+    // Arma com bônus de ataque (Espada Larga: Confiável): manda o total, o traço mais o bônus.
+    const a = !$('ataque-arma').hidden && ARMA.get($('ataque-arma').value), eu = minhaPeca();
+    if (a && a.ataque && eu && eu.ficha) corpo.bonus = Number(eu.ficha[a.traco] || 0) + a.ataque;
+  }
   post('ataque', corpo).then((r) => { if (!prefs.painel) alternar('painel'); abrirAba('chat'); if (r.acertou === false) aviso('Errou!', '', 1800); }).catch(() => {});
 };
 
