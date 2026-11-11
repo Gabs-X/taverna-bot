@@ -1,5 +1,10 @@
 # Novidades do Taverneiro
 
+## v1.11.2 (11/11/2026)
+
+- 🔍 Cartas com zoom: toque na lupa para ler a carta grande (e clique nela para ampliar ainda mais)
+- 🛡️ A criação de personagem não fecha mais sem querer com um clique fora da janela
+
 ## v1.11.1 (11/11/2026)
 
 - 🎵 Música da mesa: a trilha e as músicas pedidas pelo mapa agora tocam na call da campanha
