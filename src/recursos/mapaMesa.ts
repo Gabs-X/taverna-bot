@@ -288,6 +288,15 @@ export async function tratarMesa(m: Mesa, acao: string, b: Record<string, unknow
     return ok({ ganho, medo: novo });
   }
 
+  // ----- Cortina: o mestre fecha para ajeitar a cena sem os jogadores verem -----
+  if (acao === 'cortina') {
+    const fechada = b.fechada ? 1 : 0;
+    m.mapa(); // garante a linha do mapa
+    db.prepare('UPDATE mapas SET cortina = ? WHERE campanha_id = ?').run(fechada, c.id);
+    m.avisar();
+    return ok({ fechada: !!fechada });
+  }
+
   // ----- Visão dos personagens na névoa -----
   if (acao === 'visao') {
     const raio = Math.round(Math.max(0, Math.min(30, Number(b.raio) || 0)));

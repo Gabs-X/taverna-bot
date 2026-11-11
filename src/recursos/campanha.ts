@@ -31,7 +31,7 @@ import { canalPorNome, canalTexto, ehMestre } from '../lib/servidor.ts';
 import { interpretarDataHora, tsCompleto, tsRelativo } from '../lib/tempo.ts';
 import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
-import { apagarMapa, avisarMapa, liberarBardos, linkDoMapa, mapaPublico } from './mapa.ts';
+import { anunciarNoMapa, apagarMapa, avisarMapa, liberarBardos, linkDoMapa, mapaPublico } from './mapa.ts';
 import { backupDaSessao } from './manutencao.ts';
 
 // Campanhas: um mestre cria a mesa, escolhe o sistema e adiciona os jogadores. Cada personagem é a ficha do
@@ -718,6 +718,7 @@ export const sessao: Comando = {
       db.prepare('UPDATE campanhas SET sessao_inicio = COALESCE(sessao_inicio, ?) WHERE id = ?').run(Date.now(), c.id);
       // O evento marcado pelo /sessao marcar fica "ao vivo", já na call da mesa.
       const aoVivo = await iniciarEvento(i.guild!, c, salas?.voz.id);
+      anunciarNoMapa(c.id, { tipo: 'inicio', titulo: `🗺️ A sessão de ${c.nome} começou!`, texto: 'Bom jogo! O que vocês falarem no mapa e no canal da mesa fica no diário da sessão.' });
 
       const enviados: string[] = [];
       const falharam: string[] = [];
@@ -811,6 +812,12 @@ export const sessao: Comando = {
           } })),
         );
         if (encerrada) {
+          // Quem ainda está com o mapa aberto vê na tela que acabou.
+          anunciarNoMapa(c.id, {
+            tipo: 'fim',
+            titulo: `🏁 Fim da sessão de ${c.nome}`,
+            texto: `Duração: ${duracaoTexto(fim - c.sessao_inicio)} · ${mensagens} mensagens · ${rolagens} rolagens. O resumo está no canal de resumos e no diário do mapa. Até a próxima!`,
+          });
           await concluirEvento(i.guild!, c);
           backupDaSessao(c.nome); // cópia do banco com tudo o que a sessão mexeu
         }

@@ -669,6 +669,10 @@ const MIGRACOES: (() => void)[] = [
       CREATE INDEX IF NOT EXISTS campanha_roteiro_campanha ON campanha_roteiro (campanha_id, ordem);
     `);
   },
+  // 28: cortina do mestre (fechada, os jogadores não veem o mapa enquanto ele ajeita a cena).
+  () => {
+    db.exec('ALTER TABLE mapas ADD COLUMN cortina INTEGER NOT NULL DEFAULT 0');
+  },
 ];
 
 const { user_version: versao } = db.prepare('PRAGMA user_version').get() as { user_version: number };

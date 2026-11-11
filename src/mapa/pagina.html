@@ -599,6 +599,34 @@
     #dica-mapa { display: none; }
     #topo::before, #topo::after { display: none; }
   }
+  /* ---------- Cortina do mestre ---------- */
+  #cortina { position: absolute; inset: 0; z-index: 2; pointer-events: auto; overflow: hidden; }
+  #cortina .pano { position: absolute; top: 0; bottom: 0; width: 51%; background:
+      linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0) 12%, rgba(0, 0, 0, 0) 85%, rgba(0, 0, 0, .45)),
+      repeating-linear-gradient(90deg, #5e0d12 0 18px, #8e1c22 30px, #a8262d 38px, #7a141a 52px, #5e0d12 66px);
+    box-shadow: inset 0 -30px 40px rgba(0, 0, 0, .5); transition: transform .9s cubic-bezier(.6, .05, .3, 1); }
+  #cortina .pano.esq { left: 0; border-right: 3px solid #3a0508; } #cortina .pano.dir { right: 0; border-left: 3px solid #3a0508; }
+  #cortina .bambinela { position: absolute; left: 0; right: 0; top: 0; height: 46px; background: repeating-linear-gradient(90deg, #6b1016 0 30px, #9a2027 45px, #6b1016 60px); border-bottom: 4px solid #d9a441; box-shadow: 0 6px 14px rgba(0, 0, 0, .55); z-index: 1; }
+  #cortina .placa { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; padding: 16px 26px; border-radius: 14px; text-align: center; font-family: var(--fonte-titulo); color: #2b1a08; background: linear-gradient(180deg, #fbf1d8, #e2c68f); border: 2px solid #b8862f; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+  #cortina .placa b { display: block; font-size: 20px; } #cortina .placa small { font-family: inherit; opacity: .8; }
+  #cortina.abrindo .pano.esq { transform: translateX(-100%); } #cortina.abrindo .pano.dir { transform: translateX(100%); }
+  #cortina.abrindo .placa, #cortina.abrindo .bambinela { opacity: 0; transition: opacity .4s; }
+  #cortina:not(.abrindo) .pano { animation: fecha .9s cubic-bezier(.6, .05, .3, 1); }
+  @keyframes fecha { from { transform: translateX(var(--de)); } }
+  #cortina .pano.esq { --de: -100%; } #cortina .pano.dir { --de: 100%; }
+  /* O mestre vê o mapa: só as pontas da cortina e um aviso. */
+  #cortina.mestre { pointer-events: none; }
+  #cortina.mestre .pano { width: 22px; animation: none; } #cortina.mestre .bambinela { height: 16px; }
+  #cortina.mestre .placa { display: none; }
+  #cortina.mestre { box-shadow: inset 0 0 0 4px #a8262d, inset 0 0 60px rgba(168, 38, 45, .55); }
+  /* Barra de baixo sem espaço: só os ícones (o nome fica na dica). */
+  #acoes-mapa.compacta .rot { display: none; }
+  #acoes-mapa.compacta button { padding: 7px 9px; }
+  #cortina.mestre .placa b { font-size: 13px; } #cortina.mestre .placa small { display: none; }
+  /* Anúncio grande (sessão começou / acabou) */
+  #anuncio { position: fixed; inset: 0; z-index: 65; display: grid; place-items: center; background: rgba(10, 5, 2, .55); animation: entra .25s ease-out; padding: 16px; }
+  #anuncio .caixa-a { max-width: 480px; text-align: center; padding: 24px 26px; border-radius: 18px; background: linear-gradient(180deg, #fbf1d8, #e2c68f); color: #2b1a08; border: 2px solid #b8862f; box-shadow: 0 20px 60px rgba(0, 0, 0, .7); }
+  #anuncio h2 { margin: 0 0 8px; font-family: var(--fonte-titulo); font-size: 22px; } #anuncio p { margin: 0 0 14px; line-height: 1.5; }
   /* ---------- Faixa de conexão (caiu ou acesso vencido) ---------- */
   #faixa-conexao { position: fixed; top: 0; left: 0; right: 0; z-index: 70; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 9px 16px; font-family: var(--fonte-titulo); font-weight: 700; font-size: 13.5px; color: #fff3dc; background: linear-gradient(180deg, #8e2a1f, #5e140c); border-bottom: 1px solid #2b0905; box-shadow: 0 4px 16px rgba(0, 0, 0, .5); animation: entra .2s ease-out; text-align: center; }
   #faixa-conexao.vencida { background: linear-gradient(180deg, #7a5218, #4a300e); }
@@ -671,6 +699,7 @@
 <body>
 <div id="palco">
   <canvas id="c"></canvas>
+  <div id="cortina" hidden><div class="bambinela"></div><div class="pano esq"></div><div class="pano dir"></div><div class="placa"><b>🎭 O mestre está preparando a cena…</b><small>Já já a cortina abre.</small></div></div>
   <div id="luz"></div>
 
   <div id="topo" class="vidro">
@@ -751,6 +780,7 @@
     <button id="a-desenhar" title="Arraste no mapa para desenhar um traço que todos veem (some sozinho)"><span class="ico">✏️</span><span class="rot">Desenhar</span></button>
     <button id="a-reagir" title="Uma reação em cima do seu personagem"><span class="ico">😀</span><span class="rot">Reagir</span></button>
     <button id="a-area" title="Marque uma área de efeito (círculo, cone ou linha) que todos veem"><span class="ico">📐</span><span class="rot">Área</span></button>
+    <button id="a-cortina" title="Mestre: fecha a cortina para ajeitar a cena sem os jogadores verem (eles continuam com a ficha, o chat e o livro)" hidden><span class="ico">🎭</span><span class="rot">Cortina</span></button>
     <button id="a-foco" title="Mestre: clique no mapa e a câmera de todos vai para lá" hidden><span class="ico">📢</span><span class="rot">Olhem aqui!</span></button>
   </div>
   <div id="reacoes" class="vidro" hidden></div>
@@ -1694,6 +1724,7 @@ function animarEfeitos() {
 const corDeQuem = (u) => { if (estado && u === estado.campanha.mestreId) return '#f0c35a'; const p = estado && estado.pecas.find((q) => q.userId === u); return p ? corDe(p) : '#ff8040'; };
 const nomeDeQuem = (u) => { if (!estado) return ''; if (u === estado.campanha.mestreId) return estado.campanha.mestre + ' (mestre)'; const p = estado.pecas.find((q) => q.userId === u); return p ? p.nome : ''; };
 function receberEfeito(d) {
+  if (d.tipo === 'anuncio') return mostrarAnuncio(d);
   if (d.tipo === 'regua') return receberRegua(d);
   if (d.tipo === 'laser') {
     if (d.quem === estado.voce.id) return; // o meu já está na tela
@@ -4285,9 +4316,47 @@ $('enc-sugerir').onclick = () => post('bestiario/encontro', { pjs: Number($('enc
 $('enc-limpar').onclick = () => { encontro = []; desenharBestiario(); };
 $('enc-colocar').onclick = () => { const c = centroDaTela(); post('bestiario/colocar-encontro', { ids: encontro.map((a) => a.id), x: c.x, y: c.y }).then((r) => { aviso(`⚔️ ${r.nomes.length} peças no mapa.`, 'ok'); $('modal-bestiario').hidden = true; }).catch((e) => aviso(e.message, 'erro')); };
 
+// ---------- Anúncio na tela (sessão começou / acabou) ----------
+function mostrarAnuncio(d) {
+  const velho = $('anuncio'); if (velho) velho.remove();
+  const a = el('div'); a.id = 'anuncio';
+  const cx = el('div', 'caixa-a'); cx.append(el('h2', '', d.titulo), el('p', '', d.texto));
+  const ok = el('button', 'btn', d.momento === 'fim' ? 'Até a próxima!' : 'Bora jogar!'); ok.onclick = () => a.remove();
+  cx.append(ok); a.append(cx); document.body.append(a);
+  a.onclick = (e) => { if (e.target === a) a.remove(); };
+  if (d.momento === 'inicio') setTimeout(() => a.remove(), 8000);
+}
+
+// Barra de ações do mapa: se não couber na largura do mapa, fica só com os ícones.
+function ajustarAcoes() {
+  const barra = $('acoes-mapa'), largura = barra.parentElement.clientWidth - 40;
+  barra.classList.remove('compacta');
+  if (barra.scrollWidth > largura) barra.classList.add('compacta');
+}
+addEventListener('resize', () => { if (estado) ajustarAcoes(); });
+
+// ---------- Cortina do mestre ----------
+let cortinaAntes = null;
+function painelCortina() {
+  const fechada = !!estado.mapa.cortina, mestre = estado.voce.mestre, c = $('cortina');
+  $('a-cortina').hidden = !mestre;
+  $('a-cortina').classList.toggle('on', fechada);
+  $('a-cortina').querySelector('.rot').textContent = fechada ? 'Abrir cortina' : 'Cortina';
+  c.classList.toggle('mestre', mestre);
+  if (mestre) c.querySelector('.placa b').textContent = '🎭 Cortina fechada: os jogadores não veem o mapa';
+  if (fechada) { c.classList.remove('abrindo'); c.hidden = false; }
+  else if (cortinaAntes) { c.classList.add('abrindo'); setTimeout(() => { if (!estado.mapa.cortina) c.hidden = true; }, 950); }
+  else c.hidden = true;
+  if (cortinaAntes !== null && fechada !== cortinaAntes && !mestre) aviso(fechada ? '🎭 O mestre fechou a cortina para preparar a cena.' : '🎭 A cortina abriu!', 'ok', 2500);
+  cortinaAntes = fechada;
+}
+$('a-cortina').onclick = () => post('cortina', { fechada: !estado.mapa.cortina }).then((r) => aviso(r.fechada ? '🎭 Cortina fechada: os jogadores não veem o mapa nem as suas peças. Clique de novo para abrir.' : '🎭 Cortina aberta: a mesa vê a cena.', 'ok', 3500)).catch((e) => aviso(e.message, 'erro'));
+
 /** Chamado no fim do painel(). */
 function painelMesaExtra() {
   painelHolofote();
+  painelCortina();
+  ajustarAcoes();
   painelRelogios();
   painelCenaExtra();
   painelHistorico();

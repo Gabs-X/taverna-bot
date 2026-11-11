@@ -52,7 +52,7 @@ type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'd
 type Mapa = {
   campanha_id: number; imagem: string | null; largura: number; altura: number; grade: number; versao: number;
   combate: number; rodada: number; vez: number | null; vida_inimigos: 'escondida' | 'estado' | 'exata';
-  nevoa_ligada: number; nevoa: string | null; cena_id: number | null; handout_id: number | null; visao: number;
+  nevoa_ligada: number; nevoa: string | null; cena_id: number | null; handout_id: number | null; visao: number; cortina: number;
 };
 type Peca = {
   id: number; campanha_id: number; user_id: string | null; nome: string; x: number; y: number; imagem: string | null; versao_img: number; tamanho: number;
@@ -321,7 +321,13 @@ function transmitir(campanhaId: number, tipo: 'ping' | 'efeito', json: string) {
 const efeitosDesde = (campanhaId: number, desde: number) =>
   (recentes.get(campanhaId) ?? []).filter((e) => e.seq > desde && Date.now() - e.em < 15_000).map((e) => ({ tipo: e.tipo, dados: e.dados }));
 
-export const avisarMapa =(campanhaId: number) => avisar(campanhaId, 'estado');
+export const avisarMapa = (campanhaId: number) => avisar(campanhaId, 'estado');
+
+/** Aviso grande na tela de todos que estão com o mapa aberto (sessão começou, sessão encerrada...). */
+export function anunciarNoMapa(campanhaId: number, aviso: { titulo: string; texto: string; tipo: 'inicio' | 'fim' }) {
+  transmitir(campanhaId, 'efeito', JSON.stringify({ tipo: 'anuncio', titulo: aviso.titulo, texto: aviso.texto, momento: aviso.tipo }));
+  avisar(campanhaId, 'estado');
+}
 
 // ---------- Ponte com os bardos (música da mesa) ----------
 // Os bardos rodam no PC de casa e entram por um túnel SSH (ponteNuvem.ts): só aceitamos conexão local, sem cabeçalho
@@ -496,7 +502,7 @@ async function montarEstado(c: Campanha, userId: string) {
   const nevoa = m.nevoa_ligada ? nevoaDe(m) : null;
   // Os jogadores nem recebem as peças do mestre escondidas ou debaixo da névoa (não dá para espiar pelo navegador).
   const pecas = pecasDaCena(c, m).filter(
-    (p) => souMestre || p.user_id || (!p.escondida && !(nevoa && pecaNaNevoa(nevoa.bits, nevoa.cols, nevoa.rows, m.grade, p.x, p.y))),
+    (p) => souMestre || p.user_id || (!m.cortina && !p.escondida && !(nevoa && pecaNaNevoa(nevoa.bits, nevoa.cols, nevoa.rows, m.grade, p.x, p.y))),
   );
   const cenaAtiva = m.cena_id ? (db.prepare('SELECT nome FROM mapa_cenas WHERE id = ?').get(m.cena_id) as { nome: string } | undefined) : undefined;
   const criaturas = criaturasDe(c.id);
@@ -514,6 +520,7 @@ async function montarEstado(c: Campanha, userId: string) {
       nevoa: nevoa ? { cols: nevoa.cols, rows: nevoa.rows, bits: gravarNevoa(nevoa.bits) } : null,
       cena: cenaAtiva?.nome ?? null,
       visao: m.visao,
+      cortina: !!m.cortina,
     },
     handout: handoutDe(c, m.handout_id),
     livro: (() => {
@@ -897,7 +904,7 @@ function mesaDe(c: Campanha, userId: string, souMestre: boolean): Mesa {
     nomeDe: async (u) => (await quem(c.guild_id, u)).nome,
   };
 }
-const ROTAS_MESA = /^(area(\/|$)|descanso(\/|$)|musica\/(pedir|cancelar|pedido)$|relogio\/|visao$|cena\/notas$|roteiro\/|bestiario\/)/;
+const ROTAS_MESA = /^(area(\/|$)|descanso(\/|$)|musica\/(pedir|cancelar|pedido)$|relogio\/|visao$|cortina$|cena\/notas$|roteiro\/|bestiario\/)/;
 
 // ---------- Servidor HTTP ----------
 
