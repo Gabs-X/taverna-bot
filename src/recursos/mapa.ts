@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { closeSync, createReadStream, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { ChannelType, PermissionFlagsBits, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
+import { ChannelType, OverwriteType, PermissionFlagsBits, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
 import { AMBIENTES, ehAmbiente, lerComandoMusica, type FilaTocando, type PedidoMusica } from '../lib/ambientes.ts';
 import { alternarCondicao, ehCondicao, estadoDaVida, ordenarIniciativa, perdaDeVida, proximoTurno, resolverAtaque } from '../lib/combate.ts';
@@ -332,6 +332,34 @@ function ehBardo(req: IncomingMessage) {
   return local && !deFora && !!chaveBardos && veio.length === certa.length && timingSafeEqual(veio, certa);
 }
 
+/** IDs dos bardos (a ponte do PC de casa conta ao conectar; fica guardado para o /campanha iniciar). */
+export const idsDosBardos = () =>
+  String((db.prepare("SELECT valor FROM bot_estado WHERE chave = 'bardos_ids'").get() as { valor: string } | undefined)?.valor ?? '')
+    .split(',')
+    .filter((x) => /^\d{17,20}$/.test(x));
+
+/** Libera a call (e o canal de texto, para avisarem o que tocam) da campanha para os bardos. Devolve quantos ficaram sem acesso. */
+export async function liberarBardos(canais: { voz?: string | null; texto?: string | null }) {
+  const ids = idsDosBardos();
+  let falhas = 0;
+  for (const [id, regras] of [
+    [canais.voz, { ViewChannel: true, Connect: true, Speak: true }],
+    [canais.texto, { ViewChannel: true, SendMessages: true, EmbedLinks: true, ReadMessageHistory: true }],
+  ] as const) {
+    if (!id || !ids.length) continue;
+    const canal = await discord?.channels.fetch(id).catch(() => null);
+    if (!canal || !('permissionOverwrites' in canal)) continue;
+    for (const bardo of ids) {
+      if (canal.permissionOverwrites.cache.has(bardo)) continue;
+      await canal.permissionOverwrites.edit(bardo, regras, { type: OverwriteType.Member, reason: 'Bardos tocam na call da mesa' }).catch((e: Error) => {
+        falhas++;
+        console.error('[mapa] não consegui liberar a call para o bardo:', e.message);
+      });
+    }
+  }
+  return falhas;
+}
+
 /** Manda um pedido de música aos bardos e espera a resposta (ou desiste em 25 s). */
 function pedirAosBardos(pedido: PedidoMusica): Promise<{ ok: boolean; msg: string }> {
   const ponte = [...pontes][0];
@@ -359,6 +387,8 @@ function musicaDaMesa(c: Campanha) {
 async function tratarBardos(req: IncomingMessage, res: ServerResponse, rota: string) {
   if (!ehBardo(req)) return json(res, 401, { erro: 'Não autorizado.' });
   if (rota === '/bardos/eventos' && req.method === 'GET') {
+    const ids = String(req.headers['x-bardos-ids'] ?? '').split(',').map((x) => x.trim()).filter((x) => /^\d{17,20}$/.test(x)).slice(0, 5);
+    if (ids.length) db.prepare("INSERT INTO bot_estado (chave, valor) VALUES ('bardos_ids', ?) ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor").run(ids.join(','));
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
     res.write(': ponte\n\n');
     pontes.add(res);
@@ -1615,6 +1645,7 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const comando = lerComandoMusica(b);
     if (typeof comando === 'string') return json(res, 400, { erro: comando });
     if (!c.canal_voz_id) return json(res, 400, { erro: 'A mesa ainda não tem call: abra a sessão com /campanha iniciar.' });
+    await liberarBardos({ voz: c.canal_voz_id, texto: c.canal_id });
     const r = await pedirAosBardos({ ...comando, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
     avisar(c.id, 'estado', true);
     return json(res, r.ok ? 200 : 502, r.ok ? { ok: true, msg: r.msg } : { erro: r.msg });
@@ -1716,7 +1747,8 @@ export function iniciarMapa(client: Client) {
   // Cena com trilha: ao abrir, os bardos tocam a trilha dela na call da mesa.
   aoTrocarCena = (c, cena) => {
     if (cena.ambiente && ehAmbiente(cena.ambiente) && c.canal_voz_id) {
-      void pedirAosBardos({ acao: 'ambiente', tipo: cena.ambiente, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id });
+      const pedido = { acao: 'ambiente' as const, tipo: cena.ambiente, guildId: c.guild_id, canalVozId: c.canal_voz_id, canalTextoId: c.canal_id };
+      void liberarBardos({ voz: c.canal_voz_id, texto: c.canal_id }).then(() => pedirAosBardos(pedido));
     }
   };
   const servidor = createServer((req, res) => {

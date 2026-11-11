@@ -23,7 +23,7 @@ import { DURACAO_CONVITE, registroDaSessao, type LinhaChat } from '../lib/mapa.t
 import { canalTexto, ehMestre } from '../lib/servidor.ts';
 import { duracaoTexto } from '../lib/tela.ts';
 import type { Comando } from '../tipos.ts';
-import { apagarMapa, avisarMapa, linkDoMapa, mapaPublico } from './mapa.ts';
+import { apagarMapa, avisarMapa, liberarBardos, linkDoMapa, mapaPublico } from './mapa.ts';
 
 // Campanhas: um mestre cria a mesa, escolhe o sistema e adiciona os jogadores. Cada personagem é a ficha do
 // jogador no sistema da campanha: ele cria no próprio mapa (com foto) ou pelo /dh ficha criar e /ficha criar.
@@ -150,6 +150,8 @@ async function prepararCanais(guild: Guild, c: Campanha, jogadores: string[]) {
   }
 
   db.prepare('UPDATE campanhas SET canal_id = ?, canal_voz_id = ? WHERE id = ?').run(texto.id, voz.id, c.id);
+  // Os bardos (contas de música do PC de casa) precisam entrar na call privada para tocar a trilha da mesa.
+  await liberarBardos({ voz: voz.id, texto: texto.id });
   return { texto, voz, novos };
 }
 

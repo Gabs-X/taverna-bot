@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Player, QueryType, QueueRepeatMode, type GuildQueue, type Track } from 'discord-player';
 import { getVideoId, YoutubeExtractor } from 'discord-player-youtubei';
-import {
+import { PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -664,6 +664,10 @@ export async function executarDoMapa(p: PedidoMusica): Promise<string> {
   if (typeof t === 'string') throw new Error('Todos os bardos estão ocupados em outras calls.');
   const canalVoz = t.client.channels.cache.get(p.canalVozId) ?? (await t.client.channels.fetch(p.canalVozId).catch(() => null));
   if (!canalVoz) throw new Error(`O ${t.nome} não consegue ver a call da mesa (permissões).`);
+  const pode = 'permissionsFor' in canalVoz && t.client.user ? canalVoz.permissionsFor(t.client.user) : null;
+  if (pode && !pode.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak])) {
+    throw new Error(`O ${t.nome} não tem permissão para entrar na call da mesa. Rode /campanha iniciar de novo para liberar.`);
+  }
   const texto = p.canalTextoId ? await t.client.channels.fetch(p.canalTextoId).catch(() => null) : null;
   const canal = texto?.isTextBased() && 'send' in texto ? (texto as SendableChannels) : semCanal;
 
@@ -699,6 +703,9 @@ export async function executarDoMapa(p: PedidoMusica): Promise<string> {
 }
 
 /** O que está tocando em cada call (para o mapa mostrar ao mestre). */
+/** IDs dos bardos (as contas que tocam), para o Taverneiro liberar a call das mesas para eles. */
+export const idsDosBardos = () => tocadores.map((t) => t.client.user?.id).filter((id): id is string => !!id);
+
 export function filasTocando(): FilaTocando[] {
   return tocadores.flatMap((t) =>
     [...t.player.nodes.cache.values()]

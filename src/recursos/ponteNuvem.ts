@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { FilaTocando, PedidoMusica } from '../lib/ambientes.ts';
-import { executarDoMapa, filasTocando } from './musica.ts';
+import { executarDoMapa, filasTocando, idsDosBardos } from './musica.ts';
 import { destino, opcoesSsh, rodar } from './vigiaNuvem.ts';
 
 // Roda no PC de casa, junto com os bardos: liga a música ao mapa das campanhas, que fica no Taverneiro na nuvem.
@@ -46,7 +46,8 @@ async function ouvirSempre() {
 
 /** Fica escutando os pedidos do mapa (SSE). Volta quando a conexão cai. */
 async function ouvir(k: string) {
-  const r = await fetch(`${BASE}/bardos/eventos`, { headers: { 'x-bardos': k } });
+  // Conta quem são os bardos: o Taverneiro libera a call das mesas para eles (a call da campanha é privada).
+  const r = await fetch(`${BASE}/bardos/eventos`, { headers: { 'x-bardos': k, 'x-bardos-ids': idsDosBardos().join(',') } });
   if (r.status === 401) throw new Error('chave');
   if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
   console.log('🌉 Ponte com o mapa da nuvem ligada.');

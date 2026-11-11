@@ -462,3 +462,14 @@ test('subir de nível: a carta de domínio extra escolhida como avanço (guia da
   assert.equal((await chamar(J, 'ficha', { ...FICHA, nivel: 3, guia: '{"cartasAvanco":"muitas"}' })).status, 200);
   assert.equal((await estado(J)).pecas.find((p: any) => p.meu).prancheta.limites.dominio.max, 4, 'valor estranho na guia não vale nada');
 });
+
+test('ponte com os bardos: os IDs que a ponte conta ficam guardados para liberar a call da mesa (só IDs válidos)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { idsDosBardos } = await import('../recursos/mapa.ts');
+  const chave = readFileSync('dados/bardos.chave', 'utf8').trim();
+  const controle = new AbortController();
+  const r = await fetch(`${base}/bardos/eventos`, { headers: { 'x-bardos': chave, 'x-bardos-ids': '1562800102463242292, lixo,1562948061347446884' }, signal: controle.signal });
+  assert.equal(r.status, 200);
+  controle.abort();
+  assert.deepEqual(idsDosBardos(), ['1562800102463242292', '1562948061347446884']);
+});
