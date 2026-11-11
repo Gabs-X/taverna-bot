@@ -1,5 +1,12 @@
 # Novidades do Taverneiro
 
+## v1.13.2 (11/11/2026)
+
+- ⚡ O mapa ficou mais leve: só baixa o que mudou, em vez de recarregar tudo a cada 3 segundos (melhor no celular e em internet fraca).
+- 📡 Se a conexão com a mesa cair, aparece uma faixa avisando, e o mapa se atualiza sozinho quando volta.
+- ⏳ Link do mapa vencido agora explica como pegar um novo, com um botão direto para o canal da campanha no Discord.
+- 💾 O banco do bot ganhou uma cópia extra logo depois de cada /sessao finalizar, conferida para não sair com defeito.
+
 ## v1.13.1 (11/11/2026)
 
 - 🧭 A barra de ícones da esquerda do mapa voltou ao normal: cabe na tela sem rolar e o nome de cada ícone aparece ao passar o mouse.
