@@ -1,5 +1,10 @@
 # Novidades do Taverneiro
 
+## v1.15.1 (11/11/2026)
+
+- 🖱️ Mestre: botão Selecionar na barra do mapa, que solta qualquer ferramenta (Esc também) e deixa selecionar várias peças de uma vez arrastando uma caixa no mapa.
+- 👥 Mestre: Shift + clique soma peças à seleção, e arrastar uma delas move o grupo todo. Dá para esconder, mostrar ou tirar do mapa o grupo inteiro.
+
 ## v1.15.0 (11/11/2026)
 
 - ✨ Efeitos na tela de todos: ventania, tremor, fogo, explosão (no ponto que o mestre clicar), relâmpago, luz divina e escuridão.
