@@ -1,5 +1,5 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { closeSync, createReadStream, createWriteStream, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { ChannelType, OverwriteType, PermissionFlagsBits, type Client, type Message, type TextChannel, type Webhook } from 'discord.js';
 import { db } from '../db.ts';
@@ -10,7 +10,14 @@ import { MAX_ESPERANCA, MAX_MEDO } from '../lib/daggerheart.ts';
 import { modificador } from '../lib/dnd35.ts';
 import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, pecaNaNevoa, pintarNevoa, revelarRaio } from '../lib/nevoa.ts';
 import { esquecerMesa, estadoDaMesa, lerMesa, registrarHistorico, tratarMesa, type Mesa } from './mapaMesa.ts';
+import {
+  apagarImagem, arquivoLivro, assinarArquivo, assinarCarta, cartaPublica, ENDERECO, gravarCorpo, imagemPublica, infoLivro, LIMITE_IMAGEM_PECA, LIMITE_LIVRO, PASTA,
+  PASTA_LIVROS, PORTA, salvarImagem, segredo, SEGURO, servirCarta, servirImagem, servirLivro, temImagensDeCartas,
+} from './mapaArquivos.ts';
+export { faixaPedida, mapaPublico } from './mapaArquivos.ts';
+import { avisar as avisarTelas, campanhasAbertas, efeitosDesde, encerrarCampanha, estadoEmCache, invalidar, pulso as pulsoDa, registrarOuvinte, responderJson, transmitir, ultimoSeq } from './mapaTempoReal.ts';
 import { CLIMAS, EFEITOS_TELA, SONS_PRONTOS, tipoAudio, validarDesenho } from '../lib/mesa.ts';
+import { montarPagina } from '../lib/paginaMapa.ts';
 import { CARTA, CARTAS, CLASSES, DOMINIOS, ESTAGIOS, dominiosTocados, limites, lugarAoEscolher, motivoParaNaoEscolher, moverCarta, type CartaDoPersonagem } from '../lib/cartasDH.ts';
 import { foraDoPersonagem, nomeDaCopia, nomeDeWebhook, validarCriatura, validarFicha, type Criatura, type FichaDH, type FichaDnd } from '../lib/fichaMapa.ts';
 import {
@@ -29,9 +36,7 @@ import {
   rolarEntrada,
   textoDoPersonagem,
   textoParaDiscord,
-  tipoImagem,
   type LinhaChat,
-  type ResultadoChat,
   type ResultadoLinha,
 } from '../lib/mapa.ts';
 
@@ -41,12 +46,6 @@ import {
 // numa biblioteca da campanha e arrasta para o mapa quantas cópias quiser. O chat da mesa guarda as rolagens de todos
 // e sai no canal do Discord com o nome e a foto de quem fala (o personagem, o NPC ou o mestre).
 
-const PORTA = Number(process.env.MAPA_PORTA) || 53135;
-const ENDERECO = (process.env.MAPA_URL?.trim() || `http://localhost:${PORTA}`).replace(/\/+$/, '');
-export const mapaPublico = () => !!process.env.MAPA_URL?.trim();
-const PASTA = 'dados/mapas';
-const LIMITE_IMAGEM_PECA = 3 * 1024 * 1024;
-const SEGURO = ENDERECO.startsWith('https://');
 const TABELA_FICHA = { dh: 'fichas_dh', dnd: 'fichas' } as const;
 
 type Campanha = { id: number; guild_id: string; nome: string; sistema: 'dh' | 'dnd'; mestre_id: string; canal_id: string | null; canal_voz_id: string | null };
@@ -97,15 +96,6 @@ type CriaturaSalva = {
 };
 type Foto = { imagem: string; versao: number };
 
-/** Segredo que assina os links e as sessões do mapa: sorteado na primeira vez e guardado no banco. */
-function segredo() {
-  const salvo = (db.prepare("SELECT valor FROM bot_estado WHERE chave = 'mapa_segredo'").get() as { valor: string } | undefined)?.valor;
-  if (salvo) return salvo;
-  const novo = randomBytes(32).toString('hex');
-  db.prepare("INSERT INTO bot_estado (chave, valor) VALUES ('mapa_segredo', ?)").run(novo);
-  return novo;
-}
-
 /** Link pessoal de quem rodou o /sessao mapa (vale 1 hora; ao abrir, vira uma sessão de 7 dias). */
 export function linkDoMapa(campanhaId: number, userId: string, duracao?: number) {
   return `${ENDERECO}/m/${campanhaId}?${new URLSearchParams(assinarLink(segredo(), campanhaId, userId, Date.now(), duracao))}`;
@@ -149,123 +139,8 @@ function sincronizarPecas(c: Campanha, m: Mapa) {
   }
 }
 
-// ---------- Imagens ----------
-
-const assinarArquivo = (arquivo: string) => createHmac('sha256', segredo()).update(`img:${arquivo}`).digest('base64url').slice(0, 24);
-/** Endereço aberto (sem login) de uma imagem do mapa, para o Discord buscar a foto do personagem no webhook. */
-const imagemPublica = (arquivo: string | null | undefined) =>
-  arquivo && SEGURO ? `${ENDERECO}/img/${encodeURIComponent(arquivo)}?k=${assinarArquivo(arquivo)}` : null;
-
-function salvarImagem(dados: Buffer, prefixo: string) {
-  const tipo = tipoImagem(dados);
-  if (!tipo) return null;
-  mkdirSync(PASTA, { recursive: true });
-  const arquivo = `${prefixo}-${Date.now()}.${tipo.ext}`;
-  writeFileSync(`${PASTA}/${arquivo}`, dados);
-  return arquivo;
-}
-const apagarImagem = (arquivo: string | null | undefined) => {
-  if (arquivo) rmSync(`${PASTA}/${arquivo}`, { force: true });
-};
-
-function servirImagem(res: ServerResponse, arquivo: string | null | undefined) {
-  try {
-    if (!arquivo || arquivo.includes('/') || arquivo.includes('\\')) throw new Error('sem imagem');
-    const dados = readFileSync(`${PASTA}/${arquivo}`);
-    const tipo = tipoImagem(dados);
-    if (!tipo) throw new Error('arquivo inválido');
-    res.writeHead(200, { 'Content-Type': tipo.mime, 'Cache-Control': 'private, max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
-    return void res.end(dados);
-  } catch {
-    return json(res, 404, { erro: 'Sem imagem.' });
-  }
-}
-
-// ---------- Livro de regras (um PDF por servidor e sistema, consultado pelo mapa) ----------
-
-const PASTA_LIVROS = 'dados/livros';
-// O túnel da Cloudflare recusa envios acima de 100 MB; livros maiores são copiados direto para dados/livros.
-export const LIMITE_LIVRO = 95 * 1024 * 1024;
-export const arquivoLivro = (c: { guild_id: string; sistema: string }) => `${PASTA_LIVROS}/${c.guild_id}-${c.sistema}.pdf`;
-
-function infoLivro(c: Campanha) {
-  try {
-    const st = statSync(arquivoLivro(c));
-    return st.isFile() && st.size > 0 ? { tamanho: st.size, versao: Math.floor(st.mtimeMs) } : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Faixa pedida no cabeçalho Range ("bytes=ini-fim", "bytes=ini-" ou "bytes=-últimos"); null = o arquivo todo; 'invalida' = 416. */
-export function faixaPedida(range: string | undefined, total: number): { ini: number; fim: number } | null | 'invalida' {
-  const m = /^bytes=(\d*)-(\d*)$/.exec(range?.trim() ?? '');
-  if (!m || (!m[1] && !m[2])) return null;
-  let ini: number, fim: number;
-  if (!m[1]) {
-    ini = Math.max(0, total - Number(m[2]));
-    fim = total - 1;
-  } else {
-    ini = Number(m[1]);
-    fim = m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
-  }
-  return ini > fim || ini >= total ? 'invalida' : { ini, fim };
-}
-
-/** Entrega o PDF em pedaços (Range): o leitor do navegador abre as páginas sem baixar o livro inteiro antes. */
-function servirLivro(req: IncomingMessage, res: ServerResponse, c: Campanha) {
-  const info = infoLivro(c);
-  if (!info) return json(res, 404, { erro: 'Esta mesa ainda não tem o livro de regras.' });
-  const total = info.tamanho;
-  const etag = `"${info.versao}-${total}"`;
-  const base = {
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': `inline; filename="Livro-${c.sistema === 'dh' ? 'Daggerheart' : 'DnD'}.pdf"`,
-    'Accept-Ranges': 'bytes',
-    'Cache-Control': 'private, max-age=86400',
-    ETag: etag,
-    'X-Content-Type-Options': 'nosniff',
-  };
-  // If-Range com outra versão: manda o arquivo todo de novo.
-  const ifRange = req.headers['if-range'];
-  const faixa = ifRange && ifRange !== etag ? null : faixaPedida(req.headers.range, total);
-  if (faixa === 'invalida') {
-    res.writeHead(416, { 'Content-Range': `bytes */${total}` });
-    return void res.end();
-  }
-  const { ini, fim } = faixa ?? { ini: 0, fim: total - 1 };
-  res.writeHead(faixa ? 206 : 200, { ...base, 'Content-Length': fim - ini + 1, ...(faixa ? { 'Content-Range': `bytes ${ini}-${fim}/${total}` } : {}) });
-  if (req.method === 'HEAD') return void res.end();
-  const leitura = createReadStream(arquivoLivro(c), { start: ini, end: fim });
-  leitura.on('error', () => res.destroy());
-  res.on('close', () => leitura.destroy());
-  leitura.pipe(res);
-}
-
-/** Grava o corpo do pedido direto no disco (sem guardar tudo na memória), parando se passar do limite. */
-function gravarCorpo(req: IncomingMessage, destino: string, limite: number) {
-  return new Promise<number>((ok, falha) => {
-    let total = 0;
-    const saida = createWriteStream(destino);
-    req.on('data', (p: Buffer) => {
-      total += p.length;
-      if (total > limite) {
-        req.unpipe(saida);
-        saida.destroy();
-        falha(new Error('grande'));
-      }
-    });
-    req.on('error', falha);
-    saida.on('error', falha);
-    saida.on('finish', () => ok(total));
-    req.pipe(saida);
-  });
-}
-
 // ---------- Cartas do Daggerheart (imagens em dados/cartas/dh, fora do repositório) ----------
 
-const PASTA_CARTAS = 'dados/cartas/dh';
-const temImagensDeCartas = () => existsSync(`${PASTA_CARTAS}/p`);
 const cartasDe = (c: { guild_id: string }, u: string) =>
   (db.prepare('SELECT carta, lugar, usada FROM personagem_cartas WHERE guild_id = ? AND user_id = ? ORDER BY criada_em').all(c.guild_id, u) as { carta: string; lugar: CartaDoPersonagem['lugar']; usada: number }[])
     .filter((m) => CARTA.has(m.carta))
@@ -281,21 +156,6 @@ function extrasTotais(c: { guild_id: string }, u: string, ficha: Record<string, 
   } catch {}
   return extrasDe(c, u) + doAvanco;
 }
-const assinarCarta = (id: string) => assinarArquivo(`carta:${id}`);
-/** Endereço aberto (assinado) da imagem da carta, para o Discord mostrar no webhook. */
-const cartaPublica = (id: string) => (SEGURO && temImagensDeCartas() ? `${ENDERECO}/carta/${id}.jpg?k=${assinarCarta(id)}` : null);
-
-function servirCarta(res: ServerResponse, tamanho: string, id: string) {
-  if (!CARTA.has(id) || !/^[pg]$/.test(tamanho)) return json(res, 404, { erro: 'Carta não encontrada.' });
-  try {
-    const dados = readFileSync(`${PASTA_CARTAS}/${tamanho}/${id}.jpg`);
-    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
-    return void res.end(dados);
-  } catch {
-    return json(res, 404, { erro: 'A imagem desta carta não está no servidor.' });
-  }
-}
-
 /** Cartas do personagem e o que a ficha permite (para a prancheta). */
 function pranchetaDe(c: Campanha, u: string) {
   const ficha = fichaDe(c, u), minhas = cartasDe(c, u), extras = extrasTotais(c, u, ficha);
@@ -304,38 +164,10 @@ function pranchetaDe(c: Campanha, u: string) {
 
 // ---------- Tempo real (SSE): quem está com a página aberta recebe o aviso quando alguém mexe ----------
 
-type Ouvinte = { res: ServerResponse; userId: string };
-const ouvintes = new Map<number, Set<Ouvinte>>();
-
 /** "estado" recarrega mapa e peças; "chat" recarrega só o chat. Rolagem escondida avisa só o mestre. */
-// Número de cada mudança (estado e chat) por campanha: a página pergunta só "mudou?" (pulso) e baixa o resto
-// apenas quando muda. O BOOT muda a cada vez que o bot liga, para a página não confundir os números.
-const BOOT = randomBytes(4).toString('hex');
-const versoes = new Map<number, { estado: number; chat: number }>();
 function avisar(campanhaId: number, oQue: 'estado' | 'chat', soMestre = false) {
-  const v = versoes.get(campanhaId) ?? { estado: 0, chat: 0 };
-  v[oQue]++;
-  versoes.set(campanhaId, v);
-  const mestre = soMestre ? campanhaPorId(campanhaId)?.mestre_id : undefined;
-  for (const o of ouvintes.get(campanhaId) ?? []) {
-    if (!soMestre || o.userId === mestre) o.res.write(`data: ${oQue}\n\n`);
-  }
+  avisarTelas(campanhaId, oQue, soMestre ? campanhaPorId(campanhaId)?.mestre_id : undefined);
 }
-
-/** Para o bot avisar as telas abertas quando a campanha muda pelo Discord (jogador entrou/saiu, mestre trocou). */
-// Pings e efeitos ficam guardados por alguns segundos com um número: quem não recebe o tempo real
-// (o túnel às vezes segura o SSE) busca pelo efeitos/<n> e a página ignora os repetidos.
-const recentes = new Map<number, { seq: number; tipo: string; dados: string; em: number }[]>();
-let seqEfeito = 0;
-function transmitir(campanhaId: number, tipo: 'ping' | 'efeito', json: string) {
-  const seq = ++seqEfeito, dados = json.replace(/^\{/, `{"seq":${seq},`), agora = Date.now();
-  const lista = (recentes.get(campanhaId) ?? []).filter((e) => agora - e.em < 15_000).slice(-150);
-  lista.push({ seq, tipo, dados, em: agora });
-  recentes.set(campanhaId, lista);
-  for (const o of ouvintes.get(campanhaId) ?? []) o.res.write(`data: ${tipo}:${dados}\n\n`);
-}
-const efeitosDesde = (campanhaId: number, desde: number) =>
-  (recentes.get(campanhaId) ?? []).filter((e) => e.seq > desde && Date.now() - e.em < 15_000).map((e) => ({ tipo: e.tipo, dados: e.dados }));
 
 export const avisarMapa = (campanhaId: number) => avisar(campanhaId, 'estado');
 
@@ -452,7 +284,7 @@ async function tratarBardos(req: IncomingMessage, res: ServerResponse, rota: str
       const antes = JSON.stringify(filasBardos);
       filasBardos = b.estado;
       // Mudou o que toca: as telas dos mestres atualizam o painel de música.
-      if (JSON.stringify(filasBardos) !== antes) for (const id of ouvintes.keys()) avisar(id, 'estado', true);
+      if (JSON.stringify(filasBardos) !== antes) for (const id of campanhasAbertas()) avisar(id, 'estado', true);
     }
     if (b.id) pendentes.get(b.id)?.({ ok: !!b.ok, msg: String(b.msg ?? '') });
     if (b.id) pendentes.delete(b.id);
@@ -938,7 +770,8 @@ const ROTAS_MESA = /^(area(\/|$)|descanso(\/|$)|musica\/(pedir|cancelar|pedido)$
 
 // ---------- Servidor HTTP ----------
 
-const PAGINA = readFileSync(new URL('../mapa/pagina.html', import.meta.url), 'utf8');
+// A página é montada das partes (esqueleto, estilo e src/mapa/js) uma vez, quando o bot sobe.
+const PAGINA = montarPagina();
 
 const json = (res: ServerResponse, status: number, corpo: unknown) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -1076,32 +909,18 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if ((req.method === 'GET' || req.method === 'HEAD') && acao === 'livro') return servirLivro(req, res, c);
 
   if (req.method === 'GET') {
-    if (acao === 'estado') return json(res, 200, await montarEstado(c, userId));
+    // Estado do cache (montado uma vez por mudança e por pessoa) e compactado: é a resposta mais pesada do mapa.
+    if (acao === 'estado') return responderJson(req, res, await estadoEmCache(c.id, userId, () => montarEstado(c, userId)));
     if (acao === 'chat') return json(res, 200, lerChat(c, userId));
 
-    if (acao === 'eventos') {
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-      res.write('retry: 2000\n\n');
-      const set = ouvintes.get(c.id) ?? ouvintes.set(c.id, new Set()).get(c.id)!;
-      const eu: Ouvinte = { res, userId };
-      set.add(eu);
-      const bate = setInterval(() => res.write(': ok\n\n'), 25_000);
-      req.on('close', () => {
-        clearInterval(bate);
-        set.delete(eu);
-      });
-      return;
-    }
+    if (acao === 'eventos') return registrarOuvinte(c.id, req, res, userId);
 
     const desde = acao.match(/^efeitos\/(\d+)$/);
-    if (desde) return json(res, 200, { seq: seqEfeito, lista: efeitosDesde(c.id, Number(desde[1])) });
+    if (desde) return json(res, 200, { seq: ultimoSeq(), lista: efeitosDesde(c.id, Number(desde[1])) });
     // Pulso: resposta pequena com o número das mudanças e os efeitos novos. A página só baixa o estado
     // ou o chat quando o número muda (antes baixava tudo a cada 3 s).
     const pulso = acao.match(/^pulso\/(\d+)$/);
-    if (pulso) {
-      const v = versoes.get(c.id) ?? { estado: 0, chat: 0 };
-      return json(res, 200, { boot: BOOT, estado: v.estado, chat: v.chat, seq: seqEfeito, lista: efeitosDesde(c.id, Number(pulso[1])) });
-    }
+    if (pulso) return json(res, 200, pulsoDa(c.id, Number(pulso[1])));
     if (acao === 'imagem') return servirImagem(res, mapaDe(c.id).imagem);
     if (acao === 'cartas/catalogo') {
       res.setHeader('Cache-Control', 'private, max-age=3600');
@@ -1177,8 +996,15 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
     const m = mapaDe(c.id);
     const x = limitar(b.x, 0, m.largura, p.x), y = limitar(b.y, 0, m.altura, p.y);
     db.prepare('UPDATE mapa_pecas SET x = ?, y = ? WHERE id = ?').run(x, y, p.id);
-    revelarVisao(c, { user_id: p.user_id, x, y });
-    avisar(c.id, 'estado');
+    // Caminho rápido: a peça anda na tela dos outros na hora, por um evento pequeno, sem ninguém baixar o estado.
+    // Peça do mestre escondida, com névoa ligada ou com a cortina fechada vai pelo aviso normal (o estado de cada
+    // jogador filtra o que ele pode ver; o evento iria para todos e entregaria a posição).
+    const visivel = !!p.user_id || (!p.escondida && !m.nevoa_ligada && !m.cortina);
+    if (revelarVisao(c, { user_id: p.user_id, x, y }) || !visivel) avisar(c.id, 'estado');
+    else {
+      invalidar(c.id);
+      transmitir(c.id, 'efeito', JSON.stringify({ tipo: 'mov', peca: p.id, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, quem: userId }));
+    }
     return json(res, 200, { ok: true });
   }
 
@@ -2127,13 +1953,34 @@ export function apagarMapa(campanhaId: number) {
   climas.delete(campanhaId);
   db.prepare('DELETE FROM campanha_roteiro WHERE campanha_id = ?').run(campanhaId);
   esquecerMesa(campanhaId);
-  for (const o of ouvintes.get(campanhaId) ?? []) o.res.end();
-  ouvintes.delete(campanhaId);
+  encerrarCampanha(campanhaId);
+}
+
+/**
+ * Mudanças feitas fora do mapa (comandos /dh e /ficha no Discord mexem nas fichas e no Medo): a cada 4 s, para as
+ * mesas com alguém olhando, compara uma assinatura barata das fichas dos jogadores e do Medo; mudou, avisa as telas.
+ */
+const assinaturas = new Map<number, string>();
+function conferirMudancasDeFora() {
+  for (const id of campanhasAbertas()) {
+    const c = campanhaPorId(id);
+    if (!c) continue;
+    const jogadores = idsJogadores(c.id);
+    const tabela = TABELA_FICHA[c.sistema];
+    const fichas = jogadores.length
+      ? (db.prepare(`SELECT * FROM ${tabela} WHERE guild_id = ? AND user_id IN (${jogadores.map(() => '?').join(',')}) ORDER BY user_id`).all(c.guild_id, ...jogadores) as Record<string, unknown>[])
+      : [];
+    const assinatura = JSON.stringify([fichas, c.sistema === 'dh' ? lerMedo(c.guild_id) : null]);
+    const antes = assinaturas.get(id);
+    assinaturas.set(id, assinatura);
+    if (antes !== undefined && antes !== assinatura) avisar(id, 'estado');
+  }
 }
 
 export function iniciarMapa(client: Client) {
   discord = client;
   prepararChaveBardos();
+  setInterval(conferirMudancasDeFora, 4000).unref();
   // Cena com trilha: ao abrir, os bardos tocam a trilha dela na call da mesa.
   aoTrocarCena = (c, cena) => {
     if (cena.ambiente && ehAmbiente(cena.ambiente) && c.canal_voz_id) {

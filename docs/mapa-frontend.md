@@ -12,8 +12,13 @@ Este guia é para quem vai trabalhar **só na tela do mapa** (o site estilo Roll
 
 | Arquivo | O que é | Pode mexer? |
 |---|---|---|
-| `src/mapa/pagina.html` | **A página inteira**: HTML, CSS e JS num arquivo só, sem framework, sem build e sem biblioteca externa | **Sim, é aqui** |
+| `src/mapa/pagina.html` | O **esqueleto** da página (HTML), com os marcadores `/*__ESTILO__*/` e `//__SCRIPT__` | **Sim** |
+| `src/mapa/estilo.css` | Todo o visual | **Sim** |
+| `src/mapa/js/NN-assunto.js` | O código, dividido por assunto (`01-base`, `02-mapa`, `03-barra-e-ferramentas`, `04-livro`, `05-janelas-e-ficha`, `06-cartas-e-nivel`, `07-mestre`, `08-sessao-e-chat`, `09-mesa`, `10-elementos-e-efeitos`, `11-selecao-e-cortina`) | **Sim** |
+| `src/lib/paginaMapa.ts` | Junta as partes numa página só (um `<script>` só, na ordem do número): uma função de um arquivo vale nos outros | Não |
 | `src/recursos/mapa.ts` | Servidor HTTP do mapa: rotas da API, regras, quem vê o quê, espelho no Discord | Não (só ler para entender) |
+| `src/recursos/mapaTempoReal.ts` | Tempo real: SSE, pulso, efeitos com número, movimento ao vivo e o cache do estado (com gzip) | Não |
+| `src/recursos/mapaArquivos.ts`, `mapaMesa.ts` | Imagens, livro e cartas; e as ferramentas da mesa (áreas, relógios, roteiro, bestiário...) | Não |
 | `src/lib/mapa.ts`, `fichaMapa.ts`, `combate.ts`, `nevoa.ts`, `ambientes.ts` | Regras puras, com testes | Não |
 | `src/db.ts` | Banco e migrações | Não |
 | `scripts/demo-mapa.ts` | Sobe só o site do mapa com dados de teste | Usar |
@@ -28,7 +33,8 @@ npm run mapa:demo
 ```
 
 - O comando imprime dois links: **MESTRE** e **JOGADOR**. Os dados de teste ficam em `%TEMP%\taverna-mapa-demo` e continuam lá entre uma execução e outra. Apague a pasta para começar do zero.
-- O servidor lê o `pagina.html` **uma vez, quando sobe**. O `mapa:demo` reinicia sozinho quando algo em `src/` muda; depois disso, é só recarregar o navegador.
+- O servidor monta a página (esqueleto + `estilo.css` + `js/*.js`) **uma vez, quando sobe**. Arquivo novo em `js/` entra sozinho, na ordem do número do nome. Não crie outro `<script>`: tudo precisa estar no mesmo para as funções valerem entre os arquivos.
+- `npm test` inclui o `paginaMapa.test.ts`, que pega erro de sintaxe, nome declarado duas vezes, `$('id')` que não existe no HTML e ícone da barra apontando para gaveta inexistente; e o `mapaSincronia.test.ts`, que abre várias telas ao mesmo tempo e confere se o que um faz chega aos outros. O `mapa:demo` reinicia sozinho quando algo em `src/` muda; depois disso, é só recarregar o navegador.
 - O login é um cookie (`mapa_sessao`) criado pelo link. Para ver mestre e jogador **ao mesmo tempo**, abra um link numa janela normal e o outro numa janela anônima (no mesmo navegador, um cookie substitui o outro).
 - A demo usa um Discord de mentira: sem avatares do Discord e sem mensagens no canal. Fora isso, tudo funciona.
 - Antes de entregar: `npx tsc` e `npm test` (os testes são do back end e servem para garantir que nada foi quebrado sem querer).

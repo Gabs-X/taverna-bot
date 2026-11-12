@@ -344,6 +344,8 @@ test('diário: cada sessão finalizada aparece com o registro, e o mestre escrev
   mkdirSync('dados/campanhas', { recursive: true });
   writeFileSync(`dados/campanhas/${campanha}-mesa-teste.txt`, 'Campanha: Mesa\n[20:00] Lyra: olá');
   const id = Number(db.prepare('INSERT INTO campanha_sessoes (campanha_id, inicio, fim, mensagens, rolagens, arquivo) VALUES (?, 1, 2, 1, 0, ?)').run(campanha, `${campanha}-mesa-teste.txt`).lastInsertRowid);
+  // Quem grava o diário (/sessao finalizar) avisa as telas; aqui o teste grava direto no banco.
+  (await import('../recursos/mapa.ts')).avisarMapa(campanha);
   const e = await estado(J);
   assert.equal(e.diario[0].id, id);
   const r = await fetch(`${base}/api/m/${campanha}/diario/${id}`, { headers: { cookie: `mapa_sessao=${criarSessao(SEGREDO, J)}` } });
