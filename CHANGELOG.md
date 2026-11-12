@@ -1,5 +1,11 @@
 # Novidades do Taverneiro
 
+## v1.16.0 (12/11/2026)
+
+- ⚡ O mapa ficou bem mais rápido entre jogadores: quando alguém mexe uma peça, ela anda na tela dos outros quase na hora, deslizando até o lugar, sem recarregar o mapa.
+- 📦 O mapa carrega mais leve (o servidor guarda o que já montou e manda compactado), o que ajuda muito no celular e em internet fraca.
+- 🔄 Mudanças feitas na ficha pelo Discord (como o /dh) agora aparecem sozinhas no mapa, em poucos segundos.
+
 ## v1.15.2 (11/11/2026)
 
 - 💬 Status nas peças: escreva um texto curto (ex.: Envenenado, escondido na moita) no card da peça e ele aparece num balão em cima dela para todos. O jogador escreve no personagem dele; o mestre, em qualquer peça.
