@@ -12,7 +12,7 @@ import { dimensoesNevoa, gravarNevoa, lerNevoa, MAX_CASAS_NEVOA, nevoaToda, peca
 import { esquecerMesa, estadoDaMesa, lerMesa, registrarHistorico, tratarMesa, type Mesa } from './mapaMesa.ts';
 import {
   apagarImagem, arquivoLivro, assinarArquivo, assinarCarta, cartaPublica, ENDERECO, gravarCorpo, imagemPublica, infoLivro, LIMITE_IMAGEM_PECA, LIMITE_LIVRO, PASTA,
-  PASTA_LIVROS, PORTA, salvarImagem, segredo, SEGURO, servirCarta, servirImagem, servirLivro, temImagensDeCartas,
+  PASTA_LIVROS, PORTA, salvarImagem, segredo, SEGURO, servirCarta, servirImagem, servirLivro, servirZipMine, temImagensDeCartas,
 } from './mapaArquivos.ts';
 export { faixaPedida, mapaPublico } from './mapaArquivos.ts';
 import { avisar as avisarTelas, campanhasAbertas, efeitosDesde, encerrarCampanha, estadoEmCache, invalidar, pulso as pulsoDa, registrarOuvinte, responderJson, transmitir, ultimoSeq } from './mapaTempoReal.ts';
@@ -842,6 +842,10 @@ async function tratar(req: IncomingMessage, res: ServerResponse) {
   if (rota === '/') return texto(res, 200, '🗺️ Mapas da Taverna', ABRA_DE_NOVO);
 
   if (rota.startsWith('/bardos/')) return tratarBardos(req, res, rota);
+
+  // Mods extras do mundo de Minecraft (/mine modpack): aberto, são mods públicos; o nome muda a cada versão.
+  const zipMine = rota.match(/^\/mine\/([a-z0-9-]+\.zip)$/);
+  if (zipMine) return servirZipMine(res, zipMine[1]);
 
   // Imagem aberta para o Discord (foto do personagem e do NPC no webhook): só com a assinatura certa.
   const publica = rota.match(/^\/img\/([A-Za-z0-9._-]+)$/);

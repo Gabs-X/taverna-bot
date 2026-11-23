@@ -2,6 +2,8 @@
 // Comando fora da tabela funciona em qualquer canal (admin: /setup, /limpar, /castigo, /logs; e /call, da sua call).
 // Para mudar, edite aqui; os nomes dos canais ficam em config.ts.
 import { CANAIS } from './config.ts';
+import { nomeTextoGrupo } from './lib/grupos.ts';
+import { GRUPO_MINE } from './lib/mine.ts';
 import { CAMPEOES } from './recursos/campeoes.ts';
 
 const TABELA: [string[], string[]][] = [
@@ -27,6 +29,8 @@ const TABELA: [string[], string[]][] = [
   [['elo'], [CANAIS.campeoes, CANAIS.comandos]],
   [['drg'], [CANAIS.buildsDrg, CANAIS.drg]],
   [['daily', 'trabalhar', 'carteira', 'pix', 'rank', 'top'], [CANAIS.economia]],
+  // Mundo de Minecraft: no chat do subgrupo dele (enquanto o subgrupo não existe, vale em qualquer canal).
+  [['mine'], [nomeTextoGrupo(GRUPO_MINE)]],
 
   // O resto fica no chat de comandos (/grupo também vale dentro dos canais do próprio grupo).
   [

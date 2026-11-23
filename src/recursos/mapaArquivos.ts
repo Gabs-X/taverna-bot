@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { db } from '../db.ts';
 import { CARTA } from '../lib/cartasDH.ts';
 import { tipoImagem } from '../lib/mapa.ts';
+import { ZIP_VALIDO } from '../lib/mine.ts';
 
 const semArquivo = (res: ServerResponse, erro: string) => {
   res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -58,6 +59,21 @@ export function servirImagem(res: ServerResponse, arquivo: string | null | undef
   } catch {
     return semArquivo(res, 'Sem imagem.');
   }
+}
+
+// ---------- Mods extras do mundo de Minecraft (o PC de casa manda o zip por scp para dados/mine) ----------
+
+export function servirZipMine(res: ServerResponse, arquivo: string) {
+  const caminho = `dados/mine/${arquivo}`;
+  if (!ZIP_VALIDO.test(arquivo) || !existsSync(caminho)) return semArquivo(res, 'Esse pacote de mods não existe mais: peça o link de novo com /mine modpack.');
+  res.writeHead(200, {
+    'Content-Type': 'application/zip',
+    'Content-Length': statSync(caminho).size,
+    'Content-Disposition': `attachment; filename="${arquivo}"`,
+    'Cache-Control': 'public, max-age=86400',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  createReadStream(caminho).pipe(res);
 }
 
 // ---------- Livro de regras (um PDF por servidor e sistema, consultado pelo mapa) ----------

@@ -4,6 +4,7 @@ import { canaisDoComando } from './canaisDosComandos.ts';
 import { CARGOS } from './config.ts';
 import { avisoCanalErrado, ehMestre, ehStaff, registrarCliente, temCargo } from './lib/servidor.ts';
 import { ambiente, botaoRadio, iniciarMusica, musica, musicasTocando, radio, rockandstone, tocar } from './recursos/musica.ts';
+import { botaoMine, iniciarMine, mine } from './recursos/mine.ts';
 import { iniciarPonteNuvem } from './recursos/ponteNuvem.ts';
 import { iniciarVigiaNuvem } from './recursos/vigiaNuvem.ts';
 import type { Comando, HandlerBotao } from './tipos.ts';
@@ -15,8 +16,9 @@ import type { Comando, HandlerBotao } from './tipos.ts';
 // os outros (TOKEN_MUSICA_3...) só tocam. Cada bardo toca numa call ao mesmo tempo.
 // Uso: node --env-file=.env src/bardos.ts   (ou o supervisor: node scripts/supervisor.mjs --entrada src/bardos.ts)
 
-const COMANDOS: Comando[] = [tocar, radio, musica, ambiente, rockandstone];
-const BOTOES: HandlerBotao[] = [botaoRadio];
+// O /mine também mora aqui: o servidor do Minecraft roda neste mesmo PC (src/recursos/mine.ts).
+const COMANDOS: Comando[] = [tocar, radio, musica, ambiente, rockandstone, mine];
+const BOTOES: HandlerBotao[] = [botaoRadio, botaoMine];
 const porNome = new Map(COMANDOS.map((c) => [c.data.name, c]));
 
 const tokens = Object.entries(process.env)
@@ -55,6 +57,7 @@ registrarCliente(principal);
 await iniciarMusica(bardos);
 iniciarVigiaNuvem(principal);
 iniciarPonteNuvem();
+iniciarMine(principal);
 
 // Comandos de música ficam no app do primeiro bardo (registrados por servidor: aparecem na hora).
 const corpo = COMANDOS.map((c) => c.data.toJSON());
