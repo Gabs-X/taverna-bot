@@ -214,8 +214,13 @@ const nomeDoCanal = () => nomeTextoGrupo(GRUPO_MINE);
 
 // ---------- Mods extras e o link na Oracle ----------
 
-function extras() {
-  const dir = join(PASTA!, 'mods-extras');
+/**
+ * Pastas de mods-extras: os .jar soltos são obrigatórios (servidor e galera), "opcionais" são só do cliente
+ * (cada um escolhe) e "servidor" fica só no servidor (não vai para ninguém).
+ */
+const pastaExtras = (sub: '' | 'opcionais') => join(PASTA!, 'mods-extras', sub);
+function extras(sub: '' | 'opcionais' = '') {
+  const dir = pastaExtras(sub);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((n) => n.toLowerCase().endsWith('.jar'))
@@ -238,28 +243,41 @@ const demorado = (programa: string, args: string[]) =>
 const TAR = existsSync('C:\\Windows\\System32\\tar.exe') ? 'C:\\Windows\\System32\\tar.exe' : 'tar';
 let zipNaNuvem: string | null = null;
 
-/** Monta o zip dos mods extras (se mudou), manda para a Oracle e devolve o link pelo endereço do mapa. */
-async function linkDosExtras(): Promise<string | undefined> {
-  const jars = extras();
+/** Zip de uma pasta de mods extras (só monta de novo se a lista mudou). */
+async function zipDe(sub: '' | 'opcionais'): Promise<string | undefined> {
+  const jars = extras(sub);
   if (!jars.length) return undefined;
-  if (!destino) throw new Error('sem NUVEM_SSH no .env');
   const zip = nomeDoZip(versaoDosExtras(jars));
   const local = join(PASTA_ZIP, zip);
   if (!existsSync(local)) {
     mkdirSync(PASTA_ZIP, { recursive: true });
-    await demorado(TAR, ['-a', '-c', '-f', local, '-C', join(PASTA!, 'mods-extras'), ...jars.map((j) => j.nome)]);
+    await demorado(TAR, ['-a', '-c', '-f', local, '-C', pastaExtras(sub), ...jars.map((j) => j.nome)]);
   }
-  if (zipNaNuvem !== zip) {
-    const tem = await rodar('ssh', [...opcoesSsh, destino, `mkdir -p ${REMOTO} && (test -f ${REMOTO}/${zip} && echo tem || echo falta)`]);
-    if (tem.trim() !== 'tem') {
-      await demorado('scp', [...opcoesSsh, local, `${destino}:${REMOTO}/${zip}.parcial`]);
-      await rodar('ssh', [...opcoesSsh, destino, `mv ${REMOTO}/${zip}.parcial ${REMOTO}/${zip} && find ${REMOTO} -name 'mods-extras-*.zip' ! -name '${zip}' -delete`]);
+  return zip;
+}
+
+/** Monta os zips (obrigatório e opcional), manda os que faltam para a Oracle e devolve os links pelo endereço do mapa. */
+async function linkDosExtras(): Promise<{ obrigatorio?: string; opcional?: string }> {
+  const obrigatorio = await zipDe('');
+  const opcional = await zipDe('opcionais');
+  const zips = [obrigatorio, opcional].filter((z): z is string => !!z);
+  if (!zips.length) return {};
+  if (!destino) throw new Error('sem NUVEM_SSH no .env');
+  if (zipNaNuvem !== zips.join(' ')) {
+    for (const zip of zips) {
+      const tem = await rodar('ssh', [...opcoesSsh, destino, `mkdir -p ${REMOTO} && (test -f ${REMOTO}/${zip} && echo tem || echo falta)`]);
+      if (tem.trim() === 'tem') continue;
+      await demorado('scp', [...opcoesSsh, join(PASTA_ZIP, zip), `${destino}:${REMOTO}/${zip}.parcial`]);
+      await rodar('ssh', [...opcoesSsh, destino, `mv ${REMOTO}/${zip}.parcial ${REMOTO}/${zip}`]);
     }
-    zipNaNuvem = zip;
+    const manter = zips.map((z) => `! -name '${z}'`).join(' ');
+    await rodar('ssh', [...opcoesSsh, destino, `find ${REMOTO} -name 'mods-extras-*.zip' ${manter} -delete`]);
+    zipNaNuvem = zips.join(' ');
   }
   const url = (await rodar('ssh', [...opcoesSsh, destino, "grep -oP '^MAPA_URL=\\K.*' taverna-bot/.env"])).trim().replace(/\/+$/, '');
   if (!url.startsWith('https://')) throw new Error('o Taverneiro ainda não tem endereço público (MAPA_URL)');
-  return `${url}/mine/${zip}`;
+  const link = (z?: string) => (z ? `${url}/mine/${z}` : undefined);
+  return { obrigatorio: link(obrigatorio), opcional: link(opcional) };
 }
 
 // ---------- Painel e mensagens ----------
@@ -297,9 +315,12 @@ const botoes = () =>
     new ButtonBuilder().setCustomId('mine:modpack').setLabel('Modpack').setEmoji('📦').setStyle(ButtonStyle.Primary),
   );
 
-function textoDoModpack(link: string | undefined, erro?: string) {
-  const extrasLinha = link
-    ? `4. Baixe os **mods extras** e jogue os arquivos de dentro do zip na pasta \`mods\` da instância: ${link}`
+function textoDoModpack(links: { obrigatorio?: string; opcional?: string }, erro?: string) {
+  const opcional = links.opcional
+    ? [`   ➕ **Opcionais** (só no seu PC: FPS, sons e conforto; jogue na \`mods\` os que quiser): ${links.opcional}`]
+    : [];
+  const extrasLinha = links.obrigatorio
+    ? `4. Baixe os **mods extras** (obrigatórios) e jogue os arquivos de dentro do zip na pasta \`mods\` da instância: ${links.obrigatorio}`
     : erro
       ? `4. ⚠️ Não consegui gerar o link dos mods extras agora (${erro}). Avisa o admin.`
       : '4. Por enquanto não tem mods extras.';
@@ -309,6 +330,7 @@ function textoDoModpack(link: string | undefined, erro?: string) {
     `2. **Adicionar instância → FTB → FTB Evolution 2**, na versão **${versaoDoPack().split(' ').at(-1)}** (tem que ser a mesma do servidor).`,
     '3. Dê pelo menos **8 GB** de RAM para a instância (Editar → Configurações → Java).',
     extrasLinha,
+    ...opcional,
     `5. Cadastre o nick com \`/mine entrar\` e entre em \`${ENDERECO}\`.`,
   ].join('\n');
 }
@@ -343,7 +365,7 @@ async function acaoModpack(): Promise<Resposta> {
     return { content: textoDoModpack(await linkDosExtras()) };
   } catch (e) {
     console.error('[mine] link dos mods extras:', e);
-    return { content: textoDoModpack(undefined, (e as Error).message) };
+    return { content: textoDoModpack({}, (e as Error).message) };
   }
 }
 
