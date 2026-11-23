@@ -218,12 +218,14 @@ const nomeDoCanal = () => nomeTextoGrupo(GRUPO_MINE);
  * Pastas de mods-extras: os .jar soltos são obrigatórios (servidor e galera), "opcionais" são só do cliente
  * (cada um escolhe) e "servidor" fica só no servidor (não vai para ninguém).
  */
+const TUTORIAL = 'COMO-INSTALAR.txt';
 const pastaExtras = (sub: '' | 'opcionais') => join(PASTA!, 'mods-extras', sub);
 function extras(sub: '' | 'opcionais' = '') {
   const dir = pastaExtras(sub);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter((n) => n.toLowerCase().endsWith('.jar'))
+    // O tutorial vai junto no zip (e conta na versão, então mudar o texto gera um zip novo).
+    .filter((n) => n.toLowerCase().endsWith('.jar') || n === TUTORIAL)
     .map((nome) => ({ nome, tamanho: statSync(join(dir, nome)).size }));
 }
 
