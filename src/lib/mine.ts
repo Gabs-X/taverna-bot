@@ -101,6 +101,13 @@ export function lerChunky(texto: string): { rodando: boolean; porcento?: number 
 
 export const DESLIGAR_VAZIO_MS = 15 * 60_000;
 
+/**
+ * Desde quando o mundo está "vazio" para contar os 15 min: com gente jogando ou com a pré-geração do mapa rodando
+ * não conta; quando a pré-geração acaba, a contagem começa do zero (não desliga no mesmo minuto em que ela termina).
+ */
+export const vazioDesdeAgora = (p: { vazioDesde: number | null; online: number; pregerando: boolean; agora: number }) =>
+  p.online > 0 || p.pregerando ? null : (p.vazioDesde ?? p.agora);
+
 /** Desliga quando está vazio há o tempo todo e não tem pré-geração de mapa rodando. */
 export function deveDesligar(p: { vazioDesde: number | null; agora: number; pregerando: boolean; limiteMs?: number }): boolean {
   if (p.pregerando || p.vazioDesde === null) return false;

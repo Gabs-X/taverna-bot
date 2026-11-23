@@ -33,6 +33,7 @@ import {
   RCON_LOGIN,
   semCores,
   semNick,
+  vazioDesdeAgora,
   versaoDosExtras,
   type EntradaWhitelist,
 } from '../lib/mine.ts';
@@ -472,7 +473,7 @@ async function aCadaMinuto(client: Client) {
   if (s.ligado) {
     if (ligandoDesde || (ultimaSituacao && !ultimaSituacao.ligado)) await canal?.send(`🟢 O mundo está **ligado**! Entre em \`${ENDERECO}\`.`).catch(() => {});
     ligandoDesde = null;
-    vazioDesde = s.online > 0 ? null : (vazioDesde ?? Date.now());
+    vazioDesde = vazioDesdeAgora({ vazioDesde, online: s.online, pregerando: s.pregerando !== undefined, agora: Date.now() });
     if (!desligandoDesde && deveDesligar({ vazioDesde, agora: Date.now(), pregerando: s.pregerando !== undefined })) {
       await desligar();
       await canal?.send('💤 O mundo ficou 15 minutos vazio e **desligou sozinho**. Para voltar: `/mine ligar` ou o botão do painel.').catch(() => {});

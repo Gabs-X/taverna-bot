@@ -14,6 +14,7 @@ import {
   RCON_COMANDO,
   semNick,
   uuidOffline,
+  vazioDesdeAgora,
   versaoDosExtras,
   ZIP_VALIDO,
 } from './mine.ts';
@@ -70,6 +71,19 @@ test('desliga sozinho só depois de 15 min vazio e fora da pré-geração', () =
   assert.equal(deveDesligar({ vazioDesde: agora - 14 * 60_000, agora, pregerando: false }), false);
   assert.equal(deveDesligar({ vazioDesde: agora - 15 * 60_000, agora, pregerando: false }), true);
   assert.equal(deveDesligar({ vazioDesde: agora - 60 * 60_000, agora, pregerando: true }), false);
+});
+
+test('a contagem do vazio recomeça quando a pré-geração acaba', () => {
+  const agora = 1_000_000_000;
+  // Pré-gerando há horas sem ninguém: não conta.
+  assert.equal(vazioDesdeAgora({ vazioDesde: agora - 3_600_000, online: 0, pregerando: true, agora }), null);
+  // Acabou a pré-geração: começa agora, então não desliga no mesmo minuto.
+  const desde = vazioDesdeAgora({ vazioDesde: null, online: 0, pregerando: false, agora });
+  assert.equal(desde, agora);
+  assert.equal(deveDesligar({ vazioDesde: desde, agora, pregerando: false }), false);
+  // Continua vazio: mantém o começo; entrou alguém: zera.
+  assert.equal(vazioDesdeAgora({ vazioDesde: desde, online: 0, pregerando: false, agora: agora + 60_000 }), agora);
+  assert.equal(vazioDesdeAgora({ vazioDesde: desde, online: 1, pregerando: false, agora: agora + 60_000 }), null);
 });
 
 test('versão dos mods extras muda quando a lista muda e não depende da ordem', () => {
