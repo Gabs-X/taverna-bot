@@ -162,6 +162,30 @@ async function desligar() {
   await rcon('stop').catch(() => {}); // o servidor costuma fechar a conexão antes de responder
 }
 
+// ---------- PC acordado ----------
+
+/**
+ * Enquanto o mundo está ligado, o Windows não suspende o PC (senão o mundo some no meio da partida).
+ * Um PowerShell pede isso ao sistema (SetThreadExecutionState) e sai sozinho quando o bot fecha;
+ * com o mundo desligado, o PC volta a suspender normalmente.
+ */
+let acordado: ReturnType<typeof spawn> | null = null;
+function manterAcordado(sim: boolean) {
+  if (process.platform !== 'win32') return;
+  if (!sim) {
+    acordado?.kill();
+    acordado = null;
+    return;
+  }
+  if (acordado && acordado.exitCode === null) return;
+  const script =
+    `Add-Type -Name E -Namespace W -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);';` +
+    `[W.E]::SetThreadExecutionState([uint32]2147483649) | Out-Null;` +
+    `while (Get-Process -Id ${process.pid} -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 30 }`;
+  acordado = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore', windowsHide: true });
+  acordado.on('exit', () => (acordado = null));
+}
+
 // ---------- Whitelist ----------
 
 const arquivoWhitelist = () => join(PASTA!, 'whitelist.json');
@@ -487,6 +511,7 @@ async function aCadaMinuto(client: Client) {
       await canal?.send('⚠️ O mundo não conseguiu ligar. Avise o admin (log em `logs/console-bot.log`).').catch(() => {});
     }
   }
+  manterAcordado(s.ligado || ligando());
   ultimaSituacao = s;
   await atualizarPainel(client, s);
 }
