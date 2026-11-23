@@ -1,5 +1,10 @@
 # Novidades do Taverneiro
 
+## v1.17.1 (23/11/2026)
+
+- Mundo de Minecraft: depois da pré-geração do mapa, o mundo espera os 15 minutos vazio antes de desligar sozinho (antes desligava assim que ela terminava)
+- Mundo de Minecraft: enquanto o mundo está ligado, o PC de casa não entra em suspensão (volta ao normal quando ele desliga)
+
 ## v1.17.0 (23/11/2026)
 
 - ⛏️ **Mundo de Minecraft da galera (FTB Evolution 2)**, agora pelo Discord:
