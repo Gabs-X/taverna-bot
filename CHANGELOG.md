@@ -1,5 +1,14 @@
 # Novidades do Taverneiro
 
+## v1.17.0 (23/11/2026)
+
+- ⛏️ **Mundo de Minecraft da galera (FTB Evolution 2)**, agora pelo Discord:
+- Entre no subgrupo **Minecraft** e cadastre seu nick com `/mine entrar`: só quem está cadastrado consegue entrar no mundo.
+- `/mine status` mostra se o mundo está ligado, quem está jogando e se está com lag.
+- `/mine ligar` e `/mine desligar`: qualquer um do grupo liga o mundo quando quiser jogar. Ele desliga sozinho depois de 15 minutos sem ninguém.
+- `/mine modpack` ensina a instalar o modpack (com conta offline no Prism Launcher) e manda o link dos mods extras.
+- No canal do grupo tem um painel que se atualiza sozinho, com botões para ligar, desligar e pegar o modpack.
+
 ## v1.16.0 (12/11/2026)
 
 - ⚡ O mapa ficou bem mais rápido entre jogadores: quando alguém mexe uma peça, ela anda na tela dos outros quase na hora, deslizando até o lugar, sem recarregar o mapa.
