@@ -1,5 +1,9 @@
 # Novidades do Taverneiro
 
+## v1.17.2 (23/11/2026)
+
+- Mundo de Minecraft: o /mine ligar chama o run.bat pelo caminho completo, então liga mesmo quando o Windows não procura programas na pasta atual
+
 ## v1.17.1 (23/11/2026)
 
 - Mundo de Minecraft: depois da pré-geração do mapa, o mundo espera os 15 minutos vazio antes de desligar sozinho (antes desligava assim que ela terminava)
