@@ -149,7 +149,7 @@ const ligando = () => ligandoDesde !== null && Date.now() - ligandoDesde < LIGAN
 function ligar() {
   mkdirSync(join(PASTA!, 'logs'), { recursive: true });
   const log = openSync(join(PASTA!, 'logs', 'console-bot.log'), 'w');
-  const p = spawn('cmd.exe', ['/c', 'run.bat'], { cwd: PASTA, detached: true, stdio: ['ignore', log, log], windowsHide: true });
+  const p = spawn(process.env.ComSpec || 'cmd.exe', ['/c', join(PASTA!, 'run.bat')], { cwd: PASTA, detached: true, stdio: ['ignore', log, log], windowsHide: true });
   p.unref();
   ligandoDesde = Date.now();
   desligandoDesde = null;
