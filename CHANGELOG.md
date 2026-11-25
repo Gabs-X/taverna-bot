@@ -1,5 +1,11 @@
 # Novidades do Taverneiro
 
+## v1.18.0 (25/11/2026)
+
+- ⛏️ **Mundo novo de Minecraft: Project Infinity** (skyblock, Minecraft 1.20.1). O mundo do FTB Evolution 2 ficou guardado num backup.
+- Para jogar, use `/mine modpack`: no Prism Launcher é Adicionar instância → CurseForge → Project Infinity 0.1, na versão 0.0.47.1.
+- Quem já estava cadastrado continua na whitelist, e o endereço é o mesmo de antes.
+
 ## v1.17.2 (23/11/2026)
 
 - Mundo de Minecraft: o /mine ligar chama o run.bat pelo caminho completo, então liga mesmo quando o Windows não procura programas na pasta atual
