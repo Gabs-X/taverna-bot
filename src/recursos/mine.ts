@@ -41,7 +41,7 @@ import { canalTexto, ehStaff } from '../lib/servidor.ts';
 import type { Comando, HandlerBotao } from '../tipos.ts';
 import { destino, opcoesSsh, rodar } from './vigiaNuvem.ts';
 
-// Mundo de Minecraft da galera (FTB Evolution 2), controlado pelo Discord. Roda no PC de casa junto com os bardos
+// Mundo de Minecraft da galera (o modpack vem do .manifest.json da pasta), controlado pelo Discord. Roda no PC de casa junto com os bardos
 // (src/bardos.ts), porque o servidor do Minecraft também roda aqui: fala com ele pelo RCON local (127.0.0.1, nada
 // aberto para a internet), liga pelo run.bat e desliga pelo "stop". Quem joga é quem está no subgrupo do Minecraft.
 // - /mine status · ligar · desligar · entrar (cadastra o nick na whitelist) · sair · lista · modpack; staff: remover, painel.
@@ -229,14 +229,23 @@ function extras(sub: '' | 'opcionais' = '') {
     .map((nome) => ({ nome, tamanho: statSync(join(dir, nome)).size }));
 }
 
-function versaoDoPack(): string {
+/**
+ * O pack vem do .manifest.json da pasta do servidor: name, versionName e launcher (o caminho no Prism para achar
+ * o pack, ex.: "CurseForge → Project Infinity 0.1"). Trocar de modpack não mexe no código, só nesse arquivo.
+ */
+function pack(): { nome: string; versao: string; launcher?: string } {
   try {
-    const m = JSON.parse(readFileSync(join(PASTA!, '.manifest.json'), 'utf8')) as { name?: string; versionName?: string };
-    return `${m.name ?? 'FTB Evolution 2'} ${m.versionName ?? ''}`.trim();
+    const m = JSON.parse(readFileSync(join(PASTA!, '.manifest.json'), 'utf8')) as { name?: string; versionName?: string; launcher?: string };
+    return { nome: m.name?.trim() || 'Modpack', versao: m.versionName?.trim() ?? '', launcher: m.launcher?.trim() || undefined };
   } catch {
-    return 'FTB Evolution 2';
+    return { nome: 'Modpack', versao: '' };
   }
 }
+
+const versaoDoPack = () => {
+  const p = pack();
+  return `${p.nome} ${p.versao}`.trim();
+};
 
 const demorado = (programa: string, args: string[]) =>
   new Promise<string>((ok, falha) =>
@@ -326,10 +335,12 @@ function textoDoModpack(links: { obrigatorio?: string; opcional?: string }, erro
     : erro
       ? `4. ⚠️ Não consegui gerar o link dos mods extras agora (${erro}). Avisa o admin.`
       : '4. Por enquanto não tem mods extras.';
+  const p = pack();
+  const versao = p.versao ? `, na versão **${p.versao}** (tem que ser a mesma do servidor)` : '';
   return [
     `📦 **${versaoDoPack()}**`,
     '1. Instale o **Prism Launcher** (prismlauncher.org) e adicione uma conta **offline** com o seu nick.',
-    `2. **Adicionar instância → FTB → FTB Evolution 2**, na versão **${versaoDoPack().split(' ').at(-1)}** (tem que ser a mesma do servidor).`,
+    `2. **Adicionar instância → ${p.launcher ?? p.nome}**${versao}.`,
     '3. Dê pelo menos **8 GB** de RAM para a instância (Editar → Configurações → Java).',
     extrasLinha,
     ...opcional,
@@ -376,7 +387,7 @@ async function acaoModpack(): Promise<Resposta> {
 export const mine: Comando = {
   data: new SlashCommandBuilder()
     .setName('mine')
-    .setDescription('Mundo de Minecraft da galera (FTB Evolution 2)')
+    .setDescription('Mundo de Minecraft da galera')
     .addSubcommand((s) => s.setName('status').setDescription('Se o mundo está ligado, quem está jogando e o lag'))
     .addSubcommand((s) => s.setName('ligar').setDescription('Liga o mundo'))
     .addSubcommand((s) => s.setName('desligar').setDescription('Desliga o mundo (só se não tiver ninguém jogando)'))
